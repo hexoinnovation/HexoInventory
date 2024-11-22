@@ -1,253 +1,290 @@
-import React, { useState } from "react";
-import { FaEdit } from "react-icons/fa";
-import { AiOutlineEye } from "react-icons/ai";
-import { IoBagAdd } from "react-icons/io5";
-import { BsFiletypePdf } from "react-icons/bs";
-
-import { RiDeleteBin5Line } from "react-icons/ri";
-import { MdOutlineAddCircle } from "react-icons/md";
 import {
-  doc,
-  setDoc,
   collection,
-  query,
-  where,
-  getDocs,
-  writeBatch,
   deleteDoc,
+  doc,
+  getDocs,
+  setDoc,
 } from "firebase/firestore";
-import { db } from "../config/firebase";
-import { auth } from "../config/firebase"; // Make sure you have firebase authentication set up
-import { useAuthState } from "react-firebase-hooks/auth"; // To get current user
+import React, { useEffect, useState } from "react";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
+import { auth, db } from "../config/firebase"; // Ensure firebase is correctly initialized
 
-const Sales = () => {
-  const [showModal, setShowModal] = useState(false);
-  const [showPopup, setShowPopup] = useState(false);
-  const [editPopup, setEditPopup] = useState(false);
-
-  const [products, setProducts] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [newProduct, setNewProduct] = useState({
-    no: "",
-    product: "",
+// The Stock and Sales Management Component
+const StocksAndSales = () => {
+  const [showModal, setShowModal] = useState(false); // For modal visibility
+  const [newStock, setNewStock] = useState({
+    pname: "",
     categories: "",
-    availableStocks: "",
-    qnt: "",
+    stock: 0,
     price: "",
   });
+  const [newSale, setNewSale] = useState({
+    pname: "",
+    quantity: 0,
+    price: "",
+    total: 0,
+    date: new Date().toISOString(),
+  });
 
-  // Get the current logged-in user
-  const [user] = useAuthState(auth); // Returns current authenticated user
+  const [products, setProducts] = useState([]);
+  const [sales, setSales] = useState([]);
+  const [searchQuery, setSearchQuery] = useState(""); // For searching/filtering products
+  const [user] = useAuthState(auth); // To get the current authenticated user
 
-  // Handle form field changes
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) return; // Ensure user is authenticated
+
+      try {
+        const userDocRef = doc(db, "admins", user.email);
+
+        // Fetch products
+        const productsRef = collection(userDocRef, "Stocks");
+        const productSnapshot = await getDocs(productsRef);
+        const productList = productSnapshot.docs.map((doc) => doc.data());
+        setProducts(productList);
+
+        // Fetch sales history
+        const salesRef = collection(userDocRef, "Sales");
+        const salesSnapshot = await getDocs(salesRef);
+        const salesList = salesSnapshot.docs.map((doc) => doc.data());
+        setSales(salesList);
+
+      } catch (error) {
+        console.error("Error fetching data: ", error);
+        alert("Failed to load data.");
+      }
+    };
+
+    fetchData();
+  }, [user]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewProduct((prev) => ({ ...prev, [name]: value }));
+    setNewStock((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle form submission to add new product and store in Firebase
-  const handleFormSubmit = async (e) => {
+  // Add New Stock
+  const handleAddStocks = async (e) => {
     e.preventDefault();
 
-    if (!user) {
-      alert("Please log in to add a product.");
-      return;
+    const { pname, categories, stock, price } = newStock;
+    if (!pname || !categories || !stock || !price) {
+      return alert("Please fill all the fields.");
     }
 
-    // Add the new product to the products list in state
-    setProducts((prev) => [...prev, { ...newProduct, id: prev.length + 1 }]);
-
     try {
-      // Use the logged-in user's email for the document path
-      const userEmail = user.email; // Get the email of the logged-in user
-
-      // Create a document reference for the user in Firestore
-      const userDocRef = doc(db, "admins", userEmail); // Reference to the 'admins' collection using the user's email
-      const productRef = collection(userDocRef, "products"); // Reference to the 'products' subcollection
-
-      // Set the product document
-      await setDoc(doc(productRef, newProduct.sname), newProduct);
-
-      alert("Product added successfully!");
-    } catch (error) {
-      console.error("Error adding product to Firestore: ", error);
-    }
-
-    setShowModal(false);
-    setNewProduct({
-      no: "",
-      product: "",
-      categories: "",
-      qnt: "",
-      rprice: "",
-      sprice: "",
-    });
-  };
-
-  // Handle removing all products for a supplier
-  const handleRemoveProduct = async (Suppliername) => {
-    try {
-      // Reference to the user's product collection
-      const userCollectionRef = collection(
-        db,
-        "admins",
-        user.email,
-        "products"
-      );
-
-      // Get all products for this supplier
-      const supplierQuery = query(
-        userCollectionRef,
-        where("sname", "==", Suppliername)
-      );
-      const querySnapshot = await getDocs(supplierQuery);
-
-      // Delete each product document that matches the supplier name
-      const batch = writeBatch(db);
-      querySnapshot.forEach((doc) => {
-        batch.delete(doc.ref);
+      const userDocRef = doc(db, "admins", user.email);
+      const stockRef = collection(userDocRef, "Stocks");
+      await setDoc(doc(stockRef, pname), {
+        ...newStock,
       });
-      await batch.commit();
 
-      alert(`All products for ${Suppliername} deleted successfully!`);
-    } catch (error) {
-      console.error("Error deleting products for supplier: ", error);
-      alert("Error deleting products for supplier. Please try again.");
-    }
-  };
-
-  // Function to handle product creation
-  const handleCreateProduct = async () => {
-    try {
-      await addDoc(productRef, {
-        name: productName,
-        price: parseFloat(productPrice),
+      setProducts((prev) => [
+        ...prev,
+        {
+          ...newStock,
+        },
+      ]);
+      alert("Stocks added successfully!");
+      setNewStock({
+        pname: "",
+        categories: "",
+        stock: 0,
+        price: "",
       });
-      setShowModal(false);
-      setProductName("");
-      setProductPrice("");
+      setShowModal(false); // Close modal after adding stock
     } catch (error) {
-      console.error("Error adding document: ", error);
+      console.error("Error adding stock: ", error);
     }
   };
+
+  // Update Stock
+  const handleUpdateStock = async (e) => {
+    e.preventDefault();
+
+    const { pname, categories, stock, price } = newStock;
+    if (!pname || !categories || !stock || !price) {
+      return alert("Please fill all the fields.");
+    }
+
+    try {
+      const userDocRef = doc(db, "admins", user.email);
+      const stockRef = collection(userDocRef, "Stocks");
+      await setDoc(doc(stockRef, pname), {
+        ...newStock,
+      });
+
+      setProducts((prev) =>
+        prev.map((product) =>
+          product.pname === newStock.pname ? { ...newStock } : product
+        )
+      );
+      alert("Stocks updated successfully!");
+      setShowModal(false); // Close modal after updating stock
+    } catch (error) {
+      console.error("Error updating stocks: ", error);
+    }
+  };
+
+  // Remove Stock
+  const handleRemoveStock = async (pname) => {
+    try {
+      const userDocRef = doc(db, "admins", user.email);
+      const stockRef = collection(userDocRef, "Stocks");
+      await deleteDoc(doc(stockRef, pname));
+
+      setProducts((prev) => prev.filter((product) => product.pname !== pname));
+      alert("Stocks removed successfully!");
+    } catch (error) {
+      console.error("Error removing stocks: ", error);
+    }
+  };
+
+  // Handle Sale Add
+  const handleAddSale = async (e) => {
+    e.preventDefault();
+
+    const { pname, quantity, price } = newSale;
+    if (!pname || !quantity || !price) {
+      return alert("Please fill all the fields.");
+    }
+
+    try {
+      const total = parseFloat(price) * parseInt(quantity);
+      setNewSale((prev) => ({
+        ...prev,
+        total,
+      }));
+
+      const userDocRef = doc(db, "admins", user.email);
+      const salesRef = collection(userDocRef, "Sales");
+      await setDoc(doc(salesRef, `${pname}-${new Date().getTime()}`), {
+        ...newSale,
+        total,
+      });
+
+      setSales((prev) => [
+        ...prev,
+        {
+          ...newSale,
+          total,
+        },
+      ]);
+      alert("Sale recorded successfully!");
+      setNewSale({
+        pname: "",
+        quantity: 0,
+        price: "",
+        total: 0,
+        date: new Date().toISOString(),
+      });
+      setShowModal(false); // Close modal after sale is added
+    } catch (error) {
+      console.error("Error adding sale: ", error);
+    }
+  };
+
+  // Filter products based on search query
+  const filteredProducts = products.filter((product) =>
+    product.pname.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Stock Info: Product, Categories, and Total Stock Value
+  const totalProducts = filteredProducts.length;
+  const totalCategories = new Set(
+    filteredProducts.map((product) => product.categories)
+  ).size; // Unique categories
+  const totalStockValue = filteredProducts
+    .reduce(
+      (total, product) =>
+        total + parseFloat(product.price) * parseInt(product.stock),
+      0
+    )
+    .toFixed(2);
 
   return (
-    <div className="container mx-auto p-4 mt-10">
-      <h1 className="text-4xl font-bold text-gray-700">Sales</h1>
+    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
+      <h1 className="text-5xl font-extrabold text-pink-700 mb-6">
+        Stock and Sales Management
+      </h1>
 
-      <div className="flex justify-between mt-10 ">
-        <div></div>
-        {/* Category Filter Dropdown */}
-        {/* <div className="relative w-40">
-          <label htmlFor="category-filter" className="sr-only">
-            Filter by Category
-          </label>
-          <select
-            id="category-filter"
-            value=""
-            className="block w-full p-2 text-sm text-black border border-gray-500 rounded-lg bg-gray-50"
-          >
-            <option value="">All Categories</option>
-            <option value="Laptop">Laptop</option>
-            <option value="Smartphone">Smartphone</option>
-            <option value="Tablet">Tablet</option>
-          </select>
-        </div> */}
+      {/* Add Stock Button */}
+      <button
+        onClick={() => setShowModal(true)}
+        className="bg-blue-500 text-white py-2 px-4 rounded-lg mb-4 transition duration-300 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        Add Stock
+      </button>
 
-        {/* Create Purchase Order and Download Button */}
-        <div className="flex x-small:flex-col medium:flex-row gap-2 x-small:ml-10 ">
-          <button
-            className="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600"
-            onClick={() => setShowModal(true)}
-          >
-            <div className="flex gap-1">
-              <span className="text-2xl">
-                <IoBagAdd />
-              </span>
-              <span className="text-base font-bold">Create</span>
-            </div>
-          </button>
-          <button className="px-1 py-1 text-white font-bold bg-blue-500 rounded-full hover:bg-blue-600 w-24">
-            <BsFiletypePdf className="w-5 h-6 inline mr-1" />
-            <span>Print</span>
-          </button>
+      {/* Add Sale Button */}
+      <button
+        onClick={() => setShowModal(true)}
+        className="bg-green-500 text-white py-2 px-4 rounded-lg mb-4 transition duration-300 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+      >
+        Record Sale
+      </button>
+
+      {/* Info Box - Split into Product, Category, and Stock Value Sections */}
+      <div className="grid grid-cols-3 sm:grid-cols-3 gap-6 mb-6">
+        {/* Product Info */}
+        <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center border-2 border-indigo-300">
+          <h3 className="text-xl font-semibold text-indigo-600">
+            Total Products
+          </h3>
+          <p className="text-4xl font-bold text-yellow-500">{totalProducts}</p>
+        </div>
+
+        {/* Category Info */}
+        <div className="bg-green-100 p-6 rounded-lg shadow-lg text-center border-2 border-green-300">
+          <h3 className="text-xl font-semibold text-green-600">
+            Total Categories
+          </h3>
+          <p className="text-4xl font-bold text-yellow-500">
+            {totalCategories}
+          </p>
+        </div>
+
+        {/* Stock Value Info */}
+        <div className="bg-pink-100 p-6 rounded-lg shadow-lg text-center border-2 border-pink-300">
+          <h3 className="text-xl font-semibold text-pink-600">
+            Total Stock Value
+          </h3>
+          <p className="text-4xl font-bold text-yellow-500">
+            ${totalStockValue}
+          </p>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto shadow-md sm:rounded-lg mt-10">
-        <table className="w-full text-sm text-left text-white">
-          <thead className="text-xs text-black uppercase bg-blue-200">
+      {/* Product Table */}
+      <div className="overflow-x-auto bg-white shadow-xl rounded-lg">
+        <table className="min-w-full bg-white border border-gray-200 shadow-md">
+          <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white">
             <tr>
-              <th scope="col" className="px-6 py-3">
-                Serial No
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Product Name
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Categories
-              </th>
-
-              <th scope="col" className="px-6 py-3">
-                Quantity
-              </th>
-              <th scope="col" className="px-6 py-3">
-
-                RPrice
-              </th>
-              <th>
-
-              RPrice
-              </th>
-
-              <th scope="col" className="px-6 py-3">
-                SPrice
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Action
-              </th>
+              <th className="py-3 px-4 text-left">Product</th>
+              <th className="py-3 px-4 text-left">Category</th>
+              <th className="py-3 px-4 text-left">Stock</th>
+              <th className="py-3 px-4 text-left">Price</th>
+              <th className="py-3 px-4">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-gray-200 text-black">
-            {products.map((product) => (
-              <tr key={product.id} className="border-b hover:bg-gray-50">
-                <td className="px-6 py-4 font-medium">{product.no}</td>
-                <td className="px-6 py-4 font-medium">{product.product}</td>
-                <td className="px-6 py-4">{product.categories}</td>
-                <td className="px-6 py-4">{product.qnt}</td>
-                <td className="px-6 py-4">{product.rprice}</td>
-                <td className="px-6 py-4">{product.sprice}</td>
-
-                <td className="px-6 py-4">
-                  <button
-                    className="text-blue-600 hover:underline"
-                    onClick={() => {
-                      setShowPopup(true);
-                      setSelectedProduct(product);
-                    }}
-                  >
-                    <AiOutlineEye className="text-blue-600 text-xl  ml-1" />
-                  </button>
-
-                  {/* Edit Icon */}
-                  <button
-                    className="text-green-600 hover:underline text-xl ml-1"
-                    onClick={() => {
-                      setEditPopup(true);
-                      setSelectedProduct(product);
-                    }}
-                  >
-                    <FaEdit className="text-green-600 text-xl " />
-                  </button>
-
-                  {/* Delete Icon */}
-                  <button
-                    className="text-red-600 hover:underline  ml-1"
-                    onClick={() => handleRemoveProduct(product.sname)}
-                  >
-                    <RiDeleteBin5Line className="text-red-600 text-xl" />
-                  </button>
+          <tbody>
+            {filteredProducts.map((product) => (
+              <tr key={product.pname}>
+                <td className="py-3 px-4">{product.pname}</td>
+                <td className="py-3 px-4">{product.categories}</td>
+                <td className="py-3 px-4">{product.stock}</td>
+                <td className="py-3 px-4">${product.price}</td>
+                <td className="py-3 px-4">
+                  <AiOutlineEdit
+                    className="text-yellow-600 cursor-pointer"
+                    onClick={() => setShowModal(true)}
+                  />
+                  <AiOutlineDelete
+                    className="ml-4 text-red-600 cursor-pointer"
+                    onClick={() => handleRemoveStock(product.pname)}
+                  />
                 </td>
               </tr>
             ))}
@@ -255,384 +292,66 @@ const Sales = () => {
         </table>
       </div>
 
-      {/* Modal for Creating Purchase Order */}
+      {/* Modal for Adding/Editing Stock or Sale */}
       {showModal && (
-        <div className="fixed inset-0 flex  items-center justify-center bg-gray-800 bg-opacity-50 z-50  ">
-          <div className="bg-blue-200 rounded-lg p-4 mt-10 w-full max-w-xs x-small:ml-12 x-small:max-w-60 medium:max-w-lg large:max-w-lg extra-large:max-w-lg xx-large:max-w-lg max-h-[80vh] overflow-y-auto shadow-lg">
-            <h2 className="text-2xl font-serif text-teal-600 mb-4">
-              Create Sales List
+        <div className="fixed inset-0 z-50 bg-gray-500 bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 className="text-2xl font-semibold mb-4">
+              {newStock.pname ? "Edit Stock" : "Add New Stock"}
             </h2>
-            <form onSubmit={handleFormSubmit}>
-              {/* Supplier Name Input */}
-              <div className=" flex x-small:flex-col medium:flex-row w-full">
-                <div className="mb-4 medium:w-3/4">
-                  <label
-                    htmlFor="Seriel No"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Seriel No
-                  </label>
-                  <input
-                    type="number"
-                    name="no"
-                    id="no"
-                    placeholder="Enter Seriel no"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.no}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                {/* Phone Input */}
-                <div className="mb-4 medium:ml-5 medium:w-3/4">
-                  <label
-                    htmlFor="product"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Product
-                  </label>
-                  <input
-                    type="text"
-                    name="product"
-                    id="product"
-                    placeholder="Enter Product Name"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.product}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Address Input */}
-              <div className=" flex x-small:flex-col medium:flex-row w-full">
-                <div className="mb-4  medium:w-3/4">
-                  <label
-                    htmlFor="categories"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Categories
-                  </label>
-                  <input
-                    type="text"
-                    name="categories"
-                    id="categories"
-                    placeholder="Enter Categories"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.categories}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                {/* ID Input */}
-                <div className="mb-4  medium:ml-5  medium:w-3/4">
-                  <label
-                    htmlFor="quantity"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    quantity
-                  </label>
-                  <input
-                    type="text"
-                    name="qnt"
-                    id="qnt"
-                    placeholder="Enter ID"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.qnt}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Product Name Input */}
-              <div className=" flex x-small:flex-col medium:flex-row w-full">
-                {/* Categories Input */}
-                <div className="mb-4   medium:w-3/4">
-                  <label
-                    htmlFor="rprice"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Rprice
-                  </label>
-                  <input
-                    type="number"
-                    name="rprice"
-                    id="srprice"
-                    placeholder="Rprice"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.rprice}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="mb-4  medium:ml-5  medium:w-3/4">
-                  <label
-                    htmlFor="sprice"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    SPrice
-                  </label>
-                  <input
-                    type="number"
-                    name="sprice"
-                    id="sprice"
-                    placeholder="Enter Price"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.sprice}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 mt-4">
-                <button
-                  type="button"
-                  className="px-4 py-2 text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 focus:outline-none"
-                  onClick={() => setShowModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-white bg-teal-500 rounded-lg hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                >
-                  Save
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {editPopup && (
-        <div className="fixed inset-0 flex  items-center justify-center bg-gray-800 bg-opacity-50 z-50  ">
-          <div className="bg-blue-200 rounded-lg p-4 mt-10 w-full max-w-xs x-small:ml-12 x-small:max-w-60 medium:max-w-lg large:max-w-lg extra-large:max-w-lg xx-large:max-w-lg max-h-[80vh] overflow-y-auto shadow-lg">
-            <h2 className="text-2xl font-serif text-teal-600 mb-4">
-              Edit Sales Order
-            </h2>
-            <form onSubmit={handleFormSubmit}>
-              {/* Supplier Name Input */}
-              <div className=" flex x-small:flex-col medium:flex-row w-full">
-                <div className="mb-4 medium:w-3/4">
-                  <label
-                    htmlFor="sname"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Supplier Name
-                  </label>
-                  <input
-                    type="text"
-                    name="sname"
-                    id="sname"
-                    placeholder="Enter Supplier Name"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.sname}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                {/* Phone Input */}
-                <div className="mb-4 medium:ml-5 medium:w-3/4">
-                  <label
-                    htmlFor="phone"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Phone Number
-                  </label>
-                  <input
-                    type="text"
-                    name="phone"
-                    id="phone"
-                    placeholder="Enter Phone Number"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.phone}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Address Input */}
-              <div className=" flex x-small:flex-col medium:flex-row w-full">
-                <div className="mb-4  medium:w-3/4">
-                  <label
-                    htmlFor="add"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Address
-                  </label>
-                  <input
-                    type="text"
-                    name="add"
-                    id="add"
-                    placeholder="Enter Address"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.add}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                {/* ID Input */}
-                <div className="mb-4  medium:ml-5  medium:w-3/4">
-                  <label
-                    htmlFor="id"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    ID
-                  </label>
-                  <input
-                    type="text"
-                    name="id"
-                    id="id"
-                    placeholder="Enter ID"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.id}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Product Name Input */}
-              <div className=" flex x-small:flex-col medium:flex-row w-full">
-                <div className="mb-4  medium:w-3/4">
-                  <label
-                    htmlFor="pname"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Product Name
-                  </label>
-                  <input
-                    type="text"
-                    name="pname"
-                    id="pname"
-                    placeholder="Enter Product Name"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.pname}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                {/* Categories Input */}
-                <div className="mb-4  medium:ml-5  medium:w-3/4">
-                  <label
-                    htmlFor="qnt"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Quantity
-                  </label>
-                  <input
-                    type="number"
-                    name="qnt"
-                    id="qnt"
-                    placeholder="Enter Quantity"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.qnt}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Quantity Input */}
-              <div className=" flex x-small:flex-col medium:flex-row w-full">
-                <div className="mb-4   medium:w-3/4">
-                  <label
-                    htmlFor="categories"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Categories
-                  </label>
-                  <input
-                    type="text"
-                    name="categories"
-                    id="categories"
-                    placeholder="Enter Categories"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.categories}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                {/* Price Input */}
-                <div className="mb-4  medium:ml-5  medium:w-3/4">
-                  <label
-                    htmlFor="price"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Price
-                  </label>
-                  <input
-                    type="number"
-                    name="price"
-                    id="price"
-                    placeholder="Enter Price"
-                    className="w-full p-1 border border-teal-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    value={newProduct.price}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 mt-4">
-                <button
-                  type="button"
-                  className="px-4 py-2 text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 focus:outline-none"
-                  onClick={() => setEditPopup(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-white bg-teal-500 rounded-lg hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                >
-                  Save
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* /* Popup for Viewing Product */}
-      {showPopup && selectedProduct && (
-        <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg p-4 w-full max-w-xs x-small:ml-12 x-small:max-w-60 medium:max-w-xs large:max-w-sm">
-            <h2 className="text-2xl font-semibold mb-4">Product Details</h2>
-            <p>
-              <strong>Seriel No:</strong> {selectedProduct.no}
-            </p>
-            <p>
-              <strong>Product Name:</strong> {selectedProduct.product}
-            </p>
-            <p>
-              <strong>Categories:</strong> {selectedProduct.categories}
-            </p>
-            <p>
-              <strong>Available Stocks:</strong> {selectedProduct.qnt}
-            </p>
-            <p>
-              <strong>Quantity:</strong> {selectedProduct.rprice}
-            </p>
-            <p>
-              <strong>Price:</strong> {selectedProduct.sprice}
-            </p>
-
-            <button
-              className="mt-4 px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600"
-              onClick={() => setShowPopup(false)}
+            <form
+              onSubmit={newStock.pname ? handleUpdateStock : handleAddStocks}
+              className="space-y-4"
             >
-              Close
-            </button>
+              <input
+                type="text"
+                name="pname"
+                value={newStock.pname}
+                onChange={handleInputChange}
+                className="w-full border-2 p-2 rounded-md"
+                placeholder="Product Name"
+              />
+              <input
+                type="text"
+                name="categories"
+                value={newStock.categories}
+                onChange={handleInputChange}
+                className="w-full border-2 p-2 rounded-md"
+                placeholder="Categories"
+              />
+              <input
+                type="number"
+                name="stock"
+                value={newStock.stock}
+                onChange={handleInputChange}
+                className="w-full border-2 p-2 rounded-md"
+                placeholder="Stock Quantity"
+              />
+              <input
+                type="number"
+                name="price"
+                value={newStock.price}
+                onChange={handleInputChange}
+                className="w-full border-2 p-2 rounded-md"
+                placeholder="Price"
+              />
+
+              <div className="flex justify-between mt-4">
+                <button
+                  type="submit"
+                  className="bg-blue-500 text-white px-4 py-2 rounded-md"
+                >
+                  {newStock.pname ? "Update" : "Add Stock"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -640,4 +359,4 @@ const Sales = () => {
   );
 };
 
-export default Sales;
+export default StocksAndSales;

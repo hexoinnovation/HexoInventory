@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom"; // Import Link from React Router
 
-
-
 const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
-  const [activeLink, setActiveLink] = useState("Dashboard"); // Default active link is Dashboard
+  const [activeLink, setActiveLink] = useState("Dashboard"); // Set 'Dashboard' as the default active link
+  const [isEcommerceDropdownOpen, setIsEcommerceDropdownOpen] = useState(false);
+  const [isHRMDropdownOpen, setIsHRMDropdownOpen] = useState(false);
+  const [isInventoryDropdownOpen, setIsInventoryDropdownOpen] = useState(false); // State for Inventory dropdown
 
   // Handle link click and set active link
   const handleLinkClick = (link) => {
@@ -23,15 +24,21 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
         toast.error("Error logging out. Please try again.");
       });
   };
-  
+
+  // Toggle dropdown visibility on click
+  const toggleEcommerceDropdown = () =>
+    setIsEcommerceDropdownOpen(!isEcommerceDropdownOpen);
+  const toggleHRMDropdown = () => setIsHRMDropdownOpen(!isHRMDropdownOpen);
+  const toggleInventoryDropdown = () =>
+    setIsInventoryDropdownOpen(!isInventoryDropdownOpen); // Toggle Inventory dropdown
 
   return (
     <section id="sidebar" className={sidebarVisible ? "" : "hide"}>
       {/* Sidebar Logo and Toggle Button for Mobile */}
       <div className="sidebar-header">
         <a href="#" className="brand">
-          <i className="bx bxs-smile"></i>
-          <span className="text">AdminHub</span>
+          <i className="bx bxs-store-alt"></i>
+          <span className="text">IMEX</span>
         </a>
       </div>
 
@@ -45,125 +52,164 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
             </Link>
           </li>
         </div>
+        {/* Inventory Dropdown (click to toggle) */}
+        <li className="cursor-pointer" onClick={toggleInventoryDropdown}>
+          <div className="label">
+            <i className="bx bxs-package"></i>
+            <span className="ml-2 font-extrabold">Inventory Menu</span>
+            <i
+              className={`bx ml-auto ${
+                isInventoryDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"
+              }`}
+            ></i>
+          </div>
+        </li>
 
-        <li className={activeLink === "Purchase" ? "active" : ""}>
-          <Link to="/purchase" onClick={() => handleLinkClick("Purchase")}>
-          <i className="bx bxs-cart"></i>
-            <span className="text">Purchase</span>
+        {/* Dropdown Content for Inventory */}
+        {isInventoryDropdownOpen && (
+          <ul className="ml-4 space-y-2 mt-2">
+            {/* Adding Purchase and Invoice Menu under Inventory */}
+            <li className={activeLink === "purchase" ? "active" : ""}>
+              <Link to="/purchase" onClick={() => handleLinkClick("purchase")}>
+                <i className="bx bxs-cart"></i>
+                <span className="text">Purchase</span>
+              </Link>
+            </li>
+            <li className={activeLink === "Stock" ? "active" : ""}>
+              <Link to="/Stock" onClick={() => handleLinkClick("Stock")}>
+                <i className="bx bxs-package"></i>
+                <span className="text">Stock</span>
+              </Link>
+            </li>
+            <li className={activeLink === "sales" ? "active" : ""}>
+              <Link to="/sales" onClick={() => handleLinkClick("sales")}>
+                <i className="bx bxs-cart-alt"></i>
+                <span className="text">Sales</span>
+              </Link>
+            </li>
+            <li className={activeLink === "invoice" ? "active" : ""}>
+              <Link to="/invoice" onClick={() => handleLinkClick("invoice")}>
+                <i className="bx bxs-file"></i>
+                <span className="text">Invoice</span>
+              </Link>
+            </li>
+          </ul>
+        )}
+
+        {/* Ecommerce Dropdown (click to toggle) */}
+        <li className="cursor-pointer" onClick={toggleEcommerceDropdown}>
+          <div className="label">
+            <i className="bx bxs-store-alt"></i>
+            <span className="ml-2 font-extrabold">Ecommerce Menu</span>
+            <i
+              className={`bx ml-auto ${
+                isEcommerceDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"
+              }`}
+            ></i>
+          </div>
+        </li>
+
+        {/* Dropdown Content for Ecommerce */}
+        {isEcommerceDropdownOpen && (
+          <ul className="ml-4 space-y-2 mt-2">
+            <li className={activeLink === "shop" ? "active" : ""}>
+              <Link to="/shop" onClick={() => handleLinkClick("shop")}>
+                <i className="bx bxs-store-alt"></i>
+                <span className="text">Shop</span>
+              </Link>
+            </li>
+
+            <li className={activeLink === "order" ? "active" : ""}>
+              <Link to="/order" onClick={() => handleLinkClick("order")}>
+                <i className="bx bxs-cart-add"></i>
+                <span className="text">Order</span>
+              </Link>
+            </li>
+
+            <li className={activeLink === "products" ? "active" : ""}>
+              <Link to="/products" onClick={() => handleLinkClick("products")}>
+                <i className="bx bxs-box"></i>
+                <span className="text">Products</span>
+              </Link>
+            </li>
+
+            <li className={activeLink === "categories" ? "active" : ""}>
+              <Link
+                to="/categories"
+                onClick={() => handleLinkClick("categories")}
+              >
+                <i className="bx bxs-category"></i>
+                <span className="text">Categories</span>
+              </Link>
+            </li>
+          </ul>
+        )}
+
+        {/* HRM Section Dropdown (click to toggle) */}
+        <li className="cursor-pointer" onClick={toggleHRMDropdown}>
+          <div className="label">
+            <i className="bx bxs-user-detail"></i>
+            <span className="ml-2 font-extrabold">HRM Section</span>
+            <i
+              className={`bx ml-auto ${
+                isHRMDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"
+              }`}
+            ></i>
+          </div>
+        </li>
+
+        {/* Dropdown Content for HRM Section */}
+        {isHRMDropdownOpen && (
+          <ul className="ml-4 space-y-2 mt-2">
+            <li className={activeLink === "employee" ? "active" : ""}>
+              <Link to="/employee" onClick={() => handleLinkClick("employee")}>
+                <i className="bx bxs-user"></i>
+                <span className="text">Employee Details</span>
+              </Link>
+            </li>
+
+            <li className={activeLink === "attendence" ? "active" : ""}>
+              <Link
+                to="/attendence"
+                onClick={() => handleLinkClick("attendence")}
+              >
+                <i className="bx bxs-check-circle"></i>
+                <span className="text">Attendance</span>
+              </Link>
+            </li>
+
+            <li className={activeLink === "salary" ? "active" : ""}>
+              <Link to="/salary" onClick={() => handleLinkClick("salary")}>
+                <i className="bx bxs-wallet"></i>
+                <span className="text">Salary</span>
+              </Link>
+            </li>
+          </ul>
+        )}
+
+        {/* Logout Menu */}
+        <li className={activeLink === "logout" ? "active" : ""}>
+          <Link
+            to="#"
+            onClick={() => {
+              handleLogout();
+              handleLinkClick("logout");
+            }}
+            style={{ color: "red", fontWeight: "bold" }}
+          >
+            <i className="bx bx-log-out"></i>
+            <span className="ml-2 font-extrabold">Logout</span>
           </Link>
         </li>
 
-        <li className={activeLink === "stocks" ? "active" : ""}>
-          <Link to="/stocks" onClick={() => handleLinkClick("stocks")}>
-          <i className="bx bxs-archive"></i>
-
-            <span className="text"> Stocks</span>
-          </Link>
-        </li>
-
-
-        <li className={activeLink === "sales" ? "active" : ""}>
-          <Link to="/sales" onClick={() => handleLinkClick("sales")}>
-          <i className="bx bxs-truck"></i>
-
-            <span className="text">Sales</span>
-          </Link>
-        </li>
-
-        
-
-        <li className={activeLink === "invoice" ? "active" : ""}>
-          <Link to="/invoice" onClick={() => handleLinkClick("invoice")}>
-          <i className="bx bxs-file"></i>
-
-            <span className="text">Invoice</span>
-          </Link>
-        </li>
-
-        <div className="label">
-          <li className="medium:ml-16 x-small:ml-8 mb-1">
-          <i className="bx bxs-store"></i>
-
-            <span className="ml-2 font-extrabold font-label">ECOMMERCE</span>
-          </li>
-        </div>
-
-        <li className={activeLink === "shop" ? "active" : ""}>
-          <Link to="/shop" onClick={() => handleLinkClick("shop")}>
-          <i className="bx bxs-store-alt"></i>
- 
-            <span className="text">Shop</span>
-          </Link>
-        </li>
-
-        <li className={activeLink === "order" ? "active" : ""}>
-          <Link to="/order" onClick={() => handleLinkClick("order")}>
-          <i className="bx bxs-cart-add"></i>
-
-            <span className="text">Order</span>
-          </Link>
-        </li>
-
-        <div className="label">
-          <li className="medium:ml-16 x-small:ml-8 mb-1 ">
-          <i className="bx bxs-user-detail"></i>
-
-            <span className="ml-2 font-extrabold font-label">HRM</span>
-          </li>
-        </div>
-        
-        <li className={activeLink === "employee" ? "active" : ""}>
-          <Link to="/employee" onClick={() => handleLinkClick("employee")}>
-          <i className="bx bxs-user"></i>
-
-            <span className="text">Employee Details</span>
-          </Link>
-        </li>
-        
-              
-
-        <li className={activeLink === "Attendence" ? "active" : ""}>
-          <Link to="/attendence" onClick={() => handleLinkClick("Attendence")}>
-          <i className="bx bxs-check-circle"></i>
-
-            <span className="text">Attendence</span>
-          </Link>
-        </li>
-       
-        
-
-        <li className={activeLink === "salary" ? "active" : ""}>
-          <Link to="/salary" onClick={() => handleLinkClick("salary")}>
-          <i className="bx bxs-wallet"></i>
-
-            <span className="text">Salary</span>
-          </Link>
-        </li>
-        </ul>
-   
-
-      {
-        <ul className="side-menu">
-<li className={activeLink === "logout" ? "active" : ""}>
-  <Link 
-    to="#" 
-    onClick={() => { handleLogout(); handleLinkClick("logout"); }}
-    style={{ color: "red", fontWeight: "bold"  }} // Inline styles for red color and bold font
-  >
-    <i className="bx bx-log-out"></i>
-    <span className="ml-2 font-extrabold font-label">Logout</span>
-  </Link>
-</li>
-
-          <li>
-            <Link to="/help">
+        {/* Help Menu */}
+        <li>
+          <Link to="/help">
             <i className="bx bxs-help-circle"></i>
-
-              <span className="text">help</span>
-            </Link>
-          </li>
-        </ul>
-      }
+            <span className="text">Help</span>
+          </Link>
+        </li>
+      </ul>
     </section>
   );
 };
