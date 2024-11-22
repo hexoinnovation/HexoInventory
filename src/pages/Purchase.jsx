@@ -194,6 +194,7 @@ const Purchase = () => {
               <th className="py-3 px-4">Phone</th>
               <th className="py-3 px-4">Address</th>
               <th className="py-3 px-4">Categories</th>
+              <th className="py-3 px-4">Product Name</th>
               <th className="py-3 px-4">Quantity</th>
               <th className="py-3 px-4">Price</th>
               <th className="py-3 px-4">Sales</th>
