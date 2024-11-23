@@ -33,17 +33,17 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
     setIsInventoryDropdownOpen(!isInventoryDropdownOpen); // Toggle Inventory dropdown
 
   return (
-    <section id="sidebar" className={sidebarVisible ? "" : "hide"}>
+    <section id="sidebar" className={sidebarVisible ? "" : "hide print:hidden"}>
       {/* Sidebar Logo and Toggle Button for Mobile */}
-      <div className="sidebar-header">
+      <div className="sidebar-header print:">
         <a href="#" className="brand">
           <i className="bx bxs-store-alt"></i>
-          <span className="text">IMEX</span>
+          <span className="text print:hidden">IMEX</span>
         </a>
       </div>
 
       {/* Sidebar menu */}
-      <ul className="side-menu">
+      <ul className="side-menu print:hidden">
         <div className="dash">
           <li className={activeLink === "Dashboard" ? "active" : ""}>
             <Link to="/" onClick={() => handleLinkClick("Dashboard")}>

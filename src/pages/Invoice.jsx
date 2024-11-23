@@ -2,9 +2,15 @@ import { jsPDF } from "jspdf";
 import React, { useState } from "react";
 import { FaTrashAlt } from "react-icons/fa"; // For Delete icon
 import { FiDownload } from "react-icons/fi";
+import { collection, deleteDoc, doc, getDocs, setDoc } from "../config/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
+import {auth, db } from "../config/firebase";
+import { getAuth } from "firebase/auth";
 
 // Modal for Editing Data (Bill To and Bill From)
 const EditModal = ({ visible, onClose, title, formData, onSave, onChange }) => {
+  
+  const [user, setUser] = useState(null);
   return (
     visible && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
@@ -147,39 +153,74 @@ const Invoice = () => {
     };
     setProducts([...products, newProduct]);
   };
-
-  const handleSaveInvoice = () => {
-    const invoice = {
-      invoiceNumber,
-      invoiceDate,
-      billTo,
-      billFrom,
-      products,
-      shippingMethod,
-      paymentMethod,
-      notes,
-      signature,
-    };
-    alert("Invoice Saved!");
+  const handleSaveInvoice = async () => {
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+  
+      if (!user) {
+        alert("No user is signed in. Please log in to save the invoice.");
+        return;
+      }
+  
+      // Convert invoiceNumber to string to ensure Firestore compatibility
+      const invoiceId = String(invoiceNumber);
+  
+      // Validate required fields
+      if (!invoiceId) {
+        throw new Error("Invoice Number is required.");
+      }
+  
+      // Log field values for debugging
+      console.log("Saving invoice with details:", {
+        invoiceNumber: invoiceId,
+        invoiceDate,
+        billTo,
+        billFrom,
+        products,
+        shippingMethod,
+        paymentMethod,
+        notes,
+        signature,
+      });
+  
+      // Save to Firestore under user's email -> Invoices -> invoiceId
+      const userDocRef = doc(db, "admins", user.email);
+      const invoiceRef = doc(collection(userDocRef, "Invoices"), invoiceId);
+  
+      await setDoc(invoiceRef, {
+        invoiceNumber: invoiceId,
+        invoiceDate,
+        billTo,
+        billFrom,
+        products,
+        shippingMethod,
+        paymentMethod,
+        notes,
+        signature,
+      });
+  
+      alert("Invoice saved successfully!");
+    } catch (error) {
+      console.error("Error saving invoice:", error);
+      alert("Failed to save invoice. Please check the input fields and try again.");
+    }
   };
-
-  const handleDownloadPDF = () => {
-    const doc = new jsPDF();
-    doc.text(`Invoice No: ${invoiceNumber}`, 10, 10);
-    doc.text(`Date: ${invoiceDate}`, 10, 20);
-    doc.text(`Total: ₹${grandTotal.toFixed(2)}`, 10, 30);
-    doc.text(`Shipping Method: ${shippingMethod}`, 10, 40);
-    doc.text(`Payment Method: ${paymentMethod}`, 10, 50);
-    doc.text(`Notes: ${notes}`, 10, 60);
-    doc.text(`Signature: ${signature}`, 10, 70);
-    doc.save("invoice.pdf");
+  
+  
+  const handlePrint = () => {
+    window.print();
   };
+  
+  const [taxPercentage, setTaxPercentage] = useState(5); // Default tax percentage
 
+  // Total Value
   const totalValue = products.reduce((sum, product) => sum + product.total, 0);
-  const taxValue = products.reduce(
-    (sum, product) => sum + (product.total - product.quantity * product.rate),
-    0
-  );
+
+  // Calculate Tax (CGST & SGST)
+  const taxValue = (totalValue * taxPercentage) / 100;
+  const cgst = taxValue / 2;
+  const sgst = taxValue / 2;
   const grandTotal = totalValue + taxValue;
 
   // Function to open the modal for editing either Bill To or Bill From
@@ -242,7 +283,7 @@ const Invoice = () => {
             <div>{billTo.gst}</div>
             <button
               onClick={() => handleEdit("billTo")}
-              className="mt-2 text-blue-600 hover:text-blue-800"
+              className="mt-2 text-blue-600 hover:text-blue-800 print:hidden"
             >
               Edit
             </button>
@@ -257,7 +298,7 @@ const Invoice = () => {
             <div>{billFrom.gst}</div>
             <button
               onClick={() => handleEdit("billFrom")}
-              className="mt-2 text-blue-600 hover:text-blue-800"
+              className="mt-2 text-blue-600 hover:text-blue-800 print:hidden"
             >
               Edit
             </button>
@@ -272,9 +313,9 @@ const Invoice = () => {
               <th className="py-2 px-4 text-left">HSN</th>
               <th className="py-2 px-4 text-left">Quantity</th>
               <th className="py-2 px-4 text-left">Rate</th>
-              <th className="py-2 px-4 text-left">Tax</th>
+            
               <th className="py-2 px-4 text-left">Total</th>
-              <th className="py-2 px-4"></th>
+              <th className="py-2 px-4 print:hidden">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -320,21 +361,12 @@ const Invoice = () => {
                     className="w-full px-2 py-1 border rounded-md"
                   />
                 </td>
-                <td className="py-2 px-4">
-                  <input
-                    type="number"
-                    value={product.taxRate}
-                    onChange={(e) =>
-                      handleProductChange(index, "taxRate", e.target.value)
-                    }
-                    className="w-full px-2 py-1 border rounded-md"
-                  />
-                </td>
+             
                 <td className="py-2 px-4">{product.total.toFixed(2)}</td>
                 <td className="py-2 px-4">
                   <button
                     onClick={() => handleDeleteProduct(product.id)}
-                    className="text-red-600 hover:text-red-800"
+                    className="text-red-600 hover:text-red-800 print:hidden"
                   >
                     <FaTrashAlt /> {/* Trash icon */}
                   </button>
@@ -343,92 +375,126 @@ const Invoice = () => {
             ))}
           </tbody>
         </table>
-        {/* Display Totals */}
-        <div className="flex justify-end">
-          <div className="text-right">
-            <h3 className="font-semibold text-red-900">
-              Total: ₹{totalValue.toFixed(2)}
-            </h3>
-            <h3 className="font-semibold text-red-900">
-              Tax: ₹{taxValue.toFixed(2)}
-            </h3>
-            <h3 className="font-semibold text-red-900">
-              Grand Total: ₹{grandTotal.toFixed(2)}
-            </h3>
-          </div>
-        </div>
         <button
           onClick={handleAddProduct}
-          className="py-2 px-6 bg-blue-600 text-white rounded-md hover:bg-blue-700 mb-4"
+          className="py-2 px-6 bg-blue-600 text-white rounded-md hover:bg-blue-700 mb-6 print:hidden"
         >
           Add Product
         </button>
+        <div className="space-y-6">
+  {/* Tax, Shipping, and Payment in a Straight Line */}
+  <div className="grid grid-cols-3 gap-4">
+    <div>
+      <label className="font-semibold text-gray-700">
+        Select Tax Percentage:
+      </label>
+      <select
+        value={taxPercentage}
+        onChange={(e) => setTaxPercentage(Number(e.target.value))}
+        className="w-full border rounded px-2 py-1"
+      >
+        <option value={5}>5%</option>
+        <option value={10}>10%</option>
+        <option value={15}>15%</option>
+        <option value={18}>18%</option>
+        <option value={28}>28%</option>
+      </select>
+    </div>
 
-        {/* Payment & Shipping Methods */}
-        <div className="flex justify-between mb-6">
-          <div>
-            <label className="font-semibold">Shipping Method</label>
-            <select
-              value={shippingMethod}
-              onChange={(e) => setShippingMethod(e.target.value)}
-              className="w-full px-4 py-2 border rounded-md"
-            >
-              <option value="Air">DTDC</option>
-              <option value="Sea">Safe Express</option>
-              <option value="Land">Other</option>
-            </select>
-          </div>
-          <div>
-            <label className="font-semibold">Payment Method</label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="w-full px-4 py-2 border rounded-md"
-            >
-              <option value="Credit Card">UPI</option>
-              <option value="Debit Card">Current account</option>
-              <option value="Cash">Cash</option>
-            </select>
-          </div>
-        </div>
+    <div>
+      <label className="font-semibold text-gray-700">Shipping Method:</label>
+      <select
+        value={shippingMethod}
+        onChange={(e) => setShippingMethod(e.target.value)}
+        className="w-full px-4 py-2 border rounded-md"
+      >
+        <option value="Air">DTDC</option>
+        <option value="Sea">Safe Express</option>
+        <option value="Land">Other</option>
+      </select>
+    </div>
 
-        {/* Additional Notes and Signature in the same row */}
-        <div className="flex justify-between mb-6">
-          <div className="w-1/2 pr-2">
-            <label className="font-semibold">Additional Notes</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-4 py-2 border rounded-md"
-            ></textarea>
-          </div>
+    <div>
+      <label className="font-semibold text-gray-700">Payment Method:</label>
+      <select
+        value={paymentMethod}
+        onChange={(e) => setPaymentMethod(e.target.value)}
+        className="w-full px-4 py-2 border rounded-md"
+      >
+        <option value="Credit Card">UPI</option>
+        <option value="Debit Card">Current Account</option>
+        <option value="Cash">Cash</option>
+      </select>
+    </div>
+  </div>
 
-          <div className="w-1/2 pl-2">
-            <label className="font-semibold">Signature</label>
-            <input
-              type="text"
-              value={signature}
-              onChange={(e) => setSignature(e.target.value)}
-              className="w-full px-4 py-2 border rounded-md"
-            />
-          </div>
-        </div>
+ {/* Totals Section */}
+<div className="relative">
+  <div className="absolute left-0 top-0 space-y-2 bg-gray-50 rounded-lg shadow-md p-4 border border-gray-300 w-fit">
+    <h3 className="text-lg font-bold text-gray-700">
+      Total: <span className="text-red-900">₹{totalValue.toFixed(2)}</span>
+    </h3>
+    <h3 className="text-lg font-bold text-gray-700">
+      CGST (
+      <span className="text-blue-600">{(taxPercentage / 2).toFixed(2)}%</span>
+      ): <span className="text-red-900">₹{cgst.toFixed(2)}</span>
+    </h3>
+    <h3 className="text-lg font-bold text-gray-700">
+      SGST (
+      <span className="text-blue-600">{(taxPercentage / 2).toFixed(2)}%</span>
+      ): <span className="text-red-900">₹{sgst.toFixed(2)}</span>
+    </h3>
+    <h3 className="text-lg font-bold text-gray-700">
+      GST (
+      <span className="text-blue-600">{taxPercentage}%</span>
+      ): <span className="text-red-900">₹{taxValue.toFixed(2)}</span>
+    </h3>
+    <h3 className="text-lg font-extrabold text-gray-800">
+      Grand Total: <span className="text-green-700">₹{grandTotal.toFixed(2)}</span>
+    </h3>
+  </div>
+</div>
+
+  {/* Notes and Signature Section */}
+  <div className="grid grid-cols-2 gap-4">
+    <div>
+      <label className="font-semibold ml-80">Additional Notes</label>
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        className="w-1/2 h-32 px-4 py-2 border rounded-md ml-80"
+      ></textarea>
+    </div>
+    <div>
+      <label className="font-semibold ml-40">Signature</label>
+      <input
+        type="text"
+        value={signature}
+        onChange={(e) => setSignature(e.target.value)}
+      className="w-1/2 h-20 px-4 py-2 border rounded-md ml-40"
+      />
+    </div>
+  </div>
+</div>
+
 
         {/* Buttons */}
         <div className="flex justify-between">
           <button
-            onClick={handleDownloadPDF}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 ml-80 print:hidden
+            "
           >
             <FiDownload />
             Download PDF
           </button>
           <button
-            onClick={handleSaveInvoice}
-            className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          >
-            Save Invoice
-          </button>
+  onClick={handleSaveInvoice}
+  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 print:hidden"
+>
+  Save Invoice
+</button>
+
         </div>
       </div>
 

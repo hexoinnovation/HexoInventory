@@ -34,9 +34,9 @@ const Navbar = ({ handleMenuClick, isAdmin }) => {
   };
 
   return (
-    <nav className="bg-gray-800 text-white p-4 flex justify-between items-center shadow-md dark:bg-gray-900">
+    <nav className="bg-gray-800 text-white p-4 flex justify-between items-center shadow-md dark:bg-gray-900 print:hidden">
       {/* Menu Icon (Hamburger) */}
-      <div className="flex items-center">
+      <div className="flex items-center print:hidden">
         <i
           ref={menuBarRef}
           className="bx bx-menu text-white cursor-pointer lg:hidden"
@@ -47,7 +47,7 @@ const Navbar = ({ handleMenuClick, isAdmin }) => {
       </div>
 
       {/* Navbar Links */}
-      <div className="flex space-x-4 items-center">
+      <div className="flex space-x-4 items-center print:hidden">
         {/* Search Toggle Button */}
         <button
           onClick={toggleSearch}
@@ -70,7 +70,7 @@ const Navbar = ({ handleMenuClick, isAdmin }) => {
         )}
 
         {/* Notification */}
-        <div className="relative">
+        <div className="relative print:hidden">
           <button className="p-2 rounded-full hover:bg-gray-700 dark:hover:bg-gray-600">
             <FaBell size={20} />
           </button>
@@ -80,7 +80,7 @@ const Navbar = ({ handleMenuClick, isAdmin }) => {
         </div>
 
         {/* Profile Dropdown */}
-        <div className="relative">
+        <div className="relative print:hidden">
           <button
             onClick={toggleDropdown}
             className="p-2 rounded-full hover:bg-gray-700 dark:hover:bg-gray-600"
@@ -109,7 +109,7 @@ const Navbar = ({ handleMenuClick, isAdmin }) => {
         {/* Email Button */}
         <button
           onClick={handleEmailClick}
-          className="p-2 rounded-full hover:bg-gray-700 dark:hover:bg-gray-600"
+          className="p-2 rounded-full hover:bg-gray-700 dark:hover:bg-gray-600 print:hidden"
         >
           <i className="bx bx-envelope text-white text-xl"></i>
         </button>
@@ -118,11 +118,11 @@ const Navbar = ({ handleMenuClick, isAdmin }) => {
       {/* Admin Controls (Only shown if isAdmin is true) */}
       {isAdmin && (
         <div className="flex items-center space-x-4 ml-4">
-          <button className="text-2xl mr-2 text-gray-700 hover:text-blue-500">
+          <button className="text-2xl mr-2 text-gray-700 hover:text-blue-500 print:hidden">
             <AiOutlineDashboard />
             <span className="ml-1">Dashboard</span>
           </button>
-          <button className="text-2xl mr-2 text-gray-700 hover:text-blue-500">
+          <button className="text-2xl mr-2 text-gray-700 hover:text-blue-500 print:hidden">
             <FiUsers />
             <span className="ml-1">Users</span>
           </button>
