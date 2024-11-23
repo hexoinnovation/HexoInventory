@@ -126,7 +126,7 @@ const totalPurchasePrice = filteredProducts
   .toFixed(2);
   return (
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
-      <h1 className="text-3xl font-extrabold text-pink-700 mb-6">Stock Management</h1>
+      <h1 className="text-5xl font-extrabold text-pink-700 mb-6">Stock Management</h1>
 
       <button
         onClick={() => {
@@ -143,14 +143,14 @@ const totalPurchasePrice = filteredProducts
         </div>
       <div className=" w-full mt-5">
         <table className="min-w-full bg-white shadow-md rounded-lg">
-          <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white">
+          <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white ">
             <tr>
-              <th className="py-2 px-2 sm:px-4">Product No.</th>
-              <th className="py-2 px-2 sm:px-4">Product</th>
-              <th className="py-2 px-2 sm:px-4">Categories</th>
-              <th className="py-2 px-2 sm:px-4">Stock</th>
-              <th className="py-2 px-2 sm:px-4">Price</th>
-              <th className="py-2 px-2 sm:px-4">Actions</th>
+              <th className="py-1 px-1 text-left sm:px-4">Product No.</th>
+              <th className="py-2 px-2  text-left sm:px-4">Product</th>
+              <th className="py-2 px-2 text-left sm:px-4">Categories</th>
+              <th className="py-2 px-2 text-left sm:px-4">Stock</th>
+              <th className="py-2 px-2 text-left sm:px-4">Price</th>
+              <th className="py-3 px-2 text-left sm:px-4">Actions</th>
             </tr>
           </thead>
           <tbody>
