@@ -8,20 +8,25 @@ import {
 import React, { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
+import { FaShoppingCart } from 'react-icons/fa';
 import { auth, db } from "../config/firebase"; // Ensure firebase is correctly initialized
 
 // The Stock and Sales Management Component
-const StocksAndSales = () => {
+const Sales = () => {
   const [showModal, setShowModal] = useState(false); // For modal visibility
   const [newStock, setNewStock] = useState({
+    no: "",
     pname: "",
     categories: "",
     stock: 0,
+    sales : "",
     price: "",
   });
   const [newSale, setNewSale] = useState({
+    no: "",
     pname: "",
     quantity: 0,
+    Sales : "",
     price: "",
     total: 0,
     date: new Date().toISOString(),
@@ -69,15 +74,15 @@ const StocksAndSales = () => {
   const handleAddStocks = async (e) => {
     e.preventDefault();
 
-    const { pname, categories, stock, price } = newStock;
-    if (!pname || !categories || !stock || !price) {
+    const { no,pname, categories, stock,sales, price } = newStock;
+    if (!no || !pname || !categories || !stock || !sales || !price) {
       return alert("Please fill all the fields.");
     }
 
     try {
       const userDocRef = doc(db, "admins", user.email);
       const stockRef = collection(userDocRef, "Stocks");
-      await setDoc(doc(stockRef, pname), {
+      await setDoc(doc(stockRef, no), {
         ...newStock,
       });
 
@@ -89,9 +94,11 @@ const StocksAndSales = () => {
       ]);
       alert("Stocks added successfully!");
       setNewStock({
+        no: "",
         pname: "",
         categories: "",
         stock: 0,
+        sales : "",
         price: "",
       });
       setShowModal(false); // Close modal after adding stock
@@ -104,21 +111,21 @@ const StocksAndSales = () => {
   const handleUpdateStock = async (e) => {
     e.preventDefault();
 
-    const { pname, categories, stock, price } = newStock;
-    if (!pname || !categories || !stock || !price) {
+    const { no, pname, categories, stock, sales, price } = newStock;
+    if (!no || !pname || !categories || !stock || !sales|| !price) {
       return alert("Please fill all the fields.");
     }
 
     try {
       const userDocRef = doc(db, "admins", user.email);
       const stockRef = collection(userDocRef, "Stocks");
-      await setDoc(doc(stockRef, pname), {
+      await setDoc(doc(stockRef, no), {
         ...newStock,
       });
 
       setProducts((prev) =>
         prev.map((product) =>
-          product.pname === newStock.pname ? { ...newStock } : product
+          product.no === newStock.no ? { ...newStock } : product
         )
       );
       alert("Stocks updated successfully!");
@@ -128,26 +135,40 @@ const StocksAndSales = () => {
     }
   };
 
-  // Remove Stock
-  const handleRemoveStock = async (pname) => {
+  const handleRemoveProduct = async (no) => {
+    if (!user) {
+      alert("Please log in to delete a product.");
+      return;
+    }
+
     try {
       const userDocRef = doc(db, "admins", user.email);
-      const stockRef = collection(userDocRef, "Stocks");
-      await deleteDoc(doc(stockRef, pname));
+      const productRef = doc(userDocRef, "Stocks", no);
 
-      setProducts((prev) => prev.filter((product) => product.pname !== pname));
-      alert("Stocks removed successfully!");
+      await deleteDoc(productRef);
+
+      setProducts(products.filter((product) => product.no !== no));
+      alert("Product deleted successfully!");
     } catch (error) {
-      console.error("Error removing stocks: ", error);
+      console.error("Error deleting product:", error);
+      alert("Failed to delete the product.");
     }
   };
+
+
+  const filteredProducts = products.filter(
+    (product) =>
+      product.pname &&
+      product.pname.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
 
   // Handle Sale Add
   const handleAddSale = async (e) => {
     e.preventDefault();
 
-    const { pname, quantity, price } = newSale;
-    if (!pname || !quantity || !price) {
+    const {no, pname, quantity,sales, price } = newSale;
+    if (!no || !pname || !quantity || !sales ||!price) {
       return alert("Please fill all the fields.");
     }
 
@@ -160,7 +181,7 @@ const StocksAndSales = () => {
 
       const userDocRef = doc(db, "admins", user.email);
       const salesRef = collection(userDocRef, "Sales");
-      await setDoc(doc(salesRef, `${pname}-${new Date().getTime()}`), {
+      await setDoc(doc(salesRef, `${no}-${new Date().getTime()}`), {
         ...newSale,
         total,
       });
@@ -174,8 +195,10 @@ const StocksAndSales = () => {
       ]);
       alert("Sale recorded successfully!");
       setNewSale({
+        no: "",
         pname: "",
         quantity: 0,
+        Sales : "",
         price: "",
         total: 0,
         date: new Date().toISOString(),
@@ -186,10 +209,7 @@ const StocksAndSales = () => {
     }
   };
 
-  // Filter products based on search query
-  const filteredProducts = products.filter((product) =>
-    product.pname.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  
 
   // Stock Info: Product, Categories, and Total Stock Value
   const totalProducts = filteredProducts.length;
@@ -206,25 +226,26 @@ const StocksAndSales = () => {
 
   return (
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
-      <h1 className="text-5xl font-extrabold text-pink-700 mb-6">
-        Stock and Sales Management
-      </h1>
+       <h1 className="text-5xl font-extrabold text-pink-700 mb-6 flex items-center">
+    Sales Management
+    <FaShoppingCart className="animate-drift mr-4" />
+  </h1>
 
       {/* Add Stock Button */}
       <button
         onClick={() => setShowModal(true)}
         className="bg-blue-500 text-white py-2 px-4 rounded-lg mb-4 transition duration-300 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
-        Add Stock
+        Add Sales
       </button>
 
       {/* Add Sale Button */}
-      <button
+      {/* <button
         onClick={() => setShowModal(true)}
         className="bg-green-500 text-white py-2 px-4 rounded-lg mb-4 transition duration-300 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
       >
         Record Sale
-      </button>
+      </button> */}
 
       {/* Info Box - Split into Product, Category, and Stock Value Sections */}
       <div className="grid grid-cols-3 sm:grid-cols-3 gap-6 mb-6">
@@ -262,29 +283,40 @@ const StocksAndSales = () => {
         <table className="min-w-full bg-white border border-gray-200 shadow-md">
           <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white">
             <tr>
+              <th className="py-3 px-4 text-left">Product No.</th>
               <th className="py-3 px-4 text-left">Product</th>
               <th className="py-3 px-4 text-left">Category</th>
               <th className="py-3 px-4 text-left">Stock</th>
+              <th className="py-3 px-4 text-left">Sales</th>
               <th className="py-3 px-4 text-left">Price</th>
-              <th className="py-3 px-4">Actions</th>
+              <th className="py-3 px-4 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredProducts.map((product) => (
               <tr key={product.pname}>
+                 <td className="py-3 px-4">{product.no}</td>
                 <td className="py-3 px-4">{product.pname}</td>
                 <td className="py-3 px-4">{product.categories}</td>
                 <td className="py-3 px-4">{product.stock}</td>
+                <td className="py-3 px-4">{product.sales}</td>
                 <td className="py-3 px-4">${product.price}</td>
                 <td className="py-3 px-4">
-                  <AiOutlineEdit
-                    className="text-yellow-600 cursor-pointer"
-                    onClick={() => setShowModal(true)}
-                  />
-                  <AiOutlineDelete
-                    className="ml-4 text-red-600 cursor-pointer"
-                    onClick={() => handleRemoveStock(product.pname)}
-                  />
+                <button
+                    onClick={() => {
+                      setShowModal(true);
+                      setNewStock(stock);
+                    }}
+                    className="text-blue-500 hover:text-blue-700"
+                  >
+                    <AiOutlineEdit size={20} />
+                  </button>
+                   <button
+                    onClick={() => handleRemoveProduct(stock.no)}
+                    className="ml-4 text-red-500 hover:text-red-700"
+                  >
+                    <AiOutlineDelete size={20} />
+                  </button>
                 </td>
               </tr>
             ))}
@@ -292,7 +324,7 @@ const StocksAndSales = () => {
         </table>
       </div>
 
-      {/* Modal for Adding/Editing Stock or Sale */}
+      {/* Modal for Adding/Editing Sales or Sale */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-gray-500 bg-opacity-50 flex justify-center items-center">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
@@ -325,7 +357,15 @@ const StocksAndSales = () => {
                 value={newStock.stock}
                 onChange={handleInputChange}
                 className="w-full border-2 p-2 rounded-md"
-                placeholder="Stock Quantity"
+                placeholder="Stock Count"
+              />
+              <input
+                type="number"
+                name="sales"
+                value={newStock.sales}
+                onChange={handleInputChange}
+                className="w-full border-2 p-2 rounded-md"
+                placeholder="Sales Count"
               />
               <input
                 type="number"
@@ -359,4 +399,4 @@ const StocksAndSales = () => {
   );
 };
 
-export default StocksAndSales;
+export default Sales;

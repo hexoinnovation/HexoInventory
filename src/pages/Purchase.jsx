@@ -9,6 +9,8 @@ import React, { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
 import { auth, db } from "../config/firebase"; // Ensure firebase is correctly initialized
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faStore } from "@fortawesome/free-solid-svg-icons";
 
 // The Purchase Component
 const Purchase = () => {
@@ -154,8 +156,14 @@ const Purchase = () => {
 
   return (
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
-      <h1 className="text-5xl font-extrabold text-pink-700 mb-6">Purchase Orders</h1>
-
+      <h1 className="text-5xl font-extrabold text-pink-700 mb-6">
+        Purchase Orders
+        <FontAwesomeIcon
+        icon={faStore}
+        className="text-5xl ml-5 text-pink-700 animate-bounce"
+      />
+      </h1>
+      
       {/* Add Product Button */}
       <button
         onClick={() => setShowModal(true)}
@@ -190,15 +198,15 @@ const Purchase = () => {
         <table className="min-w-full bg-white border border-gray-200 shadow-md">
           <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white">
             <tr>
-              <th className="py-3 px-4">Supplier</th>
-              <th className="py-3 px-4">Phone</th>
-              <th className="py-3 px-4">Address</th>
-              <th className="py-3 px-4">Categories</th>
-              <th className="py-3 px-4">Product Name</th>
-              <th className="py-3 px-4">Quantity</th>
-              <th className="py-3 px-4">Price</th>
-              <th className="py-3 px-4">Sales</th>
-              <th className="py-3 px-4">Stock</th>
+              <th className="py-3 px-4 text-left ">Supplier</th>
+              <th className="py-3 px-4 text-left ">Phone</th>
+              <th className="py-3 px-4 text-left ">Address</th>
+              <th className="py-3 px-4 text-left ">Categories</th>
+              <th className="py-3 px-4 text-left ">Product Name</th>
+              <th className="py-3 px-4 text-left ">Quantity</th>
+              <th className="py-3 px-4 text-left ">Price</th>
+              {/* <th className="py-3 px-4">Sales</th>
+              <th className="py-3 px-4">Stock</th> */}
               <th className="py-3 px-4">Actions</th>
             </tr>
           </thead>
@@ -209,10 +217,11 @@ const Purchase = () => {
                 <td className="py-3 px-4">{product.phone}</td>
                 <td className="py-3 px-4">{product.add}</td>
                 <td className="py-3 px-4">{product.categories}</td>
+                <td className="py-3 px-4">{product.pname}</td>
                 <td className="py-3 px-4">{product.qnt}</td>
                 <td className="py-3 px-4">${product.price}</td>
-                <td className="py-3 px-4">{product.sales}</td>
-                <td className="py-3 px-4">{product.stock}</td>
+                {/* <td className="py-3 px-4">{product.sales}</td>
+                <td className="py-3 px-4">{product.stock}</td> */}
                 <td className="py-3 px-4">
                   <button
                     onClick={() => {

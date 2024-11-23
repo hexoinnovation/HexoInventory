@@ -3,6 +3,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { useNavigate } from "react-router-dom";
 import { collection, deleteDoc, doc, getDocs, setDoc } from "firebase/firestore";
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
+import { FaChartLine } from "react-icons/fa";
 import { auth, db } from "../config/firebase";
 
 const Stocks = () => {
@@ -107,10 +108,12 @@ const Stocks = () => {
       alert("Failed to delete the product.");
     }
   };
- // Filter products based on search query
- const filteredProducts = products.filter((product) =>
-  product.pname.toLowerCase().includes(searchQuery.toLowerCase())
-);
+  const filteredProducts = products.filter(
+    (product) =>
+      product.pname &&
+      product.pname.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
 
 // Purchase Info: Product, Supplier, and Price
 const totalProducts = filteredProducts.length;
@@ -126,7 +129,15 @@ const totalPurchasePrice = filteredProducts
   .toFixed(2);
   return (
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
+
       <h1 className="text-5xl font-extrabold text-pink-700 mb-6">Stock Management</h1>
+
+     <h1 className="text-5xl font-extrabold text-pink-700 mb-6 flex items-center">
+        Stock Management 
+        <FaChartLine className="text-5xl ml-5 text-pink-700 animate-neon" />
+      </h1>
+      
+
 
       <button
         onClick={() => {
@@ -145,23 +156,32 @@ const totalPurchasePrice = filteredProducts
         <table className="min-w-full bg-white shadow-md rounded-lg">
           <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white ">
             <tr>
+
               <th className="py-1 px-1 text-left sm:px-4">Product No.</th>
               <th className="py-2 px-2  text-left sm:px-4">Product</th>
               <th className="py-2 px-2 text-left sm:px-4">Categories</th>
               <th className="py-2 px-2 text-left sm:px-4">Stock</th>
               <th className="py-2 px-2 text-left sm:px-4">Price</th>
               <th className="py-3 px-2 text-left sm:px-4">Actions</th>
+
+              <th className="py-3 px-4 text-left">Product No.</th>
+              <th className="py-3 px-4 text-left">Product</th>
+              <th className="py-3 px-4 text-left">Categories</th>
+              <th className="py-3 px-4 text-left">Stock</th>
+              <th className="py-3 px-4 text-left">Price</th>
+              <th className="py-3 px-4 text-left">Actions</th>
+
             </tr>
           </thead>
           <tbody>
             {products.map((stock) => (
               <tr key={stock.no} className="hover:bg-yellow-100 text-sm sm:text-base">
-                <td className="py-2 px-2 sm:px-4">{stock.no}</td>
-                <td className="py-2 px-2 sm:px-4">{stock.pname}</td>
-                <td className="py-2 px-2 sm:px-4">{stock.categories}</td>
-                <td className="py-2 px-2 sm:px-4">{stock.stock}</td>
-                <td className="py-2 px-2 sm:px-4">${stock.price}</td>
-                <td className="py-2 px-2 sm:px-4 flex">
+                <td className="py-3 px-4 sm:px-4">{stock.no}</td>
+                <td className="py-3 px-4 sm:px-4">{stock.pname}</td>
+                <td className="py-3 px-4 sm:px-4">{stock.categories}</td>
+                <td className="py-3 px-4 sm:px-4">{stock.stock}</td>
+                <td className="py-3 px-4 sm:px-4">${stock.price}</td>
+                <td className="py-3 px-4 sm:px-4 flex">
                   <button
                     onClick={() => {
                       setShowModal(true);
