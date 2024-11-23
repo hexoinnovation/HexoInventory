@@ -80,7 +80,6 @@ const Sales = () => {
       ]);
       alert("Product added successfully!");
       setNewProduct({
-
     date: "",
     Bno: "",
     cname: "",
