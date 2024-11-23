@@ -190,15 +190,15 @@ const Purchase = () => {
         <table className="min-w-full bg-white border border-gray-200 shadow-md">
           <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white">
             <tr>
-              <th className="py-3 px-4">Supplier</th>
-              <th className="py-3 px-4">Phone</th>
-              <th className="py-3 px-4">Address</th>
-              <th className="py-3 px-4">Categories</th>
-              <th className="py-3 px-4">Product Name</th>
-              <th className="py-3 px-4">Quantity</th>
-              <th className="py-3 px-4">Price</th>
-              <th className="py-3 px-4">Sales</th>
-              <th className="py-3 px-4">Stock</th>
+              <th className="py-3 px-4 text-left ">Supplier</th>
+              <th className="py-3 px-4 text-left ">Phone</th>
+              <th className="py-3 px-4 text-left ">Address</th>
+              <th className="py-3 px-4 text-left ">Categories</th>
+              <th className="py-3 px-4 text-left ">Product Name</th>
+              <th className="py-3 px-4 text-left ">Quantity</th>
+              <th className="py-3 px-4 text-left ">Price</th>
+              {/* <th className="py-3 px-4">Sales</th>
+              <th className="py-3 px-4">Stock</th> */}
               <th className="py-3 px-4">Actions</th>
             </tr>
           </thead>
@@ -209,10 +209,11 @@ const Purchase = () => {
                 <td className="py-3 px-4">{product.phone}</td>
                 <td className="py-3 px-4">{product.add}</td>
                 <td className="py-3 px-4">{product.categories}</td>
+                <td className="py-3 px-4">{product.pname}</td>
                 <td className="py-3 px-4">{product.qnt}</td>
                 <td className="py-3 px-4">${product.price}</td>
-                <td className="py-3 px-4">{product.sales}</td>
-                <td className="py-3 px-4">{product.stock}</td>
+                {/* <td className="py-3 px-4">{product.sales}</td>
+                <td className="py-3 px-4">{product.stock}</td> */}
                 <td className="py-3 px-4">
                   <button
                     onClick={() => {

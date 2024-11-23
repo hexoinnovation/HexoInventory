@@ -107,10 +107,12 @@ const Stocks = () => {
       alert("Failed to delete the product.");
     }
   };
- // Filter products based on search query
- const filteredProducts = products.filter((product) =>
-  product.pname.toLowerCase().includes(searchQuery.toLowerCase())
-);
+  const filteredProducts = products.filter(
+    (product) =>
+      product.pname &&
+      product.pname.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
 
 // Purchase Info: Product, Supplier, and Price
 const totalProducts = filteredProducts.length;

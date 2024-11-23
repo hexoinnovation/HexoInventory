@@ -17,6 +17,7 @@ const StocksAndSales = () => {
     pname: "",
     categories: "",
     stock: 0,
+    Sales : "",
     price: "",
   });
   const [newSale, setNewSale] = useState({
@@ -186,10 +187,12 @@ const StocksAndSales = () => {
     }
   };
 
-  // Filter products based on search query
-  const filteredProducts = products.filter((product) =>
-    product.pname.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredProducts = products.filter(
+    (product) =>
+      product.pname &&
+      product.pname.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  
 
   // Stock Info: Product, Categories, and Total Stock Value
   const totalProducts = filteredProducts.length;
@@ -219,12 +222,12 @@ const StocksAndSales = () => {
       </button>
 
       {/* Add Sale Button */}
-      <button
+      {/* <button
         onClick={() => setShowModal(true)}
         className="bg-green-500 text-white py-2 px-4 rounded-lg mb-4 transition duration-300 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
       >
         Record Sale
-      </button>
+      </button> */}
 
       {/* Info Box - Split into Product, Category, and Stock Value Sections */}
       <div className="grid grid-cols-3 sm:grid-cols-3 gap-6 mb-6">
