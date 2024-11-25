@@ -360,7 +360,7 @@ const Invoice = () => {
           <thead>
             <tr>
               <th className="py-2 px-4 text-left">Description</th>
-              <th className="py-2 px-4 text-left">HSN</th>
+              <th className="py-2 px-4 text-left">Category</th>
               <th className="py-2 px-4 text-left">Quantity</th>
               <th className="py-2 px-4 text-left">Rate</th>
             
@@ -384,9 +384,9 @@ const Invoice = () => {
                 <td className="py-2 px-4">
                   <input
                     type="text"
-                    value={product.hsnCode}
+                    value={product.Category}
                     onChange={(e) =>
-                      handleProductChange(index, "hsnCode", e.target.value)
+                      handleProductChange(index, "Category", e.target.value)
                     }
                     className="w-full px-2 py-1 border rounded-md"
                   />
