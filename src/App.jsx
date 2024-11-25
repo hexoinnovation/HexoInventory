@@ -21,13 +21,14 @@ import Shop from "./pages/Account";
 import Attendence from "./pages/Attendence";
 import Dashboard from "./pages/Dashboard";
 import EmployeeDetails from "./pages/EmployeeDetails";
-import Invoice from "./pages/invoice";
+import Invoice from "./pages/Invoice";
 import Purchase from "./pages/Purchase";
 import Sales from "./pages/Sales";
 import Order from "./pages/Settings";
 import Stock from "./pages/Stock";
 
 import Notifications from "./Components/Notifications"; // Example page component
+import { AuthProvider } from "./authContext.jsx";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -94,6 +95,7 @@ const App = () => {
 
   return (
     <Router>
+       <AuthProvider>
       <div className="App">
         {isAuthenticated && <Sidebar sidebarVisible={sidebarVisible} />}
         <div id="content" className={isAuthenticated ? "" : "blur-sm"}>
@@ -229,8 +231,11 @@ const App = () => {
               </p>
             </div>
           </div>
+         
         )}
+      
       </div>
+      </AuthProvider>
     </Router>
   );
 };

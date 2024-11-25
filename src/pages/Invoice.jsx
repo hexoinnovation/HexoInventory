@@ -1,8 +1,8 @@
 import { jsPDF } from "jspdf";
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import { FaTrashAlt } from "react-icons/fa"; // For Delete icon
 import { FiDownload } from "react-icons/fi";
-import { collection, deleteDoc, doc, getDocs, setDoc } from "../config/firebase";
+import { collection, deleteDoc, doc, getDoc, setDoc,query ,orderBy,limit,getDocs} from "../config/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import {auth, db } from "../config/firebase";
 import { getAuth } from "firebase/auth";
@@ -100,12 +100,13 @@ const Invoice = () => {
   });
 
   const [billFrom, setBillFrom] = useState({
-    name: "Your Company Name",
-    email: "company@example.com",
-    address: "456 Company St, City",
-    phone: "987-654-3210",
-    gst: "99XYZ9876D1Z8",
+    name: "",
+    email: "",
+    address: "",
+    phone: "",
+    gst: "",
   });
+  
 
   const [products, setProducts] = useState([
     {
@@ -183,12 +184,14 @@ const Invoice = () => {
         notes,
         signature,
       });
-  
+      const createdAt = new Date();
       // Save to Firestore under user's email -> Invoices -> invoiceId
       const userDocRef = doc(db, "admins", user.email);
       const invoiceRef = doc(collection(userDocRef, "Invoices"), invoiceId);
-  
+     
       await setDoc(invoiceRef, {
+       
+
         invoiceNumber: invoiceId,
         invoiceDate,
         billTo,
@@ -198,6 +201,7 @@ const Invoice = () => {
         paymentMethod,
         notes,
         signature,
+        createdAt: createdAt,
       });
   
       alert("Invoice saved successfully!");
@@ -259,7 +263,52 @@ const Invoice = () => {
     const updatedProducts = products.filter((product) => product.id !== id);
     setProducts(updatedProducts);
   };
-
+  useEffect(() => {
+    const fetchBillFromDetails = async () => {
+      const auth = getAuth();
+      const user = auth.currentUser;
+  
+      if (user) {
+        try {
+          // Reference to the user's document in Firestore
+          const userDocRef = doc(db, "admins", user.email);
+  
+          // Query the 'Invoices' collection, ordered by createdAt timestamp (descending), and limit to 1 (most recent)
+          const invoiceQuery = query(
+            collection(userDocRef, "Invoices"),
+            orderBy("createdAt", "desc"), // Order by timestamp (desc for most recent first)
+            limit(1) // Limit to 1 result (the latest invoice)
+          );
+  
+          // Fetch the query snapshot
+          const querySnapshot = await getDocs(invoiceQuery); // Using getDocs for queries, not getDoc
+  
+          // Check if any invoice is found
+          if (!querySnapshot.empty) {
+            // Get the latest invoice document
+            const latestInvoice = querySnapshot.docs[0].data();
+            console.log("Latest Invoice:", latestInvoice); // Debug log
+  
+            // Check if billFrom exists in the invoice document
+            if (latestInvoice.billFrom) {
+              setBillFrom(latestInvoice.billFrom); // Set the BillFrom details from the latest invoice
+            } else {
+              console.log("billFrom not found in the latest invoice.");
+            }
+          } else {
+            console.log("No invoices found for this user.");
+          }
+        } catch (error) {
+          console.error("Error fetching Bill From details:", error);
+        }
+      } else {
+        console.log("No user is signed in.");
+      }
+    };
+  
+    fetchBillFromDetails();
+  }, []); // Empty dependency array ensures this effect runs once on mount
+  
   return (
     <div className="min-h-screen flex justify-center items-center bg-blue-900 p-8">
       <div className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8">
@@ -275,6 +324,22 @@ const Invoice = () => {
         {/* Invoice Header */}
         <div className="flex justify-between mb-6">
           <div className="w-1/3">
+            <h2 className="text-xl font-semibold">Bill From</h2>
+            <div>{billFrom.name}</div>
+<div>{billFrom.email}</div>
+<div>{billFrom.address}</div>
+<div>{billFrom.phone}</div>
+<div>{billFrom.gst}</div>
+
+            <button
+              onClick={() => handleEdit("billFrom")}
+              className="mt-2 text-blue-600 hover:text-blue-800 print:hidden"
+            >
+              Edit
+            </button>
+          </div>
+
+          <div className="w-1/3 text-right">
             <h2 className="text-xl font-semibold">Bill To</h2>
             <div>{billTo.name}</div>
             <div>{billTo.email}</div>
@@ -283,21 +348,6 @@ const Invoice = () => {
             <div>{billTo.gst}</div>
             <button
               onClick={() => handleEdit("billTo")}
-              className="mt-2 text-blue-600 hover:text-blue-800 print:hidden"
-            >
-              Edit
-            </button>
-          </div>
-
-          <div className="w-1/3 text-right">
-            <h2 className="text-xl font-semibold">Bill From</h2>
-            <div>{billFrom.name}</div>
-            <div>{billFrom.email}</div>
-            <div>{billFrom.address}</div>
-            <div>{billFrom.phone}</div>
-            <div>{billFrom.gst}</div>
-            <button
-              onClick={() => handleEdit("billFrom")}
               className="mt-2 text-blue-600 hover:text-blue-800 print:hidden"
             >
               Edit
