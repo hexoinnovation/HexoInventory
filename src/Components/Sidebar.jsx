@@ -125,7 +125,7 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 onClick={() => handleLinkClick("CustomerDetails")}
               >
                 <i className="bx bxs-user"></i>
-                <span className="text">Customer Details</span>
+                <span className="text">Customer-Details</span>
               </Link>
             </li>
 
