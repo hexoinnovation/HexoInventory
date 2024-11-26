@@ -6,6 +6,7 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
   const [isEcommerceDropdownOpen, setIsEcommerceDropdownOpen] = useState(false);
   const [isHRMDropdownOpen, setIsHRMDropdownOpen] = useState(false);
   const [isInventoryDropdownOpen, setIsInventoryDropdownOpen] = useState(false); // State for Inventory dropdown
+  const [isInvoiceDropdownOpen, setIsInvoiceDropdownOpen] = useState(false); // State for Invoice dropdown
 
   // Handle link click and set active link
   const handleLinkClick = (link) => {
@@ -31,6 +32,8 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
   const toggleHRMDropdown = () => setIsHRMDropdownOpen(!isHRMDropdownOpen);
   const toggleInventoryDropdown = () =>
     setIsInventoryDropdownOpen(!isInventoryDropdownOpen); // Toggle Inventory dropdown
+  const toggleInvoiceDropdown = () =>
+    setIsInvoiceDropdownOpen(!isInvoiceDropdownOpen); // Toggle Invoice dropdown
 
   return (
     <section id="sidebar" className={sidebarVisible ? "" : "hide print:hidden"}>
@@ -52,6 +55,7 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
             </Link>
           </li>
         </div>
+
         {/* Inventory Dropdown (click to toggle) */}
         <li className="cursor-pointer" onClick={toggleInventoryDropdown}>
           <div className="label">
@@ -68,7 +72,6 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
         {/* Dropdown Content for Inventory */}
         {isInventoryDropdownOpen && (
           <ul className="ml-4 space-y-2 mt-2">
-            {/* Adding Purchase and Invoice Menu under Inventory */}
             <li className={activeLink === "purchase" ? "active" : ""}>
               <Link to="/purchase" onClick={() => handleLinkClick("purchase")}>
                 <i className="bx bxs-cart"></i>
@@ -87,10 +90,52 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Sales</span>
               </Link>
             </li>
+          </ul>
+        )}
+
+        {/* Invoice Dropdown (click to toggle) */}
+        <li className="cursor-pointer" onClick={toggleInvoiceDropdown}>
+          <div className="label">
+            <i className="bx bxs-file"></i>
+            <span className="ml-2 font-extrabold">Invoice Menu</span>
+            <i
+              className={`bx ml-auto ${
+                isInvoiceDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"
+              }`}
+            ></i>
+          </div>
+        </li>
+
+        {/* Dropdown Content for Invoice */}
+        {isInvoiceDropdownOpen && (
+          <ul className="ml-4 space-y-2 mt-2">
             <li className={activeLink === "invoice" ? "active" : ""}>
-              <Link to="/invoice" onClick={() => handleLinkClick("invoice")}>
+              <Link
+                to="/invoice" // The link for the Invoice Page
+                onClick={() => handleLinkClick("invoice")}
+              >
                 <i className="bx bxs-file"></i>
-                <span className="text">Invoice</span>
+                <span className="text">Invoice Page</span>
+              </Link>
+            </li>
+
+            <li className={activeLink === "CustomerDetails" ? "active" : ""}>
+              <Link
+                to="/CustomerDetails"
+                onClick={() => handleLinkClick("CustomerDetails")}
+              >
+                <i className="bx bxs-user"></i>
+                <span className="text">Customer Details</span>
+              </Link>
+            </li>
+
+            <li className={activeLink === "businessDetails" ? "active" : ""}>
+              <Link
+                to="/business-details"
+                onClick={() => handleLinkClick("businessDetails")}
+              >
+                <i className="bx bxs-briefcase"></i>
+                <span className="text">Business Details</span>
               </Link>
             </li>
           </ul>
@@ -118,21 +163,18 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Shop</span>
               </Link>
             </li>
-
             <li className={activeLink === "order" ? "active" : ""}>
               <Link to="/order" onClick={() => handleLinkClick("order")}>
                 <i className="bx bxs-cart-add"></i>
                 <span className="text">Order</span>
               </Link>
             </li>
-
             <li className={activeLink === "products" ? "active" : ""}>
               <Link to="/products" onClick={() => handleLinkClick("products")}>
                 <i className="bx bxs-box"></i>
                 <span className="text">Products</span>
               </Link>
             </li>
-
             <li className={activeLink === "categories" ? "active" : ""}>
               <Link
                 to="/categories"
@@ -167,7 +209,6 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Employee Details</span>
               </Link>
             </li>
-
             <li className={activeLink === "attendence" ? "active" : ""}>
               <Link
                 to="/attendence"
@@ -177,7 +218,6 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Attendance</span>
               </Link>
             </li>
-
             <li className={activeLink === "salary" ? "active" : ""}>
               <Link to="/salary" onClick={() => handleLinkClick("salary")}>
                 <i className="bx bxs-wallet"></i>
