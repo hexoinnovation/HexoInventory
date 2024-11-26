@@ -25,7 +25,7 @@ const Sales = () => {
     pname: "",
     categories: "",
     quantity: "",
-    stock: "",
+    // cstock: "",
     sales: "",
     price: "",
   });
@@ -36,20 +36,64 @@ const Sales = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       if (!user) return;
-
+  
       try {
         const userDocRef = doc(db, "admins", user.email);
-        const productsRef = collection(userDocRef, "Sales");
-        const productSnapshot = await getDocs(productsRef);
-        const productList = productSnapshot.docs.map((doc) => doc.data());
-        setProducts(productList);
+  
+        // Fetch Sales collection
+        const salesRef = collection(userDocRef, "Sales");
+        const salesSnapshot = await getDocs(salesRef);
+        const salesList = salesSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+  
+        // Fetch Purchase collection (for estock)
+        const purchaseRef = collection(userDocRef, "Purchase");
+        const purchaseSnapshot = await getDocs(purchaseRef);
+        const purchaseData = purchaseSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+  
+        // Match and merge `estock` into `salesList` based on your criteria
+        const combinedProducts = salesList.map((sale) => {
+          const matchingPurchase = purchaseData.find(
+            (purchase) => purchase.id === sale.id // Adjust this matching condition if necessary
+          );
+  
+          return {
+            ...sale,
+            estock: matchingPurchase ? matchingPurchase.estock : 0, // Default to 0 if no match
+          };
+        });
+  
+        setProducts(combinedProducts);
       } catch (error) {
         console.error("Error fetching products: ", error);
       }
     };
-
+  
     fetchProducts();
   }, [user]);
+
+  // useEffect(() => {
+  //   const fetchProducts = async () => {
+  //     if (!user) return;
+
+  //     try {
+  //       const userDocRef = doc(db, "admins", user.email);
+  //       const productsRef = collection(userDocRef, "Sales");
+  //       const productSnapshot = await getDocs(productsRef);
+  //       const productList = productSnapshot.docs.map((doc) => doc.data());
+  //       setProducts(productList);
+  //     } catch (error) {
+  //       console.error("Error fetching products: ", error);
+  //     }
+  //   };
+
+  //   fetchProducts();
+  // }, [user]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -65,7 +109,7 @@ const Sales = () => {
       pname,
       categories,
       quantity,
-      stock,
+      // cstock,
       sales,
       price,
     } = newProduct;
@@ -77,7 +121,7 @@ const Sales = () => {
       !pname ||
       !categories ||
       !quantity ||
-      !stock ||
+      // !cstock ||
       !sales ||
       !price
     ) {
@@ -100,7 +144,7 @@ const Sales = () => {
         pname: "",
         categories: "",
         quantity: "",
-        stock: "",
+        // cstock: "",
         sales: "",
         price: "",
       });
@@ -182,7 +226,7 @@ const Sales = () => {
     pname: "Product Name",
     categories: "Categories",
     quantity: "Quantity",
-    stock: "Stock Count",
+    // cstock: "Current Stock",
     sales: "Sales Count",
     price: "Price",
   };
@@ -274,7 +318,7 @@ const Sales = () => {
               <th className="py-3 px-4 text-left">Product</th>
               <th className="py-3 px-4 text-left">Categories</th>
               <th className="py-3 px-4 text-left">Price</th>
-            
+              <th className="py-3 px-4 text-left">Current Stock</th>
               <th className="py-3 px-4 text-left">Sales</th>
               <th className="py-3 px-4 text-left">Actions</th>
             </tr>
@@ -287,7 +331,8 @@ const Sales = () => {
                   <td className="py-3 px-4">{product.description}</td>
                   <td className="py-3 px-4">{product.Category}</td>
                   <td className="py-3 px-4">{product.rate}</td>
-                 
+                  <td className="py-3 px-4">{product.cstock}</td>
+                  
                   <td className="py-3 px-4">{product.quantity}</td>
                   <td className="py-3 px-4">
                   <button

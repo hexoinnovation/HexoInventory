@@ -16,12 +16,13 @@ import { faStore } from "@fortawesome/free-solid-svg-icons";
 const Purchase = () => {
   const [showModal, setShowModal] = useState(false); // For modal visibility
   const [newProduct, setNewProduct] = useState({
+    no:"",
     sname: "",
     phone: "",
     add: "",
     pname: "",
     categories: "",
-    qnt: "",
+    estock: "",
     price: "",
     sales: 0,
     stock: 0,
@@ -58,8 +59,8 @@ const Purchase = () => {
   const handleAddProduct = async (e) => {
     e.preventDefault();
 
-    const { sname, pname, phone, add, categories, qnt, price } = newProduct;
-    if (!sname || !pname || !phone || !add || !categories || !qnt || !price) {
+    const { no ,sname, pname, phone, add, categories, estock, price } = newProduct;
+    if (!no || !sname || !pname || !phone || !add || !categories || !estock || !price) {
       return alert("Please fill all the fields.");
     }
 
@@ -78,12 +79,13 @@ const Purchase = () => {
       ]);
       alert("Product added successfully!");
       setNewProduct({
+        no:"",
         sname: "",
         phone: "",
         add: "",
         pname: "",
         categories: "",
-        qnt: "",
+        estock: "",
         price: "",
         sales: 0,
         stock: 0,
@@ -98,8 +100,8 @@ const Purchase = () => {
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
 
-    const { sname, pname, phone, add, categories, qnt, price } = newProduct;
-    if (!sname || !pname || !phone || !add || !categories || !qnt || !price) {
+    const {no, sname, pname, phone, add, categories,estock, price } = newProduct;
+    if (!no|| !sname || !pname || !phone || !add || !categories || !estock || !price) {
       return alert("Please fill all the fields.");
     }
 
@@ -149,7 +151,7 @@ const Purchase = () => {
   const totalPurchasePrice = filteredProducts
     .reduce(
       (total, product) =>
-        total + parseFloat(product.price) * parseInt(product.qnt),
+        total + parseFloat(product.price) * parseInt(product.estock),
       0
     )
     .toFixed(2);
@@ -198,12 +200,13 @@ const Purchase = () => {
         <table className="min-w-full bg-white border border-gray-200 shadow-md">
           <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white">
             <tr>
+              <th className="py-3 px-4 text-left ">P.No</th>
               <th className="py-3 px-4 text-left ">Supplier</th>
               <th className="py-3 px-4 text-left ">Phone</th>
               <th className="py-3 px-4 text-left ">Address</th>
               <th className="py-3 px-4 text-left ">Categories</th>
               <th className="py-3 px-4 text-left ">Product Name</th>
-              <th className="py-3 px-4 text-left ">Quantity</th>
+              <th className="py-3 px-4 text-left ">Existing Stock</th>
               <th className="py-3 px-4 text-left ">Price</th>
               {/* <th className="py-3 px-4">Sales</th>
               <th className="py-3 px-4">Stock</th> */}
@@ -213,12 +216,13 @@ const Purchase = () => {
           <tbody>
             {filteredProducts.map((product) => (
               <tr key={product.sname} className="hover:bg-yellow-100 transition duration-300">
+                <td className="py-3 px-4">{product.no}</td>
                 <td className="py-3 px-4">{product.sname}</td>
                 <td className="py-3 px-4">{product.phone}</td>
                 <td className="py-3 px-4">{product.add}</td>
                 <td className="py-3 px-4">{product.categories}</td>
                 <td className="py-3 px-4">{product.pname}</td>
-                <td className="py-3 px-4">{product.qnt}</td>
+                <td className="py-3 px-4 text-left">{product.estock}</td>
                 <td className="py-3 px-4">${product.price}</td>
                 {/* <td className="py-3 px-4">{product.sales}</td>
                 <td className="py-3 px-4">{product.stock}</td> */}
@@ -255,6 +259,15 @@ const Purchase = () => {
             <form
               onSubmit={newProduct.sname ? handleUpdateProduct : handleAddProduct}
             >
+              <input
+                type="number"
+                name="no"
+                value={newProduct.no}
+                onChange={handleInputChange}
+                className="w-full mb-2 p-2 border-2 border-purple-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                placeholder="Product Number"
+                required
+              />
               {/* Form Inputs for Product Details */}
               <input
                 type="text"
@@ -303,11 +316,11 @@ const Purchase = () => {
               />
               <input
                 type="number"
-                name="qnt"
-                value={newProduct.qnt}
+                name="estock"
+                value={newProduct.estock}
                 onChange={handleInputChange}
                 className="w-full mb-2 p-2 border-2 border-purple-300 rounded-md focus:ring-2 focus:ring-purple-500"
-                placeholder="Quantity"
+                placeholder="Existing Stock"
                 required
               />
               <input
