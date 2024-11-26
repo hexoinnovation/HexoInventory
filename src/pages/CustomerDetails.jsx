@@ -9,6 +9,8 @@ import {
 import React, { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faUsers } from '@fortawesome/free-solid-svg-icons';
 import { auth, db } from "../config/firebase"; // Replace with your Firebase configuration path
 
 const CustomerDetails = () => {
@@ -223,8 +225,9 @@ const CustomerDetails = () => {
 
   return (
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
-      <h1 className="text-5xl font-extrabold text-pink-700 mb-6">
+       <h1 className="text-5xl font-extrabold text-pink-700 mb-6 flex items-center">
         Customer Details Management
+        <FontAwesomeIcon icon={faUsers} className="text-5xl ml-5 text-pink-700 animate-bounce" />
       </h1>
 
       <button

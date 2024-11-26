@@ -318,7 +318,7 @@ const Sales = () => {
               <th className="py-3 px-4 text-left">Product</th>
               <th className="py-3 px-4 text-left">Categories</th>
               <th className="py-3 px-4 text-left">Price</th>
-              <th className="py-3 px-4 text-left">Current Stock</th>
+              {/* <th className="py-3 px-4 text-left">Current Stock</th> */}
               <th className="py-3 px-4 text-left">Sales</th>
               <th className="py-3 px-4 text-left">Actions</th>
             </tr>
@@ -331,7 +331,7 @@ const Sales = () => {
                   <td className="py-3 px-4">{product.description}</td>
                   <td className="py-3 px-4">{product.Category}</td>
                   <td className="py-3 px-4">{product.rate}</td>
-                  <td className="py-3 px-4">{product.cstock}</td>
+                  {/* <td className="py-3 px-4">{product.cstock}</td> */}
                   
                   <td className="py-3 px-4">{product.quantity}</td>
                   <td className="py-3 px-4">

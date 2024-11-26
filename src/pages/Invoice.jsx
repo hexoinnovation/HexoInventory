@@ -1,6 +1,8 @@
 import { getAuth } from "firebase/auth";
 import React, { useEffect, useState } from "react";
 import { collection, db, doc, getDocs, query } from "../config/firebase";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPrint } from '@fortawesome/free-solid-svg-icons';
 
 const Invoice = () => {
   const [invoiceDate, setInvoiceDate] = useState(
@@ -163,6 +165,41 @@ const Invoice = () => {
     setIsModalOpen(false);
   };
 
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [category, setCategory] = useState("");
+  const [status, setStatus] = useState("");
+  const handleCategorySubmit = () => {
+    console.log("Category:", category);
+    console.log("Status:", status);
+    setIsCategoryModalOpen(false);
+  };
+  
+  const handleCloseCategoryModal = () => {
+    setIsCategoryModalOpen(false);
+  };
+
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+
+  // Trigger to show the popup
+  const handleOpenPopup = () => {
+    setIsPopupOpen(true); // Open the popup
+  };
+
+  // Close the popup
+  const handleDismissPopup = () => {
+    setIsPopupOpen(false); // Close the popup
+  };
+
+  // Handle confirm action (any logic you need to execute on confirm)
+  const handleActionConfirm = () => {
+    console.log("Action confirmed!"); // Action after confirming
+    setIsPopupOpen(false); // Close the popup after confirmation
+  };
+
+  const handlePrint = () => {
+    window.print();  // Open the print dialog
+  };
+  
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-r from-indigo-200 via-blue-100 to-green-100 p-8">
       <div className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8 border-2 border-indigo-600">
@@ -342,14 +379,22 @@ const Invoice = () => {
           </div>
         </div>
         {/* Shipping and Payment Buttons */}
-        <div className="flex justify-between items-center mb-6">
-          <button
-            onClick={handleOpenModal}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md"
-          >
-            Shipping & Payment Method
-          </button>
-        </div>
+        <div className="flex justify-start items-center space-x-4 mb-6">
+  <button
+    onClick={handleOpenModal}
+    className="bg-blue-600 text-white px-6 py-2 rounded-md"
+  >
+    Shipping & Payment Method
+  </button>
+
+  
+  <button
+    onClick={() => setIsCategoryModalOpen(true)}
+    className="bg-blue-600 text-white px-6 py-2 rounded-md"
+  >
+    Select Tax Values
+  </button>
+</div>
 
         {/* Modal */}
         {isModalOpen && (
@@ -420,6 +465,91 @@ const Invoice = () => {
           </div>
         )}
 
+
+{/* Category Modal */}
+{isCategoryModalOpen && (
+  <div
+    className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
+    onClick={handleCloseCategoryModal}
+  >
+    <div
+      className="bg-white p-8 rounded-md shadow-lg w-1/3"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <h2 className="text-2xl font-semibold text-center mb-4">
+        Select Tax Values 
+      </h2>
+
+      {/* Category Dropdown */}
+      <div className="mb-4">
+        <label className="block text-xl font-semibold text-gray-800 mb-2">
+        CGST
+        </label>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">Select CGST</option>
+          <option value="electronics">5%</option>
+          <option value="fashion">12%</option>
+          <option value="groceries">18%</option>
+        </select>
+      </div>
+
+      {/* Status Dropdown */}
+      <div className="mb-4">
+        <label className="block text-xl font-semibold text-gray-800 mb-2">
+        SGST
+        </label>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">Select SGST</option>
+          <option value="active">5%</option>
+          <option value="inactive">12%</option>
+          <option value="pending">18%</option>
+        </select>
+      </div>
+
+      <div className="mb-4">
+        <label className="block text-xl font-semibold text-gray-800 mb-2">
+          CST
+        </label>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">Select CST</option>
+          <option value="active">5%</option>
+          <option value="inactive">12%</option>
+          <option value="pending">18%</option>
+        </select>
+      </div>
+
+      {/* Submit and Close Buttons */}
+      <div className="flex justify-between">
+        <button
+          onClick={handleCategorySubmit}
+          className="bg-blue-600 text-white px-6 py-2 rounded-md"
+        >
+          Submit
+        </button>
+
+        <button
+          onClick={handleCloseCategoryModal}
+          className="bg-gray-400 text-white px-6 py-2 rounded-md"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
         {/* Display selected shipping and payment methods */}
         <div className="mt-6">
           {selectedShippingMethod && (
@@ -465,7 +595,74 @@ const Invoice = () => {
             />
           </div>
         </div>
+       <div>
 
+
+
+      {/* Submit Button */}
+      <div className="flex justify-between items-center">
+  {/* Print Page Button aligned to the left */}
+  <button
+  onClick={handlePrint}
+  className="bg-blue-600 text-white px-8 py-3 text-lg font-semibold rounded-md mb-4 flex items-center"
+>
+  <FontAwesomeIcon icon={faPrint} className="mr-2" /> {/* Print icon with margin */}
+  Print
+</button>
+
+  {/* Submit Button aligned to the right */}
+  <button
+    onClick={handleOpenPopup}
+    className="bg-blue-600 text-white px-8 py-4 text-xl font-semibold rounded-md"
+  >
+    Submit
+  </button>
+</div>
+
+      
+
+      {/* Popup Modal */}
+      {isPopupOpen && (
+        <div
+          className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
+          onClick={handleDismissPopup}
+        >
+          <div
+            className="bg-white p-8 rounded-md shadow-lg w-1/3"
+            onClick={(e) => e.stopPropagation()} // Prevent modal closing if content is clicked
+          >
+            <h2 className="text-2xl font-semibold text-center mb-4">
+              Do you want to Save invoice 
+            </h2>
+
+            {/* Action Buttons */}
+            <div >
+  <button
+    onClick={handleActionConfirm}
+    className="bg-green-600  text-white px-8 py-3 text-xl font-semibold rounded-md w-80 mb-5 ml-40"
+  >
+    Confirm
+  </button>
+  
+  <button
+    onClick={handleActionConfirm}
+    className="bg-blue-600 text-white px-8 py-3 text-xl font-semibold rounded-md w-80 mb-5 ml-40 "
+  >
+    Stock (Unpaid)
+  </button>
+  
+  <button
+    onClick={handleDismissPopup}
+    className="bg-red-600 text-white px-8 py-3 text-xl font-semibold rounded-md w-80 mb-5 ml-40"
+  >
+    Close
+  </button>
+</div>
+
+          </div>
+        </div>
+      )}
+    </div>
         {/* Invoice Footer */}
       </div>
     </div>

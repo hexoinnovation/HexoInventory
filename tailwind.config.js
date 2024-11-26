@@ -32,8 +32,13 @@ export default {
         dr: "dr 2s infinite", // Custom 'dr' animation
         neon: "neon 1.5s ease-in-out infinite", // Neon text animation
         pulseSlow: "pulseSlow 3s infinite",
+        wiggle: 'wiggle 1s ease-in-out infinite',
       },
       keyframes: {
+        wiggle: {
+          '0%, 100%': { transform: 'rotate(-3deg)' },
+          '50%': { transform: 'rotate(3deg)' },
+        },
         driftEffect: {
           "0%": { transform: "translateX(0)" }, // Start position
           "50%": { transform: "translateX(50px)" }, // Drift to 50px
