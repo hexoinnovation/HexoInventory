@@ -20,6 +20,7 @@ import {
 import Shop from "./pages/Account";
 import Attendence from "./pages/Attendence";
 import CustomerDetails from "./pages/CustomerDetails";
+import BusinessDetails from "./pages/BusinessDetails";
 import Dashboard from "./pages/Dashboard";
 import EmployeeDetails from "./pages/EmployeeDetails";
 import Invoice from "./pages/Invoice";
@@ -125,6 +126,12 @@ const App = () => {
                 path="/CustomerDetails"
                 element={
                   isAuthenticated ? <CustomerDetails /> : <Navigate to="/" />
+                }
+              />
+              <Route
+                path="/BusinessDetails"
+                element={
+                  isAuthenticated ? <BusinessDetails /> : <Navigate to="/" />
                 }
               />
               <Route
