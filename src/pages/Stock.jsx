@@ -14,7 +14,9 @@ const Stocks = () => {
     no: "",
     pname: "",
     categories: "",
-    stock: "",
+    estock: "",
+    cstock:"",
+    cstock: "",
     price: "",
   });
   const [user, loading] = useAuthState(auth);
@@ -31,7 +33,7 @@ const Stocks = () => {
 
       try {
         const userDocRef = doc(db, "admins", user.email);
-        const productsRef = collection(userDocRef, "Stocks");
+        const productsRef = collection(userDocRef, "Purchase");
         const productSnapshot = await getDocs(productsRef);
 
         const productList = productSnapshot.docs.map((doc) => ({
@@ -82,7 +84,7 @@ const Stocks = () => {
       setProducts([...updatedProducts, newStock]);
 
       setShowModal(false);
-      setNewStock({ no: "", pname: "", categories: "", stock: "", price: "" });
+      setNewStock({ no: "", pname: "", categories: "", estock: "", cstock:"", price: "" });
     } catch (error) {
       console.error("Error adding/updating product:", error);
       alert("Failed to add or update the product.");
@@ -142,7 +144,7 @@ const totalPurchasePrice = filteredProducts
       <button
         onClick={() => {
           setShowModal(true);
-          setNewStock({ no: "", pname: "", categories: "", stock: "", price: "" });
+          setNewStock({ no: "", pname: "", categories: "", estock: "", cstock:"",price: "" });
         }}
         className="bg-blue-500 text-white py-2 px-4 rounded-lg mb-4 hover:bg-blue-600"
       >
@@ -158,10 +160,11 @@ const totalPurchasePrice = filteredProducts
             <tr>
 
               <th className="py-3 px-4 text-left">Product No.</th>
-              <th className="py-3 px-4 text-left">Product</th>
+              <th className="py-3 px-4 text-left">Product Name</th>
               <th className="py-3 px-4 text-left">Categories</th>
-              <th className="py-3 px-4 text-left">Stock</th>
-              <th className="py-3 px-4 text-left">Price</th>
+              <th className="py-3 px-4 text-left">Existing Stock</th>
+              <th className="py-3 px-4 text-left">Current Stock</th>
+              {/* <th className="py-3 px-4 text-left">Price</th> */}
               <th className="py-3 px-4 text-left">Actions</th>
 
             </tr>
@@ -172,8 +175,9 @@ const totalPurchasePrice = filteredProducts
                 <td className="py-3 px-4 sm:px-4">{stock.no}</td>
                 <td className="py-3 px-4 sm:px-4">{stock.pname}</td>
                 <td className="py-3 px-4 sm:px-4">{stock.categories}</td>
-                <td className="py-3 px-4 sm:px-4">{stock.stock}</td>
-                <td className="py-3 px-4 sm:px-4">${stock.price}</td>
+                <td className="py-3 px-4 sm:px-4">{stock.estock}</td>
+                <td className="py-3 px-4 sm:px-4">{stock.cstock}</td>
+                {/* <td className="py-3 px-4 sm:px-4">${stock.price}</td> */}
                 <td className="py-3 px-4 sm:px-4 flex">
                   <button
                     onClick={() => {
@@ -228,10 +232,19 @@ const totalPurchasePrice = filteredProducts
               />
               <input
                 type="number"
-                name="stock"
-                value={newStock.stock}
+                name="estock"
+                value={newStock.estock}
                 onChange={handleInputChange}
-                placeholder="Stock Quantity"
+                placeholder="Existing Stock"
+                className="w-full p-2 border mb-3 rounded"
+                required
+              />
+              <input
+                type="number"
+                name="cstock"
+                value={newStock.cstock}
+                onChange={handleInputChange}
+                placeholder="Current Stock"
                 className="w-full p-2 border mb-3 rounded"
                 required
               />
