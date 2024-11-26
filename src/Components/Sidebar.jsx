@@ -129,10 +129,10 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
               </Link>
             </li>
 
-            <li className={activeLink === "businessDetails" ? "active" : ""}>
+            <li className={activeLink === "BusinessDetails" ? "active" : ""}>
               <Link
-                to="/business-details"
-                onClick={() => handleLinkClick("businessDetails")}
+                to="/BusinessDetails"
+                onClick={() => handleLinkClick("BusinessDetails")}
               >
                 <i className="bx bxs-briefcase"></i>
                 <span className="text">Business Details</span>
