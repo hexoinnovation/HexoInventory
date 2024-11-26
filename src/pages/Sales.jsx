@@ -189,7 +189,7 @@ const Sales = () => {
 
   const filteredProducts = products.filter(
     (product) =>
-      product.pname &&
+      product.pname && 
       product.pname.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
