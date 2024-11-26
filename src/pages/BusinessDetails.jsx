@@ -4,14 +4,16 @@ import {
   doc,
   getDocs,
   setDoc,
+  updateDoc,
 } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { AiOutlineDelete } from "react-icons/ai";
+import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
 import { auth, db } from "../config/firebase"; // Replace with your Firebase configuration path
 
 const BusinessDetails = () => {
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false); // For Edit Modal
   const [newBusiness, setNewBusiness] = useState({
     businessName: "",
     registrationNumber: "",
@@ -21,9 +23,12 @@ const BusinessDetails = () => {
     state: "",
     zip: "",
     gstNumber: "",
+    aadhaar: "",
+    panno: "",
     website: "",
     email: "",
   });
+  const [selectedBusiness, setSelectedBusiness] = useState(null); // Store selected business for editing
   const [businesses, setBusinesses] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [user] = useAuthState(auth);
@@ -62,6 +67,8 @@ const BusinessDetails = () => {
       state,
       zip,
       gstNumber,
+      aadhaar,
+      panno,
       website,
       email,
     } = newBusiness;
@@ -75,6 +82,8 @@ const BusinessDetails = () => {
       !state ||
       !zip ||
       !gstNumber ||
+      !aadhaar ||
+      !panno ||
       !website ||
       !email
     ) {
@@ -99,6 +108,8 @@ const BusinessDetails = () => {
         state: "",
         zip: "",
         gstNumber: "",
+        aadhaar: "",
+        panno: "",
         website: "",
         email: "",
       });
@@ -143,6 +154,85 @@ const BusinessDetails = () => {
     }
   };
 
+  const handleEditBusiness = (business) => {
+    setSelectedBusiness(business); // Set the selected business for editing
+    setNewBusiness(business); // Pre-fill the form with the business data
+    setShowEditModal(true); // Show the edit modal
+  };
+
+  const handleUpdateBusiness = async (e) => {
+    e.preventDefault();
+    const {
+      businessName,
+      registrationNumber,
+      contactNumber,
+      address,
+      city,
+      state,
+      zip,
+      gstNumber,
+      aadhaar,
+      panno,
+      website,
+      email,
+    } = newBusiness;
+
+    if (
+      !businessName ||
+      !registrationNumber ||
+      !contactNumber ||
+      !address ||
+      !city ||
+      !state ||
+      !zip ||
+      !gstNumber ||
+      !aadhaar ||
+      !panno ||
+      !website ||
+      !email
+    ) {
+      return alert("Please fill all the fields.");
+    }
+
+    try {
+      const userDocRef = doc(db, "admins", user.email);
+      const businessRef = collection(userDocRef, "Businesses");
+      const businessDocRef = doc(businessRef, registrationNumber);
+
+      await updateDoc(businessDocRef, {
+        ...newBusiness, // Update the business data
+      });
+
+      setBusinesses((prev) =>
+        prev.map((business) =>
+          business.registrationNumber === registrationNumber
+            ? { ...newBusiness }
+            : business
+        )
+      );
+
+      alert("Business updated successfully!");
+      setNewBusiness({
+        businessName: "",
+        registrationNumber: "",
+        contactNumber: "",
+        address: "",
+        city: "",
+        state: "",
+        zip: "",
+        gstNumber: "",
+        aadhaar: "",
+        panno: "",
+        website: "",
+        email: "",
+      });
+      setShowEditModal(false); // Close the edit modal
+    } catch (error) {
+      console.error("Error updating business: ", error);
+      alert("Failed to update business. Please try again.");
+    }
+  };
+
   const placeholderNames = {
     businessName: "Business Name",
     registrationNumber: "Registration Number",
@@ -152,6 +242,8 @@ const BusinessDetails = () => {
     state: "State",
     zip: "Zip Code",
     gstNumber: "GST Number",
+    aadhaar: "Aadhaar No",
+    panno: "PAN No",
     website: "Website",
     email: "Email",
   };
@@ -193,6 +285,8 @@ const BusinessDetails = () => {
               <th className="py-3 px-4 text-left">Contact Number</th>
               <th className="py-3 px-4 text-left">Address</th>
               <th className="py-3 px-4 text-left">GST Number</th>
+              <th className="py-3 px-4 text-left">Aadhaar No</th>
+              <th className="py-3 px-4 text-left">PAN No</th>
               <th className="py-3 px-4 text-left">Website</th>
               <th className="py-3 px-4 text-left">Actions</th>
             </tr>
@@ -208,8 +302,16 @@ const BusinessDetails = () => {
                 <td className="py-3 px-4">{business.contactNumber}</td>
                 <td className="py-3 px-4">{business.address}</td>
                 <td className="py-3 px-4">{business.gstNumber}</td>
+                <td className="py-3 px-4">{business.aadhaar}</td>
+                <td className="py-3 px-4">{business.panno}</td>
                 <td className="py-3 px-4">{business.website}</td>
-                <td className="py-3 px-4">
+                <td className="py-3 px-4 flex space-x-2">
+                  <button
+                    onClick={() => handleEditBusiness(business)}
+                    className="text-yellow-500 hover:text-yellow-600"
+                  >
+                    <AiOutlineEdit size={20} />
+                  </button>
                   <button
                     onClick={() =>
                       handleRemoveBusiness(business.registrationNumber)
@@ -225,6 +327,46 @@ const BusinessDetails = () => {
         </table>
       </div>
 
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-semibold mb-4">Edit Business</h2>
+            <form onSubmit={handleUpdateBusiness}>
+              <div className="grid grid-cols-2 gap-4">
+                {Object.keys(placeholderNames).map((key) => (
+                  <div key={key} className="flex flex-col">
+                    <label htmlFor={key}>{placeholderNames[key]}</label>
+                    <input
+                      type="text"
+                      id={key}
+                      name={key}
+                      value={newBusiness[key]}
+                      onChange={handleInputChange}
+                      className="border px-3 py-2 rounded-lg"
+                    />
+                  </div>
+                ))}
+              </div>
+              <button
+                type="submit"
+                className="mt-4 bg-green-500 text-white py-2 px-6 rounded-lg"
+              >
+                Update Business
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="mt-4 ml-2 bg-gray-500 text-white py-2 px-6 rounded-lg"
+              >
+                Cancel
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Business Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-lg">
