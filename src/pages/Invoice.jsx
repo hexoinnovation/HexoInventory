@@ -326,10 +326,10 @@ const Invoice = () => {
           <div className="w-1/3">
             <h2 className="text-xl font-semibold">Bill From</h2>
             <div>{billFrom.name}</div>
-<div>{billFrom.email}</div>
-<div>{billFrom.address}</div>
-<div>{billFrom.phone}</div>
-<div>{billFrom.gst}</div>
+            <div>{billFrom.email}</div>
+            <div>{billFrom.address}</div>
+            <div>{billFrom.phone}</div>
+            <div>{billFrom.gst}</div>
 
             <button
               onClick={() => handleEdit("billFrom")}
