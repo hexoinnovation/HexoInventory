@@ -138,6 +138,17 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Business Details</span>
               </Link>
             </li>
+
+            {/* View All Invoice Link moved under Invoice Menu */}
+            <li className={activeLink === "viewAllInvoice" ? "active" : ""}>
+              <Link
+                to="/viewAllInvoice" // Link for View All Invoice
+                onClick={() => handleLinkClick("viewAllInvoice")}
+              >
+                <i className="bx bxs-file"></i>
+                <span className="text">All Invoices</span>
+              </Link>
+            </li>
           </ul>
         )}
 

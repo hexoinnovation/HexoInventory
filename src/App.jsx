@@ -19,8 +19,8 @@ import {
 } from "./config/firebase";
 import Shop from "./pages/Account";
 import Attendence from "./pages/Attendence";
-import CustomerDetails from "./pages/CustomerDetails";
 import BusinessDetails from "./pages/BusinessDetails";
+import CustomerDetails from "./pages/CustomerDetails";
 import Dashboard from "./pages/Dashboard";
 import EmployeeDetails from "./pages/EmployeeDetails";
 import Invoice from "./pages/Invoice";
@@ -28,6 +28,7 @@ import Purchase from "./pages/Purchase";
 import Sales from "./pages/Sales";
 import Order from "./pages/Settings";
 import Stock from "./pages/Stock";
+import View from "./pages/viewAllInvoice";
 
 import Notifications from "./Components/Notifications"; // Example page component
 import { AuthProvider } from "./authContext.jsx";
@@ -121,6 +122,10 @@ const App = () => {
               <Route
                 path="/invoice"
                 element={isAuthenticated ? <Invoice /> : <Navigate to="/" />}
+              />
+              <Route
+                path="/viewAllInvoice"
+                element={isAuthenticated ? <View /> : <Navigate to="/" />}
               />
               <Route
                 path="/CustomerDetails"
