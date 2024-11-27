@@ -2,6 +2,7 @@ import { getAuth } from "firebase/auth";
 import React, { useEffect, useState } from "react";
 import { collection, db, doc, getDocs, query } from "../config/firebase";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCircleXmark } from '@fortawesome/free-solid-svg-icons';
 import { faPrint } from '@fortawesome/free-solid-svg-icons';
 
 const Invoice = () => {
@@ -135,19 +136,6 @@ const Invoice = () => {
     setBillFrom(selectedBusiness);
   };
 
-  const calculateSubtotal = () => {
-    return products.reduce((total, product) => total + product.total, 0);
-  };
-
-  const calculateGST = () => {
-    return products.reduce((totalGST, product) => {
-      return totalGST + (product.total - product.quantity * product.rate);
-    }, 0);
-  };
-
-  const calculateGrandTotal = () => {
-    return calculateSubtotal() + calculateGST();
-  };
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -165,15 +153,95 @@ const Invoice = () => {
     setIsModalOpen(false);
   };
 
+
+  const [category, setCategory] = useState("");  // CGST
+const [status, setStatus] = useState("");      // SGST
+const [icst, setICst] = useState("");          // IGST
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [category, setCategory] = useState("");
-  const [status, setStatus] = useState("");
-  const handleCategorySubmit = () => {
-    console.log("Category:", category);
-    console.log("Status:", status);
-    setIsCategoryModalOpen(false);
+  
+
+  
+  const handleOpenCategoryModal = () => {
+    setIsCategoryModalOpen(true);
   };
   
+
+  
+
+
+// Function to calculate Subtotal (Example)
+const calculateSubtotal = () => {
+  // Assuming products array contains item total values
+  return products.reduce((total, product) => total + product.total, 0);
+};
+
+const calculateCGST = () => {
+  const subtotal = calculateSubtotal();
+  const cgstRate = parseFloat(category);
+  return isNaN(cgstRate) ? 0 : (subtotal * cgstRate) / 100;
+};
+
+const calculateSGST = () => {
+  const subtotal = calculateSubtotal();
+  const sgstRate = parseFloat(status);
+  return isNaN(sgstRate) ? 0 : (subtotal * sgstRate) / 100;
+};
+
+const calculateIGST = () => {
+  const subtotal = calculateSubtotal();
+  const igstRate = parseFloat(icst);
+  return isNaN(igstRate) ? 0 : (subtotal * igstRate) / 100;
+};
+
+const calculateTotal = () => {
+  const subtotal = calculateSubtotal();
+  const cgst = calculateCGST();
+  const sgst = calculateSGST();
+  const igst = calculateIGST();
+
+  // If both CGST and SGST are selected, GST = CGST + SGST, otherwise GST = IGST
+  const gst = cgst + sgst;  // or just igst if IGST is applicable
+  return subtotal + gst;
+};
+
+const handleCategorySubmit = () => {
+  // Perform any necessary tax calculation
+  // Example: Assuming you have a subtotal value of ₹118.00
+  const subtotal = 118.00;
+
+  // Convert selected tax values to numbers
+  const cgstPercentage = parseFloat(category);
+  const sgstPercentage = parseFloat(status);
+  const igstPercentage = parseFloat(icst);
+
+  // Calculate the tax values
+  const cgstAmount = (subtotal * cgstPercentage) / 100;
+  const sgstAmount = (subtotal * sgstPercentage) / 100;
+  const igstAmount = (subtotal * igstPercentage) / 100;
+
+  // Calculate the total based on the selected taxes
+  let total = subtotal;
+  if (cgstPercentage && sgstPercentage) {
+    total += cgstAmount + sgstAmount; // If CGST and SGST are selected
+  } else if (igstPercentage) {
+    total += igstAmount; // If IGST is selected
+  }
+
+  // Store the calculated values or update the state as needed
+  // For example, you can update the invoice with these calculated values
+  console.log("Calculated Tax Values", {
+    subtotal,
+    cgstAmount,
+    sgstAmount,
+    igstAmount,
+    total,
+  });
+
+  // Close the modal after submission
+  setIsCategoryModalOpen(false);
+};
+
+
   const handleCloseCategoryModal = () => {
     setIsCategoryModalOpen(false);
   };
@@ -199,7 +267,50 @@ const Invoice = () => {
   const handlePrint = () => {
     window.print();  // Open the print dialog
   };
-  
+
+  const auth = getAuth();
+const user = auth.currentUser;
+  const [allProducts, setAllProducts] = useState([]); // All products from Firestore
+  const [filteredProducts, setFilteredProducts] = useState([]); // Filtered suggestions
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Fetch products from Firestore
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const userDocRef = doc(db, "admins", user.email);
+        const productsRef = collection(userDocRef, "Stocks");
+        const querySnapshot = await getDocs(productsRef);
+
+        const products = querySnapshot.docs.map((doc) => doc.data().pname);
+        setAllProducts(products); // Store all product names
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      }
+    };
+
+    fetchProducts();
+  }, [user.email]);
+
+  // Handle input change and filter suggestions
+  const handleInputChange = (e, id) => {
+    const value = e.target.value;
+    const updatedProducts = [...products]; // Clone the array
+    updatedProducts[id] = { ...updatedProducts[id], description: value }; // Update description
+    setProducts(updatedProducts); // Update state
+  };
+
+  // Handle selecting a suggestion
+  const handleSelectSuggestion = (suggestion) => {
+    const updatedProducts = [...products];
+    updatedProducts[index] = { ...updatedProducts[index], description: suggestion };
+    setProducts(updatedProducts);
+
+    setShowSuggestions(false); // Close suggestions after selection
+  };
+
+
+
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-r from-indigo-200 via-blue-100 to-green-100 p-8">
       <div className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8 border-2 border-indigo-600">
@@ -289,7 +400,36 @@ const Invoice = () => {
             <tbody>
               {products.map((product, index) => (
                 <tr key={product.id}>
-                  <td className="border px-4 py-2">
+<td className="border px-4 py-2 relative">
+      {/* Input Field */}
+      <input
+      type="text"
+      value={product.description || ""}
+      onChange={(e) => handleInputChange(e, id)}
+      className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      onFocus={() => setShowSuggestions(filteredProducts.length > 0)}
+      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+    />
+
+      {/* Dropdown Suggestions */}
+      {showSuggestions && (
+        <ul className="absolute bg-white border border-indigo-300 rounded-md w-full mt-1 shadow-md z-10">
+          {filteredProducts.map((suggestion, idx) => (
+            <li
+              key={idx}
+              onClick={() => handleSelectSuggestion(suggestion)}
+              className="px-4 py-2 hover:bg-indigo-100 cursor-pointer"
+            >
+              {suggestion}
+            </li>
+          ))}
+        </ul>
+      )}
+    </td>
+
+
+
+                  {/* <td className="border px-4 py-2">
                     <input
                       type="text"
                       value={product.description}
@@ -302,7 +442,7 @@ const Invoice = () => {
                       }
                       className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
-                  </td>
+                  </td> */}
                   <td className="border px-4 py-2">
                     <input
                       type="text"
@@ -368,16 +508,34 @@ const Invoice = () => {
           </button>
         </div>
         <div className="text-right">
-          <div className="text-lg font-semibold text-gray-800 mb-2">
-            Subtotal: ₹{calculateSubtotal().toFixed(2)}
-          </div>
-          <div className="text-lg font-semibold text-gray-800 mb-2">
-            GST ({selectedTaxRate}%): ₹{calculateGST().toFixed(2)}
-          </div>
-          <div className="text-xl font-semibold text-gray-800">
-            Total: ₹{calculateGrandTotal().toFixed(2)}
-          </div>
-        </div>
+        <div className="text-xl font-semibold text-blue-600 mb-2">
+    Subtotal: ₹{calculateSubtotal().toFixed(2)}
+  </div>
+
+  {/* Display CGST */}
+  <div className="text-lx font-semibold text-red-800 mb-2">
+    CGST ({category}%): ₹{calculateCGST().toFixed(2)}
+  </div>
+
+  {/* Display SGST */}
+  <div className="text-lx font-semibold text-red-800 mb-2">
+    SGST ({status}%): ₹{calculateSGST().toFixed(2)}
+  </div>
+
+  {/* Display IGST */}
+  <div className="text-lx font-semibold text-red-800 mb-2">
+    IGST ({icst}%): ₹{calculateIGST().toFixed(2)}
+  </div>
+
+  {/* Display GST */}
+  <div className="text-lx font-semibold text-red-800 mb-2">
+    GST (CGST + SGST): ₹{(calculateCGST() + calculateSGST()).toFixed(2)}
+  </div>
+
+  <div className="text-xl font-semibold text-green-500">
+    Total: ₹{calculateTotal().toFixed(2)}
+  </div>
+</div>
         {/* Shipping and Payment Buttons */}
         <div className="flex justify-start items-center space-x-4 mb-6">
   <button
@@ -389,11 +547,11 @@ const Invoice = () => {
 
   
   <button
-    onClick={() => setIsCategoryModalOpen(true)}
-    className="bg-blue-600 text-white px-6 py-2 rounded-md"
-  >
-    Select Tax Values
-  </button>
+  onClick={handleOpenCategoryModal}
+  className="bg-blue-600 text-white px-6 py-2 rounded-md"
+>
+  Select Tax Values
+</button>
 </div>
 
         {/* Modal */}
@@ -466,89 +624,91 @@ const Invoice = () => {
         )}
 
 
-{/* Category Modal */}
+
+{/* Display the modal */}
 {isCategoryModalOpen && (
-  <div
-    className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
-    onClick={handleCloseCategoryModal}
-  >
-    <div
-      className="bg-white p-8 rounded-md shadow-lg w-1/3"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <h2 className="text-2xl font-semibold text-center mb-4">
-        Select Tax Values 
-      </h2>
-
-      {/* Category Dropdown */}
-      <div className="mb-4">
-        <label className="block text-xl font-semibold text-gray-800 mb-2">
-        CGST
-        </label>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      <div
+        className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
+        onClick={handleCloseCategoryModal}
+      >
+        <div
+          className="bg-white p-8 rounded-md shadow-lg w-1/3"
+          onClick={(e) => e.stopPropagation()}
         >
-          <option value="">Select CGST</option>
-          <option value="electronics">5%</option>
-          <option value="fashion">12%</option>
-          <option value="groceries">18%</option>
-        </select>
+          <h2 className="text-2xl font-semibold text-center mb-4">
+            Select Tax Values
+          </h2>
+
+          {/* CGST Dropdown */}
+          <div className="mb-4">
+            <label className="block text-xl font-semibold text-gray-800 mb-2">
+              CGST
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Select CGST</option>
+              <option value="5">5%</option>
+              <option value="12">12%</option>
+              <option value="18">18%</option>
+            </select>
+          </div>
+
+          {/* SGST Dropdown */}
+          <div className="mb-4">
+            <label className="block text-xl font-semibold text-gray-800 mb-2">
+              SGST
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Select SGST</option>
+              <option value="5">5%</option>
+              <option value="12">12%</option>
+              <option value="18">18%</option>
+            </select>
+          </div>
+
+          {/* IGST Dropdown */}
+          <div className="mb-4">
+            <label className="block text-xl font-semibold text-gray-800 mb-2">
+              IGST
+            </label>
+            <select
+              value={icst}
+              onChange={(e) => setICst(e.target.value)}
+              className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Select IGST</option>
+              <option value="5">5%</option>
+              <option value="12">12%</option>
+              <option value="18">18%</option>
+            </select>
+          </div>
+
+          {/* Submit and Close Buttons */}
+          <div className="flex justify-between">
+            <button
+              onClick={handleCategorySubmit}
+              className="bg-blue-600 text-white px-6 py-2 rounded-md"
+            >
+              Submit
+            </button>
+
+            <button
+              onClick={handleCloseCategoryModal}
+              className="bg-gray-400 text-white px-6 py-2 rounded-md"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </div>
-
-      {/* Status Dropdown */}
-      <div className="mb-4">
-        <label className="block text-xl font-semibold text-gray-800 mb-2">
-        SGST
-        </label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="">Select SGST</option>
-          <option value="active">5%</option>
-          <option value="inactive">12%</option>
-          <option value="pending">18%</option>
-        </select>
-      </div>
-
-      <div className="mb-4">
-        <label className="block text-xl font-semibold text-gray-800 mb-2">
-          CST
-        </label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="">Select CST</option>
-          <option value="active">5%</option>
-          <option value="inactive">12%</option>
-          <option value="pending">18%</option>
-        </select>
-      </div>
-
-      {/* Submit and Close Buttons */}
-      <div className="flex justify-between">
-        <button
-          onClick={handleCategorySubmit}
-          className="bg-blue-600 text-white px-6 py-2 rounded-md"
-        >
-          Submit
-        </button>
-
-        <button
-          onClick={handleCloseCategoryModal}
-          className="bg-gray-400 text-white px-6 py-2 rounded-md"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+    )}
 
         {/* Display selected shipping and payment methods */}
         <div className="mt-6">
@@ -622,46 +782,47 @@ const Invoice = () => {
       
 
       {/* Popup Modal */}
-      {isPopupOpen && (
-        <div
-          className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
-          onClick={handleDismissPopup}
-        >
-          <div
-            className="bg-white p-8 rounded-md shadow-lg w-1/3"
-            onClick={(e) => e.stopPropagation()} // Prevent modal closing if content is clicked
-          >
-            <h2 className="text-2xl font-semibold text-center mb-4">
-              Do you want to Save invoice 
-            </h2>
-
-            {/* Action Buttons */}
-            <div >
-  <button
-    onClick={handleActionConfirm}
-    className="bg-green-600  text-white px-8 py-3 text-xl font-semibold rounded-md w-80 mb-5 ml-40"
-  >
-    Confirm
-  </button>
-  
-  <button
-    onClick={handleActionConfirm}
-    className="bg-blue-600 text-white px-8 py-3 text-xl font-semibold rounded-md w-80 mb-5 ml-40 "
-  >
-    Stock (Unpaid)
-  </button>
-  
-  <button
+{isPopupOpen && (
+  <div
+    className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
     onClick={handleDismissPopup}
-    className="bg-red-600 text-white px-8 py-3 text-xl font-semibold rounded-md w-80 mb-5 ml-40"
   >
-    Close
-  </button>
-</div>
+    <div
+      className="bg-white p-8 rounded-md shadow-lg w-1/3 relative" // 'relative' to position the close button
+      onClick={(e) => e.stopPropagation()} // Prevent modal closing if content is clicked
+    >
+      {/* Close Icon */}
+      <button
+        onClick={handleDismissPopup}
+        className="absolute top-2 right-4 text-2xl text-gray-600 hover:text-gray-900"
+      >
+        <FontAwesomeIcon icon={faCircleXmark} /> {/* FontAwesome Close Icon */}
+      </button>
 
-          </div>
-        </div>
-      )}
+      <h2 className="text-2xl font-semibold text-center mb-4 text-red-600">
+        Do you want to Save invoice?
+      </h2>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col items-center space-y-4">
+        <button
+          onClick={handleActionConfirm}
+          className="bg-green-400 text-white px-8 py-3 text-lg font-semibold rounded-md w-80"
+        >
+          Estimate (Unpaid)
+        </button>
+
+        <button
+          onClick={handleActionConfirm}
+          className="bg-blue-400 text-white px-8 py-3 text-lg font-semibold rounded-md w-80"
+        >
+          Stock (Paid)
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
         {/* Invoice Footer */}
       </div>
