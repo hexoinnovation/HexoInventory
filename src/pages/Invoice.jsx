@@ -387,6 +387,7 @@ const Invoice = () => {
     Shipping & Payment Method
   </button>
 
+  
   <button
     onClick={() => setIsCategoryModalOpen(true)}
     className="bg-blue-600 text-white px-6 py-2 rounded-md"
