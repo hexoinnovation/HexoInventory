@@ -1,10 +1,10 @@
 import { getAuth } from "firebase/auth";
 import React, { useEffect, useState } from "react";
-import { collection, db, doc, getDocs, query } from "../config/firebase";
+import { collection, db, doc, getDocs, query,setDoc,deleteDoc,getDoc } from "../config/firebase";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleXmark } from '@fortawesome/free-solid-svg-icons';
 import { faPrint } from '@fortawesome/free-solid-svg-icons';
-
+import Stocks from "../pages/Stock";
 const Invoice = () => {
   const [invoiceDate, setInvoiceDate] = useState(
     new Date().toLocaleDateString()
@@ -27,10 +27,10 @@ const Invoice = () => {
     contactNumber: "",
     gstNumber: "",
     registrationNumber: "",
-    aadhaar: "",
+    aadhaar:"",
     panno: "",
   });
-
+  const [businesses, setBusinesses] = useState([]);
   const [products, setProducts] = useState([
     {
       id: 1,
@@ -267,50 +267,7 @@ const handleCategorySubmit = () => {
   const handlePrint = () => {
     window.print();  // Open the print dialog
   };
-
-  const auth = getAuth();
-const user = auth.currentUser;
-  const [allProducts, setAllProducts] = useState([]); // All products from Firestore
-  const [filteredProducts, setFilteredProducts] = useState([]); // Filtered suggestions
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
-  // Fetch products from Firestore
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const userDocRef = doc(db, "admins", user.email);
-        const productsRef = collection(userDocRef, "Stocks");
-        const querySnapshot = await getDocs(productsRef);
-
-        const products = querySnapshot.docs.map((doc) => doc.data().pname);
-        setAllProducts(products); // Store all product names
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      }
-    };
-
-    fetchProducts();
-  }, [user.email]);
-
-  // Handle input change and filter suggestions
-  const handleInputChange = (e, id) => {
-    const value = e.target.value;
-    const updatedProducts = [...products]; // Clone the array
-    updatedProducts[id] = { ...updatedProducts[id], description: value }; // Update description
-    setProducts(updatedProducts); // Update state
-  };
-
-  // Handle selecting a suggestion
-  const handleSelectSuggestion = (suggestion) => {
-    const updatedProducts = [...products];
-    updatedProducts[index] = { ...updatedProducts[index], description: suggestion };
-    setProducts(updatedProducts);
-
-    setShowSuggestions(false); // Close suggestions after selection
-  };
-
-
-
+  
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-r from-indigo-200 via-blue-100 to-green-100 p-8">
       <div className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8 border-2 border-indigo-600">
@@ -333,9 +290,232 @@ const user = auth.currentUser;
             {/* Bill From */}
             <div className="w-full sm:w-1/2">
               <div className="flex flex-col mb-4">
-                <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                  Bill From
-                </h2>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center">
+        Bill From
+        <button
+          className="ml-3 text-white bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
+          onClick={() => setShowModal(true)}
+          aria-label="Add"
+        >
+          <span className="text-3xl font-bold">+</span>
+        </button>
+      </h2>
+
+{/* Add Business Modal */}
+{showModal && (
+  <div className="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-50">
+    <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-xl max-h-[670px] mt-20">
+      {/* Modal Header */}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-semibold text-gray-800">Add Business</h2>
+        <button
+          onClick={() => setShowModal(false)}
+          className="text-gray-500 hover:text-gray-700 text-2xl font-bold "
+          aria-label="Close"
+        >
+          &times;
+        </button>
+      </div>
+
+      {/* Modal Form */}
+      <form onSubmit={handleAddBusiness}>
+        <div className="grid grid-cols-2 gap-6">
+          {/* Business Name */}
+          <div className="flex flex-col">
+            <label htmlFor="businessName" className="text-sm font-medium text-gray-700 mb-1">
+              Business Name
+            </label>
+            <input
+              type="text"
+              id="businessName"
+              name="businessName"
+              value={newBusiness.businessName}
+              onChange={handleInputChange}
+              className="border px-4 py-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter your business name"
+            />
+          </div>
+          {/* Registration Number */}
+          <div className="flex flex-col">
+            <label htmlFor="registrationNumber" className="text-sm font-medium text-gray-700 mb-1">
+              Registration Number
+            </label>
+            <input
+              type="text"
+              id="registrationNumber"
+              name="registrationNumber"
+              value={newBusiness.registrationNumber}
+              onChange={handleInputChange}
+              className="border px-4 py-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter registration number"
+            />
+          </div>
+          {/* Contact Number */}
+          <div className="flex flex-col">
+            <label htmlFor="contactNumber" className="text-sm font-medium text-gray-700 mb-1">
+              Contact Number
+            </label>
+            <input
+              type="text"
+              id="contactNumber"
+              name="contactNumber"
+              value={newBusiness.contactNumber}
+              onChange={handleInputChange}
+              className="border px-4 py-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter contact number"
+            />
+          </div>
+          {/* GST Number */}
+          <div className="flex flex-col">
+            <label htmlFor="gstNumber" className="text-sm font-medium text-gray-700 mb-1">
+              GST Number
+            </label>
+            <input
+              type="text"
+              id="gstNumber"
+              name="gstNumber"
+              value={newBusiness.gstNumber}
+              onChange={handleInputChange}
+              className="border px-4 py-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter GST number"
+            />
+          </div>
+          {/* Address */}
+          <div className="flex flex-col">
+            <label htmlFor="address" className="text-sm font-medium text-gray-700 mb-1">
+              Address
+            </label>
+            <input
+              type="text"
+              id="address"
+              name="address"
+              value={newBusiness.address}
+              onChange={handleInputChange}
+              className="border px-4 py-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter address"
+            />
+          </div>
+          {/* City */}
+          <div className="flex flex-col">
+            <label htmlFor="city" className="text-sm font-medium text-gray-700 mb-1">
+              City
+            </label>
+            <input
+              type="text"
+              id="city"
+              name="city"
+              value={newBusiness.city}
+              onChange={handleInputChange}
+              className="border px-4 py-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter city"
+            />
+          </div>
+          {/* State */}
+          <div className="flex flex-col">
+            <label htmlFor="state" className="text-sm font-medium text-gray-700 mb-1">
+              State
+            </label>
+            <input
+              type="text"
+              id="state"
+              name="state"
+              value={newBusiness.state}
+              onChange={handleInputChange}
+              className="border px-4 py-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter state"
+            />
+          </div>
+          {/* Zip Code */}
+          <div className="flex flex-col">
+            <label htmlFor="zipCode" className="text-sm font-medium text-gray-700 mb-1">
+              Zip Code
+            </label>
+            <input
+              type="text"
+              id="zipCode"
+              name="zipCode"
+              value={newBusiness.zipCode}
+              onChange={handleInputChange}
+              className="border px-4 py-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter zip code"
+            />
+          </div>
+          {/* Aadhaar No */}
+          <div className="flex flex-col">
+            <label htmlFor="aadhaar" className="text-sm font-medium text-gray-700 mb-1">
+              Aadhaar No
+            </label>
+            <input
+              type="text"
+              id="aadhaar"
+              name="aadhaar"
+              value={newBusiness.aadhaar}
+              onChange={handleInputChange}
+              className="border px-4 py-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter Aadhaar number"
+            />
+          </div>
+          {/* PAN No */}
+          <div className="flex flex-col">
+            <label htmlFor="panno" className="text-sm font-medium text-gray-700 mb-1">
+              PAN No
+            </label>
+            <input
+              type="text"
+              id="panno"
+              name="panno"
+              value={newBusiness.panno}
+              onChange={handleInputChange}
+              className="border px-4 py-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter PAN number"
+            />
+          </div>
+          {/* Website */}
+          <div className="flex flex-col">
+            <label htmlFor="website" className="text-sm font-medium text-gray-700 mb-1">
+              Website
+            </label>
+            <input
+              type="text"
+              id="website"
+              name="website"
+              value={newBusiness.website}
+              onChange={handleInputChange}
+              className="border px-4 py-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter website URL"
+            />
+          </div>
+          {/* Email */}
+          <div className="flex flex-col">
+            <label htmlFor="email" className="text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={newBusiness.email}
+              onChange={handleInputChange}
+              className="border px-4 py-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter email"
+            />
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex justify-end space-x-4 mt-1">
+          <button
+            type="submit"
+            className="bg-green-500 text-white py-2 px-6 rounded-lg shadow hover:bg-green-600 transition mb-40"
+          >
+            Add Business
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
                 <select
                   value={billFrom.id || ""}
                   onChange={handleBusinessChange}
@@ -348,38 +528,111 @@ const user = auth.currentUser;
                     </option>
                   ))}
                 </select>
-                <div className="text-gray-600">{billFrom.businessName}</div>
-                <div>{billFrom.email}</div>
-                <div>{billFrom.address}</div>
-                <div>{billFrom.contactNumber}</div>
-                <div>{billFrom.gstNumber}</div>
+                {billFrom.registrationNumber && (
+  <div className="mt-4 text-gray-600">
+      <div className=" text-gray-900"><strong>Comapany:</strong> {billFrom.businessName}</div>
+    <div><strong>Registration Number:</strong> {billFrom.registrationNumber}</div>
+    <div><strong>Address:</strong> {billFrom.address}</div>
+    <div><strong>Contact:</strong> {billFrom.contactNumber}</div>
+    <div><strong>Email:</strong> {billFrom.email}</div>
+    <div><strong>Website:</strong> {billFrom.website}</div>
+    <div><strong>GST Number:</strong> {billFrom.gstNumber}</div>
+    <div><strong>Aadhar:</strong> {billFrom.aadhaar}</div>
+    <div><strong>PAN Number:</strong> {billFrom.panno}</div>
+    <div><strong>State:</strong> {billFrom.state}</div>
+  </div>
+)}
+
+
               </div>
             </div>
 
             {/* Bill To */}
             <div className="w-full sm:w-1/2">
               <div className="flex flex-col mb-4">
-                <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                  Bill To
-                </h2>
-                <select
-                  value={billTo.id || ""}
-                  onChange={handleCustomerChange}
-                  className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">Select Customer</option>
-                  {customerList.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center">
+          Bill To
+          <button
+            onClick={() => setopenModal(true)}
+            className="ml-3 text-white bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
+            aria-label="Add Customer"
+          >
+            <span className="text-3xl font-bold">+</span>
+          </button>
+        </h2>
+        {openModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full max-h-[600px] overflow-auto mb-1">
+  
+
+              <h3 className="text-2xl mb-4">Add Customer</h3>
+              <form onSubmit={handleAddCustomer}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {Object.keys(placeholderNames).map((key) => (
+                    <div key={key} className="flex flex-col">
+                      <label htmlFor={key} className="font-medium text-gray-700">{placeholderNames[key]}</label>
+                      <input
+                        type="text"
+                        id={key}
+                        name={key}
+                        value={newCustomer[key]}
+                        onChange={handleInputChangee}
+                        className="border px-3 py-2 rounded-lg"
+                        placeholder={placeholderNames[key]}
+                      />
+                    </div>
                   ))}
-                </select>
-                <div className="text-gray-600">{billTo.name}</div>
-                <div>{billTo.email}</div>
-                <div>{billTo.address}</div>
-                <div>{billTo.phone}</div>
-                <div>{billTo.gst}</div>
-              </div>
+                </div>
+                <div className="mt-4 flex justify-between">
+                  <button
+                    type="submit"
+                    className="bg-green-500 text-white py-2 px-6 rounded-lg"
+                  >
+                    Add Customer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setopenModal(false)}
+                    className="bg-gray-500 text-white py-2 px-6 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Customer Select Dropdown */}
+        <select
+          value={billTo.id || ""}
+          onChange={handleCustomerChange}
+          className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">Select Customer</option>
+          {customerList.map((customer) => (
+            <option key={customer.id} value={customer.id}>
+              {customer.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Displaying selected customer's details */}
+        {billTo.name && (
+          <div className="mt-4 text-gray-600">
+            <div><strong>Name:</strong> {billTo.name}</div>
+            <div><strong>Email:</strong> {billTo.email}</div>
+            <div><strong>Phone:</strong> {billTo.phone}</div>
+            <div><strong>Address:</strong> {billTo.address}</div>
+            <div><strong>City:</strong> {billTo.city}</div>
+            <div><strong>State:</strong> {billTo.state}</div>
+            <div><strong>Zip Code:</strong> {billTo.zip}</div>
+            <div><strong>GST No:</strong> {billTo.gst}</div>
+            <div><strong>Aadhaar No:</strong> {billTo.aadhaar}</div>
+            <div><strong>PAN No:</strong> {billTo.panno}</div>
+          </div>
+        )}
+      </div>
             </div>
           </div>
         </div>
@@ -400,36 +653,7 @@ const user = auth.currentUser;
             <tbody>
               {products.map((product, index) => (
                 <tr key={product.id}>
-<td className="border px-4 py-2 relative">
-      {/* Input Field */}
-      <input
-      type="text"
-      value={product.description || ""}
-      onChange={(e) => handleInputChange(e, id)}
-      className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      onFocus={() => setShowSuggestions(filteredProducts.length > 0)}
-      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-    />
-
-      {/* Dropdown Suggestions */}
-      {showSuggestions && (
-        <ul className="absolute bg-white border border-indigo-300 rounded-md w-full mt-1 shadow-md z-10">
-          {filteredProducts.map((suggestion, idx) => (
-            <li
-              key={idx}
-              onClick={() => handleSelectSuggestion(suggestion)}
-              className="px-4 py-2 hover:bg-indigo-100 cursor-pointer"
-            >
-              {suggestion}
-            </li>
-          ))}
-        </ul>
-      )}
-    </td>
-
-
-
-                  {/* <td className="border px-4 py-2">
+                  <td className="border px-4 py-2">
                     <input
                       type="text"
                       value={product.description}
@@ -442,7 +666,7 @@ const user = auth.currentUser;
                       }
                       className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
-                  </td> */}
+                  </td>
                   <td className="border px-4 py-2">
                     <input
                       type="text"
@@ -482,8 +706,8 @@ const user = auth.currentUser;
                     />
                   </td>
                   <td className="border px-4 py-2">
-                    {product.total.toFixed(2)}
-                  </td>
+          {typeof product.total === "number" ? product.total.toFixed(2) : "0.00"}
+        </td>
                   <td className="border px-4 py-2">
                     <button
                       onClick={() => handleRemoveProduct(index)}
