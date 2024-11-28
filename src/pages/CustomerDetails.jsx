@@ -226,7 +226,7 @@ const CustomerDetails = () => {
   return (
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
        <h1 className="text-5xl font-extrabold text-pink-700 mb-6 flex items-center">
-        Customer Details Management
+        Customer Details 
         <FontAwesomeIcon icon={faUsers} className="text-5xl ml-5 text-pink-700 animate-bounce" />
       </h1>
 
@@ -260,9 +260,9 @@ const CustomerDetails = () => {
               <th className="py-3 px-4 text-left">Email</th>
               <th className="py-3 px-4 text-left">Phone</th>
               <th className="py-3 px-4 text-left">Address</th>
-              <th className="py-3 px-4 text-left">City</th>
+              {/* <th className="py-3 px-4 text-left">City</th>
               <th className="py-3 px-4 text-left">State</th>
-              <th className="py-3 px-4 text-left">Zip Code</th>
+              <th className="py-3 px-4 text-left">Zip Code</th> */}
               <th className="py-3 px-4 text-left">GST No</th>
               <th className="py-3 px-4 text-left">Aadhaar No</th>
               <th className="py-3 px-4 text-left">PAN No</th>
@@ -279,9 +279,9 @@ const CustomerDetails = () => {
                 <td className="py-3 px-4">{customer.email}</td>
                 <td className="py-3 px-4">{customer.phone}</td>
                 <td className="py-3 px-4">{customer.address}</td>
-                <td className="py-3 px-4">{customer.city}</td>
+                {/* <td className="py-3 px-4">{customer.city}</td>
                 <td className="py-3 px-4">{customer.state}</td>
-                <td className="py-3 px-4">{customer.zip}</td>
+                <td className="py-3 px-4">{customer.zip}</td> */}
                 <td className="py-3 px-4">{customer.gst}</td>
                 <td className="py-3 px-4">{customer.aadhaar}</td>
                 <td className="py-3 px-4">{customer.panno}</td>
