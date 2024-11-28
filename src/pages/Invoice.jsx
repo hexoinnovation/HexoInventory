@@ -2,8 +2,7 @@ import { getAuth } from "firebase/auth";
 import React, { useEffect, useState } from "react";
 import { collection, db, doc, getDocs, query,setDoc,deleteDoc,getDoc } from "../config/firebase";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCircleXmark } from '@fortawesome/free-solid-svg-icons';
-import { faPrint } from '@fortawesome/free-solid-svg-icons';
+import { faPrint ,faCircleXmark} from '@fortawesome/free-solid-svg-icons';
 import Stocks from "../pages/Stock";
 const Invoice = () => {
   const [invoiceDate, setInvoiceDate] = useState(
@@ -136,6 +135,17 @@ const Invoice = () => {
     setBillFrom(selectedBusiness);
   };
 
+ 
+
+  const calculateGST = () => {
+    return products.reduce((totalGST, product) => {
+      return totalGST + (product.total - product.quantity * product.rate);
+    }, 0);
+  };
+
+  const calculateGrandTotal = () => {
+    return calculateSubtotal() + calculateGST();
+  };
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -153,21 +163,14 @@ const Invoice = () => {
     setIsModalOpen(false);
   };
 
-
   const [category, setCategory] = useState("");  // CGST
 const [status, setStatus] = useState("");      // SGST
 const [icst, setICst] = useState("");          // IGST
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  
-
+const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   
   const handleOpenCategoryModal = () => {
     setIsCategoryModalOpen(true);
   };
-  
-
-  
-
 
 // Function to calculate Subtotal (Example)
 const calculateSubtotal = () => {
@@ -241,7 +244,6 @@ const handleCategorySubmit = () => {
   setIsCategoryModalOpen(false);
 };
 
-
   const handleCloseCategoryModal = () => {
     setIsCategoryModalOpen(false);
   };
@@ -267,7 +269,335 @@ const handleCategorySubmit = () => {
   const handlePrint = () => {
     window.print();  // Open the print dialog
   };
+  const [isOpen, setIsOpen] = useState(false);
+
+
+  const closeModal = () => setIsOpen(false);
+  const [showModal, setShowModal] = useState(false);
   
+const auth = getAuth();
+const user = auth.currentUser;
+const [newBusiness, setNewBusiness] = useState({
+  businessName: "",
+  registrationNumber: "",
+  contactNumber: "",
+  address: "",
+  city: "",
+  state: "",
+  zipCode: "",
+  gstNumber: "",
+  aadhaar: "",
+  panno: "",
+  website: "",
+  email: "",
+});
+const handleInputChange = (e) => {
+  const { name, value } = e.target;
+  setNewBusiness((prev) => ({
+    ...prev,
+    [name]: value,
+  }));
+};
+const handleInputChangee = (e) => {
+  const { name, value } = e.target;
+  setNewCustomer((prev) => ({
+    ...prev,
+    [name]: value,
+  }));
+};
+
+  const handleAddBusiness = async (e) => {
+    e.preventDefault();
+    const {
+      businessName,
+      registrationNumber,
+      contactNumber,
+      address,
+      city,
+      state,
+      zipCode, // Corrected field
+      gstNumber,
+      aadhaar, // Corrected field
+      panno, // Corrected field
+      website,
+      email,
+    } = newBusiness;
+  
+    if (
+      !businessName ||
+      !registrationNumber ||
+      !contactNumber ||
+      !address ||
+      !city ||
+      !state ||
+      !zipCode || // Corrected field
+      !gstNumber ||
+      !aadhaar || // Corrected field
+      !panno || // Corrected field
+      !website ||
+      !email
+    ) {
+      return alert("Please fill all the fields.");
+    }
+  
+    try {
+      const userDocRef = doc(db, "admins", user.email);
+      const businessRef = collection(userDocRef, "Businesses");
+      await setDoc(doc(businessRef, registrationNumber), {
+        ...newBusiness, // Store the entire business object
+      });
+  
+      setBusinesses((prev) => [...prev, { ...newBusiness }]);
+      alert("Business added successfully!");
+      setNewBusiness({
+        businessName: "",
+        registrationNumber: "",
+        contactNumber: "",
+        address: "",
+        city: "",
+        state: "",
+        zipCode: "", // Corrected field
+        gstNumber: "",
+        aadhaar: "", // Corrected field
+        panno: "", // Corrected field
+        website: "",
+        email: "",
+      });
+      setShowModal(false);
+    } catch (error) {
+      console.error("Error adding business: ", error);
+    }
+  };
+  
+  const handleUpdateBusiness = async (e) => {
+  e.preventDefault();
+  const {
+    businessName,
+    registrationNumber,
+    contactNumber,
+    address,
+    city,
+    state,
+    zipCode, // Corrected field
+    gstNumber,
+    aadhaar, // Corrected field
+    panno, // Corrected field
+    website,
+    email,
+  } = newBusiness;
+
+  if (
+    !businessName ||
+    !registrationNumber ||
+    !contactNumber ||
+    !address ||
+    !city ||
+    !state ||
+    !zipCode || // Corrected field
+    !gstNumber ||
+    !aadhaar || // Corrected field
+    !panno || // Corrected field
+    !website ||
+    !email
+  ) {
+    return alert("Please fill all the fields.");
+  }
+
+  try {
+    const userDocRef = doc(db, "admins", user.email);
+    const businessRef = collection(userDocRef, "Businesses");
+    const businessDocRef = doc(businessRef, registrationNumber);
+
+    await updateDoc(businessDocRef, {
+      ...newBusiness, // Update the business data
+    });
+
+    setBusinesses((prev) =>
+      prev.map((business) =>
+        business.registrationNumber === registrationNumber
+          ? { ...newBusiness }
+          : business
+      )
+    );
+
+    alert("Business updated successfully!");
+    setNewBusiness({
+      businessName: "",
+      registrationNumber: "",
+      contactNumber: "",
+      address: "",
+      city: "",
+      state: "",
+      zipCode: "", // Corrected field
+      gstNumber: "",
+      aadhaar: "", // Corrected field
+      panno: "", // Corrected field
+      website: "",
+      email: "",
+    });
+    setShowEditModal(false); // Close the edit modal
+  } catch (error) {
+    console.error("Error updating business: ", error);
+    alert("Failed to update business. Please try again.");
+  }
+};
+const [newCustomer, setNewCustomer] = useState({
+  name: "",
+  email: "",
+  phone: "",
+  address: "",
+  city: "",
+  state: "",
+  zip: "",
+  gst: "",
+});
+const [Customers, setCustomers] = useState([]);
+const handleAddCustomer = async (e) => {
+  e.preventDefault();
+  const {
+    name,
+    email,
+    phone,
+    address,
+    city,
+    state,
+    zip,
+    gst,
+    aadhaar,
+    panno,
+  } = newCustomer;
+
+  if (
+    !name ||
+    !email ||
+    !phone ||
+    !address ||
+    !city ||
+    !state ||
+    !zip ||
+    !gst ||
+    !aadhaar ||
+    !panno
+  ) {
+    return alert("Please fill all the fields.");
+  }
+
+  try {
+    const userDocRef = doc(db, "admins", user.email);
+    const customerRef = collection(userDocRef, "Customers");
+    await setDoc(doc(customerRef, email), {
+      ...newCustomer, // Store the entire customer object
+    });
+
+    setCustomers((prev) => [...prev, { ...newCustomer }]);
+    alert("Customer added successfully!");
+    setNewCustomer({
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+      city: "",
+      state: "",
+      zip: "",
+      gst: "",
+      aadhaar: "",
+      panno: "",
+    });
+    setopenModal(false);
+  } catch (error) {
+    console.error("Error adding customer: ", error);
+  }
+};
+const placeholderNames = {
+  name: "Customer Name",
+  email: "Email",
+  phone: "Phone Number",
+  address: "Address",
+  city: "City",
+  state: "State",
+  zip: "Zip Code",
+  gst: "GST No",
+  aadhaar: "Aadhaar No",
+  panno: "PAN No",
+};
+useEffect(() => {
+  const fetchCustomers = async () => {
+    if (!user) return;
+
+    try {
+      const userDocRef = doc(db, "admins", user.email);
+      const customersRef = collection(userDocRef, "Customers");
+      const customerSnapshot = await getDocs(customersRef);
+      const customerList = customerSnapshot.docs.map((doc) => doc.data());
+      setCustomers(customerList);
+    } catch (error) {
+      console.error("Error fetching customers: ", error);
+    }
+  };
+
+  fetchCustomers();
+}, [user]);
+const [openModal, setopenModal] = useState(false);
+const [description, setDescription] = useState(""); // Store input value
+  const [filteredProducts, setFilteredProducts] = useState([]); // Store filtered product suggestions
+ 
+
+  // Fetch products from the database
+  useEffect(() => {
+    const fetchProducts = async () => {
+      if (!user || !user.email) {
+        console.warn("User or email is undefined.");
+        return;
+      }
+
+      try {
+        const userDocRef = doc(db, "admins", user.email);
+        const productsRef = collection(userDocRef, "Stocks");
+        const productSnapshot = await getDocs(productsRef);
+
+        if (productSnapshot.empty) {
+          console.warn("No products found in Stocks collection.");
+        }
+
+        const productList = productSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        console.log("Fetched Products:", productList);
+        setProducts(productList);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      }
+    };
+
+    fetchProducts();
+  }, [user]);
+
+  // Handle the change in the description input field
+  const handleDescriptionChange = (e) => {
+    const value = e.target.value;
+    setDescription(value); // Update description state
+
+    // Filter products based on the description input
+    const suggestions = products.filter((product) => {
+      if (product.pname && typeof product.pname === 'string') {
+        return product.pname.toLowerCase().includes(value.toLowerCase());
+      }
+      return false;
+    });
+
+    setFilteredProducts(suggestions); // Update filtered products
+    console.log(suggestions); // Log the filtered products
+  };
+
+  // Handle product selection from suggestions
+  const handleProductSelection = (productName) => {
+    setDescription(productName); // Set the selected product name as description
+    setFilteredProducts([]); // Clear suggestions after selection
+  };
+
+
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-r from-indigo-200 via-blue-100 to-green-100 p-8">
       <div className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8 border-2 border-indigo-600">
@@ -653,20 +983,31 @@ const handleCategorySubmit = () => {
             <tbody>
               {products.map((product, index) => (
                 <tr key={product.id}>
-                  <td className="border px-4 py-2">
-                    <input
-                      type="text"
-                      value={product.description}
-                      onChange={(e) =>
-                        handleProductChange(
-                          index,
-                          "description",
-                          e.target.value
-                        )
-                      }
-                      className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </td>
+                
+                <td className="border px-4 py-2">
+              <input
+                type="text"
+                value={description}
+                onChange={handleDescriptionChange} // Update description on change
+                className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Start typing to search for products"
+              />
+
+              {/* Show suggestions only if there are filtered products */}
+              {filteredProducts.length > 0 && (
+                 <ul className="border mt-2 max-h-40 overflow-y-auto">
+                  {filteredProducts.map((product) => (
+                    <li
+                      key={product.id}
+                      className="px-4 py-2 cursor-pointer hover:bg-indigo-100"
+                      onClick={() => handleProductSelection(product.pname)} // Select product and close list
+                    >
+                      {product.pname}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </td>
                   <td className="border px-4 py-2">
                     <input
                       type="text"
@@ -710,6 +1051,7 @@ const handleCategorySubmit = () => {
         </td>
                   <td className="border px-4 py-2">
                     <button
+                    
                       onClick={() => handleRemoveProduct(index)}
                       className="bg-red-500 text-white px-4 py-2 rounded-md"
                     >
@@ -731,6 +1073,7 @@ const handleCategorySubmit = () => {
             Add Product
           </button>
         </div>
+      
         <div className="text-right">
         <div className="text-xl font-semibold text-blue-600 mb-2">
     Subtotal: ₹{calculateSubtotal().toFixed(2)}
@@ -771,11 +1114,11 @@ const handleCategorySubmit = () => {
 
   
   <button
-  onClick={handleOpenCategoryModal}
-  className="bg-blue-600 text-white px-6 py-2 rounded-md"
->
-  Select Tax Values
-</button>
+    onClick={() => setIsCategoryModalOpen(true)}
+    className="bg-blue-600 text-white px-6 py-2 rounded-md"
+  >
+    Select Tax Values
+  </button>
 </div>
 
         {/* Modal */}
@@ -846,7 +1189,6 @@ const handleCategorySubmit = () => {
             </div>
           </div>
         )}
-
 
 
 {/* Display the modal */}
@@ -934,6 +1276,7 @@ const handleCategorySubmit = () => {
       </div>
     )}
 
+
         {/* Display selected shipping and payment methods */}
         <div className="mt-6">
           {selectedShippingMethod && (
@@ -1005,7 +1348,7 @@ const handleCategorySubmit = () => {
 
       
 
-      {/* Popup Modal */}
+     {/* Popup Modal */}
 {isPopupOpen && (
   <div
     className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
@@ -1046,7 +1389,6 @@ const handleCategorySubmit = () => {
     </div>
   </div>
 )}
-
     </div>
         {/* Invoice Footer */}
       </div>
@@ -1055,3 +1397,4 @@ const handleCategorySubmit = () => {
 };
 
 export default Invoice;
+
