@@ -2,6 +2,7 @@ import { getAuth } from "firebase/auth";
 import React, { useEffect, useState } from "react";
 import { collection, db, doc, getDocs, query,setDoc,deleteDoc,getDoc } from "../config/firebase";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCircleXmark } from '@fortawesome/free-solid-svg-icons';
 import { faPrint } from '@fortawesome/free-solid-svg-icons';
 import Stocks from "../pages/Stock";
 const Invoice = () => {
@@ -135,19 +136,6 @@ const Invoice = () => {
     setBillFrom(selectedBusiness);
   };
 
-  const calculateSubtotal = () => {
-    return products.reduce((total, product) => total + product.total, 0);
-  };
-
-  const calculateGST = () => {
-    return products.reduce((totalGST, product) => {
-      return totalGST + (product.total - product.quantity * product.rate);
-    }, 0);
-  };
-
-  const calculateGrandTotal = () => {
-    return calculateSubtotal() + calculateGST();
-  };
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -165,15 +153,95 @@ const Invoice = () => {
     setIsModalOpen(false);
   };
 
+
+  const [category, setCategory] = useState("");  // CGST
+const [status, setStatus] = useState("");      // SGST
+const [icst, setICst] = useState("");          // IGST
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [category, setCategory] = useState("");
-  const [status, setStatus] = useState("");
-  const handleCategorySubmit = () => {
-    console.log("Category:", category);
-    console.log("Status:", status);
-    setIsCategoryModalOpen(false);
+  
+
+  
+  const handleOpenCategoryModal = () => {
+    setIsCategoryModalOpen(true);
   };
   
+
+  
+
+
+// Function to calculate Subtotal (Example)
+const calculateSubtotal = () => {
+  // Assuming products array contains item total values
+  return products.reduce((total, product) => total + product.total, 0);
+};
+
+const calculateCGST = () => {
+  const subtotal = calculateSubtotal();
+  const cgstRate = parseFloat(category);
+  return isNaN(cgstRate) ? 0 : (subtotal * cgstRate) / 100;
+};
+
+const calculateSGST = () => {
+  const subtotal = calculateSubtotal();
+  const sgstRate = parseFloat(status);
+  return isNaN(sgstRate) ? 0 : (subtotal * sgstRate) / 100;
+};
+
+const calculateIGST = () => {
+  const subtotal = calculateSubtotal();
+  const igstRate = parseFloat(icst);
+  return isNaN(igstRate) ? 0 : (subtotal * igstRate) / 100;
+};
+
+const calculateTotal = () => {
+  const subtotal = calculateSubtotal();
+  const cgst = calculateCGST();
+  const sgst = calculateSGST();
+  const igst = calculateIGST();
+
+  // If both CGST and SGST are selected, GST = CGST + SGST, otherwise GST = IGST
+  const gst = cgst + sgst;  // or just igst if IGST is applicable
+  return subtotal + gst;
+};
+
+const handleCategorySubmit = () => {
+  // Perform any necessary tax calculation
+  // Example: Assuming you have a subtotal value of ₹118.00
+  const subtotal = 118.00;
+
+  // Convert selected tax values to numbers
+  const cgstPercentage = parseFloat(category);
+  const sgstPercentage = parseFloat(status);
+  const igstPercentage = parseFloat(icst);
+
+  // Calculate the tax values
+  const cgstAmount = (subtotal * cgstPercentage) / 100;
+  const sgstAmount = (subtotal * sgstPercentage) / 100;
+  const igstAmount = (subtotal * igstPercentage) / 100;
+
+  // Calculate the total based on the selected taxes
+  let total = subtotal;
+  if (cgstPercentage && sgstPercentage) {
+    total += cgstAmount + sgstAmount; // If CGST and SGST are selected
+  } else if (igstPercentage) {
+    total += igstAmount; // If IGST is selected
+  }
+
+  // Store the calculated values or update the state as needed
+  // For example, you can update the invoice with these calculated values
+  console.log("Calculated Tax Values", {
+    subtotal,
+    cgstAmount,
+    sgstAmount,
+    igstAmount,
+    total,
+  });
+
+  // Close the modal after submission
+  setIsCategoryModalOpen(false);
+};
+
+
   const handleCloseCategoryModal = () => {
     setIsCategoryModalOpen(false);
   };
@@ -199,332 +267,7 @@ const Invoice = () => {
   const handlePrint = () => {
     window.print();  // Open the print dialog
   };
-  const [isOpen, setIsOpen] = useState(false);
-
-
-  const closeModal = () => setIsOpen(false);
-  const [showModal, setShowModal] = useState(false);
   
-const auth = getAuth();
-const user = auth.currentUser;
-const [newBusiness, setNewBusiness] = useState({
-  businessName: "",
-  registrationNumber: "",
-  contactNumber: "",
-  address: "",
-  city: "",
-  state: "",
-  zipCode: "",
-  gstNumber: "",
-  aadhaar: "",
-  panno: "",
-  website: "",
-  email: "",
-});
-const handleInputChange = (e) => {
-  const { name, value } = e.target;
-  setNewBusiness((prev) => ({
-    ...prev,
-    [name]: value,
-  }));
-};
-const handleInputChangee = (e) => {
-  const { name, value } = e.target;
-  setNewCustomer((prev) => ({
-    ...prev,
-    [name]: value,
-  }));
-};
-
-  const handleAddBusiness = async (e) => {
-    e.preventDefault();
-    const {
-      businessName,
-      registrationNumber,
-      contactNumber,
-      address,
-      city,
-      state,
-      zipCode, // Corrected field
-      gstNumber,
-      aadhaar, // Corrected field
-      panno, // Corrected field
-      website,
-      email,
-    } = newBusiness;
-  
-    if (
-      !businessName ||
-      !registrationNumber ||
-      !contactNumber ||
-      !address ||
-      !city ||
-      !state ||
-      !zipCode || // Corrected field
-      !gstNumber ||
-      !aadhaar || // Corrected field
-      !panno || // Corrected field
-      !website ||
-      !email
-    ) {
-      return alert("Please fill all the fields.");
-    }
-  
-    try {
-      const userDocRef = doc(db, "admins", user.email);
-      const businessRef = collection(userDocRef, "Businesses");
-      await setDoc(doc(businessRef, registrationNumber), {
-        ...newBusiness, // Store the entire business object
-      });
-  
-      setBusinesses((prev) => [...prev, { ...newBusiness }]);
-      alert("Business added successfully!");
-      setNewBusiness({
-        businessName: "",
-        registrationNumber: "",
-        contactNumber: "",
-        address: "",
-        city: "",
-        state: "",
-        zipCode: "", // Corrected field
-        gstNumber: "",
-        aadhaar: "", // Corrected field
-        panno: "", // Corrected field
-        website: "",
-        email: "",
-      });
-      setShowModal(false);
-    } catch (error) {
-      console.error("Error adding business: ", error);
-    }
-  };
-  
-  const handleUpdateBusiness = async (e) => {
-  e.preventDefault();
-  const {
-    businessName,
-    registrationNumber,
-    contactNumber,
-    address,
-    city,
-    state,
-    zipCode, // Corrected field
-    gstNumber,
-    aadhaar, // Corrected field
-    panno, // Corrected field
-    website,
-    email,
-  } = newBusiness;
-
-  if (
-    !businessName ||
-    !registrationNumber ||
-    !contactNumber ||
-    !address ||
-    !city ||
-    !state ||
-    !zipCode || // Corrected field
-    !gstNumber ||
-    !aadhaar || // Corrected field
-    !panno || // Corrected field
-    !website ||
-    !email
-  ) {
-    return alert("Please fill all the fields.");
-  }
-
-  try {
-    const userDocRef = doc(db, "admins", user.email);
-    const businessRef = collection(userDocRef, "Businesses");
-    const businessDocRef = doc(businessRef, registrationNumber);
-
-    await updateDoc(businessDocRef, {
-      ...newBusiness, // Update the business data
-    });
-
-    setBusinesses((prev) =>
-      prev.map((business) =>
-        business.registrationNumber === registrationNumber
-          ? { ...newBusiness }
-          : business
-      )
-    );
-
-    alert("Business updated successfully!");
-    setNewBusiness({
-      businessName: "",
-      registrationNumber: "",
-      contactNumber: "",
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "", // Corrected field
-      gstNumber: "",
-      aadhaar: "", // Corrected field
-      panno: "", // Corrected field
-      website: "",
-      email: "",
-    });
-    setShowEditModal(false); // Close the edit modal
-  } catch (error) {
-    console.error("Error updating business: ", error);
-    alert("Failed to update business. Please try again.");
-  }
-};
-const [newCustomer, setNewCustomer] = useState({
-  name: "",
-  email: "",
-  phone: "",
-  address: "",
-  city: "",
-  state: "",
-  zip: "",
-  gst: "",
-});
-const [Customers, setCustomers] = useState([]);
-const handleAddCustomer = async (e) => {
-  e.preventDefault();
-  const {
-    name,
-    email,
-    phone,
-    address,
-    city,
-    state,
-    zip,
-    gst,
-    aadhaar,
-    panno,
-  } = newCustomer;
-
-  if (
-    !name ||
-    !email ||
-    !phone ||
-    !address ||
-    !city ||
-    !state ||
-    !zip ||
-    !gst ||
-    !aadhaar ||
-    !panno
-  ) {
-    return alert("Please fill all the fields.");
-  }
-
-  try {
-    const userDocRef = doc(db, "admins", user.email);
-    const customerRef = collection(userDocRef, "Customers");
-    await setDoc(doc(customerRef, email), {
-      ...newCustomer, // Store the entire customer object
-    });
-
-    setCustomers((prev) => [...prev, { ...newCustomer }]);
-    alert("Customer added successfully!");
-    setNewCustomer({
-      name: "",
-      email: "",
-      phone: "",
-      address: "",
-      city: "",
-      state: "",
-      zip: "",
-      gst: "",
-      aadhaar: "",
-      panno: "",
-    });
-    setopenModal(false);
-  } catch (error) {
-    console.error("Error adding customer: ", error);
-  }
-};
-const placeholderNames = {
-  name: "Customer Name",
-  email: "Email",
-  phone: "Phone Number",
-  address: "Address",
-  city: "City",
-  state: "State",
-  zip: "Zip Code",
-  gst: "GST No",
-  aadhaar: "Aadhaar No",
-  panno: "PAN No",
-};
-useEffect(() => {
-  const fetchCustomers = async () => {
-    if (!user) return;
-
-    try {
-      const userDocRef = doc(db, "admins", user.email);
-      const customersRef = collection(userDocRef, "Customers");
-      const customerSnapshot = await getDocs(customersRef);
-      const customerList = customerSnapshot.docs.map((doc) => doc.data());
-      setCustomers(customerList);
-    } catch (error) {
-      console.error("Error fetching customers: ", error);
-    }
-  };
-
-  fetchCustomers();
-}, [user]);
-const [openModal, setopenModal] = useState(false);
-const [description, setDescription] = useState(""); // Store input value
-const [filteredProducts, setFilteredProducts] = useState([]); // Store filtered product suggestions
-
-useEffect(() => {
-  const fetchProducts = async () => {
-    if (!user || !user.email) {
-      console.warn("User or email is undefined.");
-      return;
-    }
-
-    try {
-      const userDocRef = doc(db, "admins", user.email); // Reference to user's document
-      const productsRef = collection(userDocRef, "Stocks"); // Subcollection 'Stocks'
-      const productSnapshot = await getDocs(productsRef);
-
-      if (productSnapshot.empty) {
-        console.warn("No products found in Stocks collection.");
-      }
-
-      const productList = productSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      console.log("Fetched Products:", productList);
-      setProducts(productList);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    }
-  };
-
-  fetchProducts();
-}, [user]);
-
-const handleDescriptionChange = (e) => {
-  const value = e.target.value;
-  setDescription(value); // Update description state
-
-  // Filter products based on the description input
-  const suggestions = products.filter((product) => {
-    if (product.pname && typeof product.pname === 'string') {
-      return product.pname.toLowerCase().includes(value.toLowerCase());
-    }
-    return false;
-  });
-
-  setFilteredProducts(suggestions); // Update filtered products
-  console.log(suggestions); // Log the filtered products
-};
-
-
-
-// Handle product selection
-const handleProductSelection = (productName) => {
-  setDescription(productName); // Set the selected product name as description
-  setFilteredProducts([]); // Clear suggestions after selection
-};
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-r from-indigo-200 via-blue-100 to-green-100 p-8">
       <div className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8 border-2 border-indigo-600">
@@ -910,29 +653,20 @@ const handleProductSelection = (productName) => {
             <tbody>
               {products.map((product, index) => (
                 <tr key={product.id}>
-                
-                <td className="border px-4 py-2">
-        <input
-          type="text"
-          value={description}
-          onChange={handleDescriptionChange} // Update description on change
-          className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder="Start typing to search for products"
-        />
-       {filteredProducts.length > 0 && (
-  <ul className="border mt-2">
-    {filteredProducts.map((product) => (
-      <li
-        key={product.id}
-        className="px-4 py-2 cursor-pointer hover:bg-indigo-100"
-        onClick={() => setDescription(product.pname)} // Set selected product name
-      >
-        {product.pname}
-      </li>
-    ))}
-  </ul>
-)}
-      </td>
+                  <td className="border px-4 py-2">
+                    <input
+                      type="text"
+                      value={product.description}
+                      onChange={(e) =>
+                        handleProductChange(
+                          index,
+                          "description",
+                          e.target.value
+                        )
+                      }
+                      className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </td>
                   <td className="border px-4 py-2">
                     <input
                       type="text"
@@ -998,16 +732,34 @@ const handleProductSelection = (productName) => {
           </button>
         </div>
         <div className="text-right">
-          <div className="text-lg font-semibold text-gray-800 mb-2">
-            Subtotal: ₹{calculateSubtotal().toFixed(2)}
-          </div>
-          <div className="text-lg font-semibold text-gray-800 mb-2">
-            GST ({selectedTaxRate}%): ₹{calculateGST().toFixed(2)}
-          </div>
-          <div className="text-xl font-semibold text-gray-800">
-            Total: ₹{calculateGrandTotal().toFixed(2)}
-          </div>
-        </div>
+        <div className="text-xl font-semibold text-blue-600 mb-2">
+    Subtotal: ₹{calculateSubtotal().toFixed(2)}
+  </div>
+
+  {/* Display CGST */}
+  <div className="text-lx font-semibold text-red-800 mb-2">
+    CGST ({category}%): ₹{calculateCGST().toFixed(2)}
+  </div>
+
+  {/* Display SGST */}
+  <div className="text-lx font-semibold text-red-800 mb-2">
+    SGST ({status}%): ₹{calculateSGST().toFixed(2)}
+  </div>
+
+  {/* Display IGST */}
+  <div className="text-lx font-semibold text-red-800 mb-2">
+    IGST ({icst}%): ₹{calculateIGST().toFixed(2)}
+  </div>
+
+  {/* Display GST */}
+  <div className="text-lx font-semibold text-red-800 mb-2">
+    GST (CGST + SGST): ₹{(calculateCGST() + calculateSGST()).toFixed(2)}
+  </div>
+
+  <div className="text-xl font-semibold text-green-500">
+    Total: ₹{calculateTotal().toFixed(2)}
+  </div>
+</div>
         {/* Shipping and Payment Buttons */}
         <div className="flex justify-start items-center space-x-4 mb-6">
   <button
@@ -1019,11 +771,11 @@ const handleProductSelection = (productName) => {
 
   
   <button
-    onClick={() => setIsCategoryModalOpen(true)}
-    className="bg-blue-600 text-white px-6 py-2 rounded-md"
-  >
-    Select Tax Values
-  </button>
+  onClick={handleOpenCategoryModal}
+  className="bg-blue-600 text-white px-6 py-2 rounded-md"
+>
+  Select Tax Values
+</button>
 </div>
 
         {/* Modal */}
@@ -1096,89 +848,91 @@ const handleProductSelection = (productName) => {
         )}
 
 
-{/* Category Modal */}
+
+{/* Display the modal */}
 {isCategoryModalOpen && (
-  <div
-    className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
-    onClick={handleCloseCategoryModal}
-  >
-    <div
-      className="bg-white p-8 rounded-md shadow-lg w-1/3"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <h2 className="text-2xl font-semibold text-center mb-4">
-        Select Tax Values 
-      </h2>
-
-      {/* Category Dropdown */}
-      <div className="mb-4">
-        <label className="block text-xl font-semibold text-gray-800 mb-2">
-        CGST
-        </label>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      <div
+        className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
+        onClick={handleCloseCategoryModal}
+      >
+        <div
+          className="bg-white p-8 rounded-md shadow-lg w-1/3"
+          onClick={(e) => e.stopPropagation()}
         >
-          <option value="">Select CGST</option>
-          <option value="electronics">5%</option>
-          <option value="fashion">12%</option>
-          <option value="groceries">18%</option>
-        </select>
+          <h2 className="text-2xl font-semibold text-center mb-4">
+            Select Tax Values
+          </h2>
+
+          {/* CGST Dropdown */}
+          <div className="mb-4">
+            <label className="block text-xl font-semibold text-gray-800 mb-2">
+              CGST
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Select CGST</option>
+              <option value="5">5%</option>
+              <option value="12">12%</option>
+              <option value="18">18%</option>
+            </select>
+          </div>
+
+          {/* SGST Dropdown */}
+          <div className="mb-4">
+            <label className="block text-xl font-semibold text-gray-800 mb-2">
+              SGST
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Select SGST</option>
+              <option value="5">5%</option>
+              <option value="12">12%</option>
+              <option value="18">18%</option>
+            </select>
+          </div>
+
+          {/* IGST Dropdown */}
+          <div className="mb-4">
+            <label className="block text-xl font-semibold text-gray-800 mb-2">
+              IGST
+            </label>
+            <select
+              value={icst}
+              onChange={(e) => setICst(e.target.value)}
+              className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Select IGST</option>
+              <option value="5">5%</option>
+              <option value="12">12%</option>
+              <option value="18">18%</option>
+            </select>
+          </div>
+
+          {/* Submit and Close Buttons */}
+          <div className="flex justify-between">
+            <button
+              onClick={handleCategorySubmit}
+              className="bg-blue-600 text-white px-6 py-2 rounded-md"
+            >
+              Submit
+            </button>
+
+            <button
+              onClick={handleCloseCategoryModal}
+              className="bg-gray-400 text-white px-6 py-2 rounded-md"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </div>
-
-      {/* Status Dropdown */}
-      <div className="mb-4">
-        <label className="block text-xl font-semibold text-gray-800 mb-2">
-        SGST
-        </label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="">Select SGST</option>
-          <option value="active">5%</option>
-          <option value="inactive">12%</option>
-          <option value="pending">18%</option>
-        </select>
-      </div>
-
-      <div className="mb-4">
-        <label className="block text-xl font-semibold text-gray-800 mb-2">
-          CST
-        </label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="">Select CST</option>
-          <option value="active">5%</option>
-          <option value="inactive">12%</option>
-          <option value="pending">18%</option>
-        </select>
-      </div>
-
-      {/* Submit and Close Buttons */}
-      <div className="flex justify-between">
-        <button
-          onClick={handleCategorySubmit}
-          className="bg-blue-600 text-white px-6 py-2 rounded-md"
-        >
-          Submit
-        </button>
-
-        <button
-          onClick={handleCloseCategoryModal}
-          className="bg-gray-400 text-white px-6 py-2 rounded-md"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+    )}
 
         {/* Display selected shipping and payment methods */}
         <div className="mt-6">
@@ -1252,46 +1006,47 @@ const handleProductSelection = (productName) => {
       
 
       {/* Popup Modal */}
-      {isPopupOpen && (
-        <div
-          className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
-          onClick={handleDismissPopup}
-        >
-          <div
-            className="bg-white p-8 rounded-md shadow-lg w-1/3"
-            onClick={(e) => e.stopPropagation()} // Prevent modal closing if content is clicked
-          >
-            <h2 className="text-2xl font-semibold text-center mb-4">
-              Do you want to Save invoice 
-            </h2>
-
-            {/* Action Buttons */}
-            <div >
-  <button
-    onClick={handleActionConfirm}
-    className="bg-green-600  text-white px-8 py-3 text-xl font-semibold rounded-md w-80 mb-5 ml-40"
-  >
-    Confirm
-  </button>
-  
-  <button
-    onClick={handleActionConfirm}
-    className="bg-blue-600 text-white px-8 py-3 text-xl font-semibold rounded-md w-80 mb-5 ml-40 "
-  >
-    Stock (Unpaid)
-  </button>
-  
-  <button
+{isPopupOpen && (
+  <div
+    className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
     onClick={handleDismissPopup}
-    className="bg-red-600 text-white px-8 py-3 text-xl font-semibold rounded-md w-80 mb-5 ml-40"
   >
-    Close
-  </button>
-</div>
+    <div
+      className="bg-white p-8 rounded-md shadow-lg w-1/3 relative" // 'relative' to position the close button
+      onClick={(e) => e.stopPropagation()} // Prevent modal closing if content is clicked
+    >
+      {/* Close Icon */}
+      <button
+        onClick={handleDismissPopup}
+        className="absolute top-2 right-4 text-2xl text-gray-600 hover:text-gray-900"
+      >
+        <FontAwesomeIcon icon={faCircleXmark} /> {/* FontAwesome Close Icon */}
+      </button>
 
-          </div>
-        </div>
-      )}
+      <h2 className="text-2xl font-semibold text-center mb-4 text-red-600">
+        Do you want to Save invoice?
+      </h2>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col items-center space-y-4">
+        <button
+          onClick={handleActionConfirm}
+          className="bg-green-400 text-white px-8 py-3 text-lg font-semibold rounded-md w-80"
+        >
+          Estimate (Unpaid)
+        </button>
+
+        <button
+          onClick={handleActionConfirm}
+          className="bg-blue-400 text-white px-8 py-3 text-lg font-semibold rounded-md w-80"
+        >
+          Stock (Paid)
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
         {/* Invoice Footer */}
       </div>
