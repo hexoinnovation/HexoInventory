@@ -261,7 +261,7 @@ const BusinessDetails = () => {
   return (
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
       <h1 className="text-5xl font-extrabold text-pink-700 mb-6 flex items-center">
-        Business Details Management
+        Business Details
         <FontAwesomeIcon icon={faBriefcase} className="animate-wiggle ml-4 " />
       </h1>
 
@@ -286,7 +286,7 @@ const BusinessDetails = () => {
               <th className="py-3 px-4 text-left">Business Name</th>
               <th className="py-3 px-4 text-left">Email</th>
               <th className="py-3 px-4 text-left">Contact Number</th>
-              <th className="py-3 px-4 text-left">Address</th>
+              {/* <th className="py-3 px-4 text-left">Address</th> */}
               <th className="py-3 px-4 text-left">GST Number</th>
               <th className="py-3 px-4 text-left">Aadhaar No</th>
               <th className="py-3 px-4 text-left">PAN No</th>
@@ -303,7 +303,7 @@ const BusinessDetails = () => {
                 <td className="py-3 px-4">{business.businessName}</td>
                 <td className="py-3 px-4">{business.email}</td>
                 <td className="py-3 px-4">{business.contactNumber}</td>
-                <td className="py-3 px-4">{business.address}</td>
+                {/* <td className="py-3 px-4">{business.address}</td> */}
                 <td className="py-3 px-4">{business.gstNumber}</td>
                 <td className="py-3 px-4">{business.aadhaar}</td>
                 <td className="py-3 px-4">{business.panno}</td>
