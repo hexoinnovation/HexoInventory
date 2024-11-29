@@ -55,7 +55,6 @@ const Invoice = () => {
   const [note, setNote] = useState(""); // Note state
   const [signature, setSignature] = useState(""); // Signature state
   const [selectedTaxRate, setSelectedTaxRate] = useState(18); // Default tax rate for new products
-
   const [isModalOpen, setIsModalOpen] = useState(false); // For controlling modal visibility
 
   const [selectedShippingMethod, setSelectedShippingMethod] = useState(""); // Store selected shipping method
