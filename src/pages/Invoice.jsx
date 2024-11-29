@@ -167,10 +167,17 @@ const Invoice = () => {
 const [status, setStatus] = useState("");      // SGST
 const [icst, setICst] = useState("");          // IGST
 const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+
+// State Variables
+const [cgst, setCgst] = useState(""); // For CGST value
+const [sgst, setSgst] = useState(""); // For SGST value
+const [igst, setIgst] = useState(""); // For IGST value
+const [submittedTax, setSubmittedTax] = useState(null); // For storing the submitted tax value
   
   const handleOpenCategoryModal = () => {
     setIsCategoryModalOpen(true);
   };
+
 
 // Function to calculate Subtotal (Example)
 const calculateSubtotal = () => {
@@ -260,11 +267,7 @@ const handleCategorySubmit = () => {
     setIsPopupOpen(false); // Close the popup
   };
 
-  // Handle confirm action (any logic you need to execute on confirm)
-  const handleActionConfirm = () => {
-    console.log("Action confirmed!"); // Action after confirming
-    setIsPopupOpen(false); // Close the popup after confirmation
-  };
+ 
 
   const handlePrint = () => {
     window.print();  // Open the print dialog
@@ -598,13 +601,77 @@ const [description, setDescription] = useState(""); // Store input value
   };
 
 
+  const [isSwitchOn, setIsSwitchOn] = useState(false);
+
+  
+  
+ 
+
+
+  const [isLightMode, setIsLightMode] = useState(true); // Track the toggle state
+  const [paymentStatus, setPaymentStatus] = useState(""); // Track Paid/Unpaid status
+
+  // Handle toggle between Paid and Unpaid
+  const handleToggleMode = () => {
+    setIsLightMode((prevMode) => !prevMode);
+    setPaymentStatus(isLightMode ? "Unpaid" : "Paid");
+  };
+
+
+  // Handle submission to Firebase
+const handleActionConfirm = async () => {
+  if (!paymentStatus) {
+    alert("Please select a status (Paid or Unpaid) before submitting.");
+    return;
+  }
+
+  try {
+    // Reference the user's document (admins collection)
+    const userDocRef = doc(db, "admins", user.email);
+
+    // Reference the specific document in the "Invoices" collection
+    const invoicesDocRef = doc(userDocRef, "Invoices", "paid unpaid"); // "default" can be replaced with your invoice identifier
+
+    // Reference the subcollection ("paid" or "unpaid") under the Invoices document
+    const subCollectionName = paymentStatus === "Paid" ? "paid" : "unpaid";
+    
+    // Use invoiceNumber as the document ID in the subcollection
+    const subCollectionRef = doc(invoicesDocRef, subCollectionName, invoiceNumber.toString());
+
+    // Add or update the document with the payment status and invoice details
+    await setDoc(subCollectionRef, {
+      paymentStatus,
+      invoiceDate,
+      invoiceNumber,
+      billFrom,
+      billTo,
+      products,
+      shippingMethod, // Add shipping method
+      paymentMethod,  // Add payment method
+      taxDetails: {
+        CGST: category || null, // Set CGST if selected, otherwise null
+        SGST: status || null,  // Set SGST if selected, otherwise null
+        IGST: icst || null,    // Set IGST if selected, otherwise null
+      },
+      subtotal: calculateSubtotal().toFixed(2), // Include the subtotal value
+      total: calculateTotal().toFixed(2),       // Include the total value
+      createdAt: new Date(),
+      // Add any other invoice details you need to store here
+    });
+
+    alert(`Status "${paymentStatus}" for Invoice No: ${invoiceNumber} has been saved successfully!`);
+  } catch (error) {
+    console.error("Error saving status to Firestore:", error);
+    alert("Error saving status. Please try again.");
+  }
+};
+
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-r from-indigo-200 via-blue-100 to-green-100 p-8">
       <div className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8 border-2 border-indigo-600">
         <h1 className="text-4xl font-bold text-center text-indigo-700 mb-6">
           Invoice Generator
         </h1>
-
         {/* Invoice Header */}
         <div className="flex flex-col sm:flex-row justify-between mb-6">
           <div className="w-full sm:w-1/3 mb-4 sm:mb-0">
@@ -1075,33 +1142,43 @@ const [description, setDescription] = useState(""); // Store input value
         </div>
       
         <div className="text-right">
-        <div className="text-xl font-semibold text-blue-600 mb-2">
-    Subtotal: ₹{calculateSubtotal().toFixed(2)}
-  </div>
+        {/* Subtotal (Always Visible) */}
+<div className="text-xl font-semibold text-blue-600 mb-2">
+  Subtotal: ₹{calculateSubtotal().toFixed(2)}
+</div>
 
-  {/* Display CGST */}
+{/* Conditionally Display CGST */}
+{category && (
   <div className="text-lx font-semibold text-red-800 mb-2">
     CGST ({category}%): ₹{calculateCGST().toFixed(2)}
   </div>
+)}
 
-  {/* Display SGST */}
+{/* Conditionally Display SGST */}
+{status && (
   <div className="text-lx font-semibold text-red-800 mb-2">
     SGST ({status}%): ₹{calculateSGST().toFixed(2)}
   </div>
+)}
 
-  {/* Display IGST */}
+{/* Conditionally Display IGST */}
+{icst && (
   <div className="text-lx font-semibold text-red-800 mb-2">
     IGST ({icst}%): ₹{calculateIGST().toFixed(2)}
   </div>
+)}
 
-  {/* Display GST */}
+{/* Conditionally Display GST (CGST + SGST) */}
+{category && status && (
   <div className="text-lx font-semibold text-red-800 mb-2">
     GST (CGST + SGST): ₹{(calculateCGST() + calculateSGST()).toFixed(2)}
   </div>
+)}
 
-  <div className="text-xl font-semibold text-green-500">
-    Total: ₹{calculateTotal().toFixed(2)}
-  </div>
+{/* Total (Always Visible) */}
+<div className="text-xl font-semibold text-green-500">
+  Total: ₹{calculateTotal().toFixed(2)}
+</div>
 </div>
         {/* Shipping and Payment Buttons */}
         <div className="flex justify-start items-center space-x-4 mb-6">
@@ -1372,19 +1449,37 @@ const [description, setDescription] = useState(""); // Store input value
 
       {/* Action Buttons */}
       <div className="flex flex-col items-center space-y-4">
-        <button
-          onClick={handleActionConfirm}
-          className="bg-green-400 text-white px-8 py-3 text-lg font-semibold rounded-md w-80"
+          {/* Toggle Button */}
+      <button
+        onClick={handleToggleMode}
+        className="relative w-80 h-12 rounded-md overflow-hidden border-2 border-gray-300 shadow-lg"
+      >
+        {/* Paid Section */}
+        <div
+          className={`absolute inset-y-0 left-0 w-1/2 flex items-center justify-center ${
+            isLightMode ? "bg-green-600 text-black" : "bg-gray-200 text-gray-500"
+          }`}
         >
-          Estimate (Unpaid)
-        </button>
+          Paid
+        </div>
 
-        <button
-          onClick={handleActionConfirm}
-          className="bg-blue-400 text-white px-8 py-3 text-lg font-semibold rounded-md w-80"
+        {/* Unpaid Section */}
+        <div
+          className={`absolute inset-y-0 right-0 w-1/2 flex items-center justify-center ${
+            isLightMode ? "bg-gray-200 text-gray-500" : "bg-red-600 text-white"
+          }`}
         >
-          Stock (Paid)
-        </button>
+          Unpaid
+        </div>
+      </button>
+
+      {/* Submit Button */}
+      <button
+        onClick={handleActionConfirm}
+        className="bg-blue-400 text-white px-8 py-3 text-lg font-semibold rounded-md w-80"
+      >
+        Submit
+      </button>
       </div>
     </div>
   </div>
