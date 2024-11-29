@@ -271,14 +271,14 @@ const BusinessDetails = () => {
       >
         Add Business
       </button>
-
-      <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center mb-6">
+      <div className="grid grid-cols-3 sm:grid-cols-3 gap-6 mb-6">
+      <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center border-2 border-indigo-300">
         <h3 className="text-xl font-semibold text-indigo-600">
           Total Businesses
         </h3>
         <p className="text-4xl font-bold text-yellow-500">{totalBusinesses}</p>
       </div>
-
+</div>
       <div className="w-full mt-5">
         <table className="min-w-full bg-white shadow-md rounded-lg">
           <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white">
