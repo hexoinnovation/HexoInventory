@@ -11,6 +11,7 @@ import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
 import { auth, db } from "../config/firebase"; // Ensure firebase is correctly initialized
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faStore } from "@fortawesome/free-solid-svg-icons";
+import Swal from 'sweetalert2';
 
 // The Purchase Component
 const Purchase = () => {
@@ -124,20 +125,36 @@ const Purchase = () => {
     }
   };
 
-  // Remove Product
   const handleRemoveProduct = async (phone) => {
     try {
       const userDocRef = doc(db, "admins", user.email);
       const productRef = collection(userDocRef, "Purchase");
       await deleteDoc(doc(productRef, phone));
-
+  
       setProducts((prev) => prev.filter((product) => product.phone !== phone));
-      alert("Product removed successfully!");
+  
+      // Success SweetAlert
+      Swal.fire({
+        icon: 'success',
+        title: 'Product Removed!',
+        text: 'Product has been removed successfully.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#3085d6',
+      });
     } catch (error) {
       console.error("Error removing product: ", error);
+  
+      // Error SweetAlert
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: 'There was an issue removing the product.',
+        confirmButtonText: 'Try Again',
+        confirmButtonColor: '#d33',
+      });
     }
   };
-
+  
   // Filter products based on search query
   const filteredProducts = products.filter((product) =>
     product.pname.toLowerCase().includes(searchQuery.toLowerCase())

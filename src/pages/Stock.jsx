@@ -5,7 +5,7 @@ import { collection, deleteDoc, doc, getDocs, setDoc } from "firebase/firestore"
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
 import { FaChartLine } from "react-icons/fa";
 import { auth, db } from "../config/firebase";
-
+import Swal from 'sweetalert2';
 const Stocks = () => {
   const [showModal, setShowModal] = useState(false);
   const [products, setProducts] = useState([]);
@@ -92,27 +92,65 @@ const Stocks = () => {
     }
   };
 
+
   const handleRemoveProduct = async (no) => {
     if (!user) {
-      alert("Please log in to delete a product.");
+      Swal.fire({
+        icon: 'warning',
+        title: 'Not Logged In',
+        text: 'Please log in to delete a product.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#3085d6',
+      });
       return;
     }
-
+  
     try {
       const userDocRef = doc(db, "admins", user.email);
       const productRef = doc(userDocRef, "Stocks", no);
-
-      // Delete product from Firestore
-      await deleteDoc(productRef);
-
-      // Update the UI by removing the deleted product
-      setProducts(products.filter((product) => product.no !== no));
-      alert("Product deleted successfully!");
+  
+      // Confirm deletion with SweetAlert
+      const result = await Swal.fire({
+        title: 'Are you sure?',
+        text: 'You won’t be able to undo this action!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+      });
+  
+      if (result.isConfirmed) {
+        // Delete product from Firestore
+        await deleteDoc(productRef);
+  
+        // Update the UI by removing the deleted product
+        setProducts(products.filter((product) => product.no !== no));
+  
+        // Success SweetAlert
+        Swal.fire({
+          icon: 'success',
+          title: 'Deleted!',
+          text: 'Product has been deleted successfully.',
+          confirmButtonText: 'Okay',
+          confirmButtonColor: '#3085d6',
+        });
+      }
     } catch (error) {
       console.error("Error deleting product:", error);
-      alert("Failed to delete the product.");
+  
+      // Error SweetAlert
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: 'Failed to delete the product. Please try again later.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#d33',
+      });
     }
   };
+  
 
   const filteredProducts = products.filter(
     (product) =>
