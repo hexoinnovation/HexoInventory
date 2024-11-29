@@ -47,7 +47,6 @@ const Invoice = () => {
       total: 118,
     },
   ]);
-
   const [customerList, setCustomerList] = useState([]);
   const [businessList, setBusinessList] = useState([]);
   const [shippingMethod, setShippingMethod] = useState(""); // Shipping method state
