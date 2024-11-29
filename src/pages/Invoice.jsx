@@ -10,6 +10,7 @@ import {
   query,
   setDoc,
 } from "../config/firebase";
+
 const Invoice = () => {
   const [invoiceDate, setInvoiceDate] = useState(
     new Date().toLocaleDateString()
@@ -42,7 +43,7 @@ const Invoice = () => {
       description: "Product 1",
       hsnCode: "1234",
       quantity: 1,
-      rate: 100,
+      price: 100,
       total: 118,
     },
   ]);
@@ -98,10 +99,10 @@ const Invoice = () => {
     const updatedProducts = [...products];
     updatedProducts[index][field] = value;
 
-    if (field === "quantity" || field === "rate") {
+    if (field === "quantity" || field === "price") {
       const total =
         updatedProducts[index].quantity *
-        updatedProducts[index].rate *
+        updatedProducts[index].price *
         (1 + selectedTaxRate / 100);
       updatedProducts[index].total = total;
     }
@@ -143,7 +144,7 @@ const Invoice = () => {
 
   const calculateGST = () => {
     return products.reduce((totalGST, product) => {
-      return totalGST + (product.total - product.quantity * product.rate);
+      return totalGST + (product.total - product.quantity * product.price);
     }, 0);
   };
 
@@ -545,79 +546,74 @@ const Invoice = () => {
   const [filteredProducts, setFilteredProducts] = useState([]); // Store filtered product suggestions
 
   // Fetch products from the database
-  useEffect(() => {
-    const fetchProducts = async () => {
-      if (!user || !user.email) {
-        console.warn("User or email is undefined.");
-        return;
+  const fetchAndFilterProducts = async (searchText) => {
+    try {
+      const userDocRef = doc(db, "admins", user.email);
+      const productsRef = collection(userDocRef, "Purchase");
+      const productSnapshot = await getDocs(productsRef);
+
+      if (productSnapshot.empty) {
+        console.warn("No products found in Purchase collection.");
+        return [];
       }
 
-      try {
-        const userDocRef = doc(db, "admins", user.email);
-        const productsRef = collection(userDocRef, "Purchase");
-        const productSnapshot = await getDocs(productsRef);
-
-        if (productSnapshot.empty) {
-          console.warn("No products found in Purchase collection.");
-        }
-
-        const productList = productSnapshot.docs.map((doc) => ({
+      // Filter products based on searchText
+      const productList = productSnapshot.docs
+        .map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }));
+        }))
+        .filter((product) =>
+          product.pname.toLowerCase().includes(searchText.toLowerCase())
+        );
 
-        console.log("Fetched Products:", productList);
-        setFilteredProducts(productList); // Populate dropdown with products
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      }
-    };
-
-    fetchProducts();
-  }, [user]);
+      return productList;
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      return [];
+    }
+  };
 
   // Handle the change in the description input field
 
-  // Handle description change (filter products)
-  const handleDescriptionChange = (index, e) => {
+  const handleDescriptionChange = async (index, e) => {
     const value = e.target.value;
 
-    // Update the description for the specific product
+    // Update the product description in the current row
     const updatedProducts = [...products];
     updatedProducts[index].description = value;
     setProducts(updatedProducts);
 
-    // Filter suggestions only for the current input
-    const suggestions = products
-      .filter((product) => {
-        if (product.description && typeof product.description === "string") {
-          return product.description
-            .toLowerCase()
-            .includes(value.toLowerCase());
-        }
-        return false;
-      })
-      .slice(0, 5); // Show a maximum of 5 suggestions
-
-    setFilteredProducts(suggestions);
+    // Fetch and filter products from the database
+    if (value.trim() !== "") {
+      const filtered = await fetchAndFilterProducts(value); // Fetch filtered products
+      const updatedSuggestions = [...filteredProducts];
+      updatedSuggestions[index] = filtered;
+      setFilteredProducts(updatedSuggestions);
+    } else {
+      // Clear suggestions if input is empty
+      const updatedSuggestions = [...filteredProducts];
+      updatedSuggestions[index] = [];
+      setFilteredProducts(updatedSuggestions);
+    }
   };
-  const handleProductSelection = (index, selectedProduct) => {
-    if (!selectedProduct) return;
 
-    setProducts((prevProducts) =>
-      prevProducts.map((product, i) =>
-        i === index
-          ? {
-              ...product,
-              description: selectedProduct.pname,
-              hsnCode: selectedProduct.hsnCode,
-              rate: selectedProduct.rate,
-              quantity: product.quantity || 1, // Default quantity to 1 if not set
-              total: selectedProduct.rate * (product.quantity || 1), // Calculate total
-            }
-          : product
-      )
-    );
+  const handleProductSelection = (index, selectedProduct) => {
+    const updatedProducts = [...products];
+    updatedProducts[index] = {
+      ...updatedProducts[index],
+      description: selectedProduct.pname,
+      hsnCode: selectedProduct.hsnCode,
+      price: selectedProduct.price, // Fetch rate from the selected product
+      quantity: updatedProducts[index].quantity || 1, // Default to 1 if not already set
+      total: selectedProduct.price * (updatedProducts[index].quantity || 1), // Calculate total
+    };
+    setProducts(updatedProducts);
+
+    // Clear suggestions for the current row
+    const updatedSuggestions = [...filteredProducts];
+    updatedSuggestions[index] = [];
+    setFilteredProducts(updatedSuggestions);
   };
 
   const [isSwitchOn, setIsSwitchOn] = useState(false);
@@ -1141,7 +1137,7 @@ const Invoice = () => {
                 <th className="px-4 py-2 text-left">Description</th>
                 <th className="px-4 py-2 text-left">HSN Code</th>
                 <th className="px-4 py-2 text-left">Quantity</th>
-                <th className="px-4 py-2 text-left">Rate</th>
+                <th className="px-4 py-2 text-left">Price</th>
                 <th className="px-4 py-2 text-left">Total</th>
                 <th className="px-4 py-2"></th>
               </tr>
@@ -1149,25 +1145,31 @@ const Invoice = () => {
             <tbody>
               {products.map((product, index) => (
                 <tr key={`${product.id}-${index}`}>
-                  {/* Description Dropdown */}
+                  {/* Description Input */}
                   <td className="border px-4 py-2">
-                    <select
+                    <input
+                      type="text"
                       value={product.description}
-                      onChange={(e) => {
-                        const selectedProduct = filteredProducts.find(
-                          (prod) => prod.pname === e.target.value
-                        );
-                        handleProductSelection(index, selectedProduct);
-                      }}
+                      onChange={(e) => handleDescriptionChange(index, e)}
                       className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="">Select Product</option>
-                      {filteredProducts.map((prod) => (
-                        <option key={prod.id} value={prod.pname}>
-                          {prod.pname}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="Type to search products"
+                    />
+                    {/* Suggestions Dropdown */}
+                    {filteredProducts[index]?.length > 0 && (
+                      <ul className="absolute bg-white border rounded-md shadow-lg z-10 w-full">
+                        {filteredProducts[index].map((suggestedProduct) => (
+                          <li
+                            key={suggestedProduct.id}
+                            onClick={() =>
+                              handleProductSelection(index, suggestedProduct)
+                            }
+                            className="px-4 py-2 hover:bg-gray-200 cursor-pointer"
+                          >
+                            {suggestedProduct.pname}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </td>
                   {/* HSN Code Field */}
                   <td className="border px-4 py-2">
@@ -1199,11 +1201,11 @@ const Invoice = () => {
                   <td className="border px-4 py-2">
                     <input
                       type="number"
-                      value={product.rate}
+                      value={product.price}
                       onChange={(e) =>
                         handleProductChange(
                           index,
-                          "rate",
+                          "price",
                           parseFloat(e.target.value)
                         )
                       }
