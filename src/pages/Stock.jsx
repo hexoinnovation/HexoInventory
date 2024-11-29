@@ -32,7 +32,7 @@ const Stocks = () => {
 
       try {
         const userDocRef = doc(db, "admins", user.email);
-        const productsRef = collection(userDocRef, "Stocks");
+        const productsRef = collection(userDocRef, "Purchase");
         const productSnapshot = await getDocs(productsRef);
 
         const productList = productSnapshot.docs.map((doc) => ({

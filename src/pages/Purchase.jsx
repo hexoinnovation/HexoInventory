@@ -126,34 +126,52 @@ const Purchase = () => {
   };
 
   const handleRemoveProduct = async (phone) => {
-    try {
-      const userDocRef = doc(db, "admins", user.email);
-      const productRef = collection(userDocRef, "Purchase");
+  try {
+    const userDocRef = doc(db, "admins", user.email);
+    const productRef = collection(userDocRef, "Purchase");
+
+    // Show confirmation dialog before deletion
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'You won’t be able to undo this action!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+    });
+
+    if (result.isConfirmed) {
+      // Perform the delete operation
       await deleteDoc(doc(productRef, phone));
-  
+
+      // Update the UI
       setProducts((prev) => prev.filter((product) => product.phone !== phone));
-  
-      // Success SweetAlert
-      Swal.fire({
+
+      // Show success alert
+      await Swal.fire({
         icon: 'success',
         title: 'Product Removed!',
         text: 'Product has been removed successfully.',
         confirmButtonText: 'Okay',
         confirmButtonColor: '#3085d6',
       });
-    } catch (error) {
-      console.error("Error removing product: ", error);
-  
-      // Error SweetAlert
-      Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: 'There was an issue removing the product.',
-        confirmButtonText: 'Try Again',
-        confirmButtonColor: '#d33',
-      });
     }
-  };
+  } catch (error) {
+    console.error("Error removing product: ", error);
+
+    // Show error alert
+    Swal.fire({
+      icon: 'error',
+      title: 'Error!',
+      text: 'There was an issue removing the product.',
+      confirmButtonText: 'Try Again',
+      confirmButtonColor: '#d33',
+    });
+  }
+};
+
   
   // Filter products based on search query
   const filteredProducts = products.filter((product) =>
@@ -224,7 +242,7 @@ const Purchase = () => {
               <th className="py-3 px-4 text-left ">Categories</th>
               <th className="py-3 px-4 text-left ">Product Name</th>
               <th className="py-3 px-4 text-left ">Existing Stock</th>
-              <th className="py-3 px-4 text-left ">Price</th>
+              <th className="py-3 px-4 text-left ">Unit Price</th>
               {/* <th className="py-3 px-4">Sales</th>
               <th className="py-3 px-4">Stock</th> */}
               <th className="py-3 px-4">Actions</th>
