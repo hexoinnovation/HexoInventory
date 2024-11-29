@@ -1,5 +1,4 @@
 /** @type {import('tailwindcss').Config} */
-
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   darkMode: "class", // Retain the dark mode setting from the first config
@@ -65,8 +64,6 @@ export default {
       },
     },
   },
-  plugins: [],
-  // Custom config for print
   plugins: [
     function ({ addUtilities }) {
       addUtilities({
@@ -75,17 +72,33 @@ export default {
             marginTop: "0",
           },
           ".sidebar": {
-            display: " none !important",
+            display: "none !important", // Hide sidebar during print
           },
           ".content": {
-            marginTop: "0 !important",
+            marginTop: "0 !important", // Adjust content margins for print
           },
-          ".hidden-print": {
-            display: "none",
+          ".print\\:hidden": {
+            display: "none", // Hide elements with the class 'print:hidden' during printing
+          },
+          ".print\\:right-align": {
+            display: "flex",
+            justifyContent: "flex-end",  // Align content to the right
+            textAlign: "right",  // Right-align the text
+            width: "100%",  // Make sure the container takes up full width
+            marginRight: "20px",  // Optional margin for spacing
+            paddingRight: "10px",  // Optional padding for better spacing
+          },
+           /* Right-align Signature during print */
+           ".signature-right-align": {
+            display: "flex",
+            justifyContent: "flex-end",  // Align content to the right
+            textAlign: "right",  // Ensure text is right-aligned
+            width: "120",  // Ensure container takes full width
+            marginRight: "20px",  // Optional margin for spacing
           },
           "@page": {
             margin: "0",
-            size: "auto",
+            size: "auto",  // Ensure content fits on the page
           },
         },
       });

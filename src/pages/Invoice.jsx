@@ -1,6 +1,7 @@
 import { faCircleXmark, faPrint } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { getAuth } from "firebase/auth";
+import Swal from "sweetalert2";
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -269,9 +270,51 @@ const Invoice = () => {
     setIsPopupOpen(false); // Close the popup
   };
 
-  const handlePrint = () => {
-    window.print(); // Open the print dialog
-  };
+    // Print Handler
+    const handlePrint = () => {
+      const printContent = document.getElementById("invoiceContainers"); // Get the invoice container
+      const printWindow = window.open("", "", "height=700, width=1000"); // Open a new window
+  
+      // Add styles for print
+      printWindow.document.write("<html><head><title>Print Invoice</title>");
+      printWindow.document.write("<style>");
+      printWindow.document.write(`
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1, h3 { margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        td, th { padding: 8px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #f0f0f0; }
+        p { margin: 5px 0; }
+        .hidden-print { display: none; } /* Hide elements with this class during print */
+        @media print {
+          body {
+            margin-top: 0;
+          }
+          .sidebar {
+            display: none !important; /* Hide sidebar during print */
+          }
+          .content {
+            margin-top: 0 !important; /* Adjust content margins for print */
+          }
+          .print\\:hidden {
+            display: none; /* Hide elements with class 'print:hidden' */
+          }
+  .bill-to-right-align {
+    display: flex;
+    justify-content: flex-end;
+    text-align: right;
+    width: 100%;
+  }
+        }
+      `);
+      printWindow.document.write("</style></head><body>");
+      printWindow.document.write(printContent.outerHTML); // Clone and write the invoice content
+      printWindow.document.write("</body></html>");
+  
+      printWindow.document.close(); // Close the document for rendering
+      printWindow.print(); // Open the print dialog
+    };
+  
   const [isOpen, setIsOpen] = useState(false);
 
   const closeModal = () => setIsOpen(false);
@@ -625,30 +668,45 @@ const Invoice = () => {
     setPaymentStatus(isLightMode ? "Unpaid" : "Paid");
   };
 
-  // Handle submission to Firebase
+  const [errorMessage, setErrorMessage] = useState(""); // Tracks the error message
   const handleActionConfirm = async () => {
+    // Check if a status has been selected
+    if (isLightMode === null) {
+      setErrorMessage("Please select a status (Paid or Unpaid) before submitting.");
+      return;
+    } else {
+      setErrorMessage(""); // Clear the error message if a status is selected
+    }
+  
+    const paymentStatus = isLightMode ? "Paid" : "Unpaid"; // Set the payment status based on isLightMode
+  
+    // If paymentStatus is not set, show alert
     if (!paymentStatus) {
-      alert("Please select a status (Paid or Unpaid) before submitting.");
+      Swal.fire({
+        icon: 'warning',
+        title: 'Please select a status',
+        text: 'Choose either Paid or Unpaid before submitting.',
+      });
       return;
     }
-
+  
     try {
       // Reference the user's document (admins collection)
       const userDocRef = doc(db, "admins", user.email);
-
+  
       // Reference the specific document in the "Invoices" collection
-      const invoicesDocRef = doc(userDocRef, "Invoices", "paid unpaid"); // "default" can be replaced with your invoice identifier
-
+      const invoicesDocRef = doc(userDocRef, "Invoices", "paid unpaid");
+  
       // Reference the subcollection ("paid" or "unpaid") under the Invoices document
       const subCollectionName = paymentStatus === "Paid" ? "paid" : "unpaid";
-
+  
       // Use invoiceNumber as the document ID in the subcollection
       const subCollectionRef = doc(
         invoicesDocRef,
         subCollectionName,
         invoiceNumber.toString()
       );
-
+  
       // Add or update the document with the payment status and invoice details
       await setDoc(subCollectionRef, {
         paymentStatus,
@@ -669,29 +727,37 @@ const Invoice = () => {
         createdAt: new Date(),
         // Add any other invoice details you need to store here
       });
-
-      alert(
-        `Status "${paymentStatus}" for Invoice No: ${invoiceNumber} has been saved successfully!`
-      );
+  
+      // Success alert using SweetAlert2
+      Swal.fire({
+        icon: 'success',
+        title: 'Status Saved!',
+        text: `Status "${paymentStatus}" for Invoice No: ${invoiceNumber} has been saved successfully!`,
+      });
     } catch (error) {
       console.error("Error saving status to Firestore:", error);
-      alert("Error saving status. Please try again.");
+      // Error alert using SweetAlert2
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: 'There was an error saving the status. Please try again.',
+      });
     }
   };
-
+  
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-r from-indigo-200 via-blue-100 to-green-100 p-8">
-      <div className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8 border-2 border-indigo-600">
+      <div  id="invoiceContainers"  className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8 border-2 border-indigo-600">
         <h1 className="text-4xl font-bold text-center text-indigo-700 mb-6">
           Invoice Generator
         </h1>
         {/* Invoice Header */}
         <div className="flex flex-col sm:flex-row justify-between mb-6">
-          <div className="w-full sm:w-1/3 mb-4 sm:mb-0">
-            <h2 className="text-xl font-semibold text-gray-800">
+          <div  className="w-full sm:w-1/3 mb-4 sm:mb-0">
+            <h2  className="text-xl font-semibold text-gray-800">
               Invoice Details
             </h2>
-            <div className="text-blue-600">Invoice No: {invoiceNumber}</div>
+            <div  className="text-blue-600">Invoice No: {invoiceNumber}</div>
             <div className="text-blue-600">Date: {invoiceDate}</div>
           </div>
 
@@ -703,12 +769,12 @@ const Invoice = () => {
                 <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center">
                   Bill From
                   <button
-                    className="ml-3 text-white bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
-                    onClick={() => setShowModal(true)}
-                    aria-label="Add"
-                  >
-                    <span className="text-3xl font-bold">+</span>
-                  </button>
+  className="ml-3 text-white bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg print:hidden"
+  onClick={() => setShowModal(true)}
+  aria-label="Add"
+>
+  <span className="print:hidden text-3xl font-bold">+</span>
+</button>
                 </h2>
 
                 {/* Add Business Modal */}
@@ -967,9 +1033,9 @@ const Invoice = () => {
                 <select
                   value={billFrom.id || ""}
                   onChange={handleBusinessChange}
-                  className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className=" print:hidden w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="">Select Business</option>
+                  <option value="#">Select Business</option>
                   {businessList.map((business) => (
                     <option key={business.id} value={business.id}>
                       {business.businessName}
@@ -977,54 +1043,71 @@ const Invoice = () => {
                   ))}
                 </select>
                 {billFrom.registrationNumber && (
-                  <div className="mt-4 text-gray-600">
-                    <div className=" text-gray-900">
-                      <strong>Comapany:</strong> {billFrom.businessName}
-                    </div>
-                    <div>
-                      <strong>Registration Number:</strong>{" "}
-                      {billFrom.registrationNumber}
-                    </div>
-                    <div>
-                      <strong>Address:</strong> {billFrom.address}
-                    </div>
-                    <div>
-                      <strong>Contact:</strong> {billFrom.contactNumber}
-                    </div>
-                    <div>
-                      <strong>Email:</strong> {billFrom.email}
-                    </div>
-                    <div>
-                      <strong>Website:</strong> {billFrom.website}
-                    </div>
-                    <div>
-                      <strong>GST Number:</strong> {billFrom.gstNumber}
-                    </div>
-                    <div>
-                      <strong>Aadhar:</strong> {billFrom.aadhaar}
-                    </div>
-                    <div>
-                      <strong>PAN Number:</strong> {billFrom.panno}
-                    </div>
-                    <div>
-                      <strong>State:</strong> {billFrom.state}
-                    </div>
-                  </div>
-                )}
+  <div className="mt-4 text-gray-600">
+    <div className="print\\:right-align">
+      <div className="flex flex-wrap">
+        <div className="w-full sm:w-1/2">
+          <div className="mb-4">
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Company:</span>
+              <span className="w-2/3">{billFrom.businessName}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Reg Number:</span>
+              <span className="w-2/3">{billFrom.registrationNumber}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Address:</span>
+              <span className="w-2/3">{billFrom.address}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Contact:</span>
+              <span className="w-2/3">{billFrom.contactNumber}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Email:</span>
+              <span className="w-2/3">{billFrom.email}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Website:</span>
+              <span className="w-2/3">{billFrom.website}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">GST Number:</span>
+              <span className="w-2/3">{billFrom.gstNumber}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Aadhar:</span>
+              <span className="w-2/3">{billFrom.aadhaar}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">PAN Number:</span>
+              <span className="w-2/3">{billFrom.panno}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">State:</span>
+              <span className="w-2/3">{billFrom.state}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
               </div>
             </div>
 
             {/* Bill To */}
             <div className="w-full sm:w-1/2">
               <div className="flex flex-col mb-4">
-                <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center">
-                  Bill To
+              <h2 className="print\\:right-align text-xl font-semibold text-gray-800 mb-2 flex items-center">
+              Bill To
                   <button
                     onClick={() => setopenModal(true)}
-                    className="ml-3 text-white bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
+                    className=" print:hidden ml-3 text-white bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
                     aria-label="Add Customer"
                   >
-                    <span className="text-3xl font-bold">+</span>
+                    <span className=" print:hidden text-3xl font-bold">+</span>
                   </button>
                 </h2>
                 {openModal && (
@@ -1077,7 +1160,7 @@ const Invoice = () => {
                 <select
                   value={billTo.id || ""}
                   onChange={handleCustomerChange}
-                  className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className=" print:hidden w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">Select Customer</option>
                   {customerList.map((customer) => (
@@ -1087,41 +1170,60 @@ const Invoice = () => {
                   ))}
                 </select>
 
-                {/* Displaying selected customer's details */}
-                {billTo.name && (
-                  <div className="mt-4 text-gray-600">
-                    <div>
-                      <strong>Name:</strong> {billTo.name}
-                    </div>
-                    <div>
-                      <strong>Email:</strong> {billTo.email}
-                    </div>
-                    <div>
-                      <strong>Phone:</strong> {billTo.phone}
-                    </div>
-                    <div>
-                      <strong>Address:</strong> {billTo.address}
-                    </div>
-                    <div>
-                      <strong>City:</strong> {billTo.city}
-                    </div>
-                    <div>
-                      <strong>State:</strong> {billTo.state}
-                    </div>
-                    <div>
-                      <strong>Zip Code:</strong> {billTo.zip}
-                    </div>
-                    <div>
-                      <strong>GST No:</strong> {billTo.gst}
-                    </div>
-                    <div>
-                      <strong>Aadhaar No:</strong> {billTo.aadhaar}
-                    </div>
-                    <div>
-                      <strong>PAN No:</strong> {billTo.panno}
-                    </div>
-                  </div>
-                )}
+              {/* Displaying selected customer's details */}
+{billTo.name && (
+  <div className="mt-4 text-gray-600">
+    <div className="print\\:right-align">
+      <div className="flex flex-wrap">
+        <div className="w-full sm:w-1/2">
+          <div className="mb-4">
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Name:</span>
+              <span className="w-2/3">{billTo.name}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Email:</span>
+              <span className="w-2/3">{billTo.email}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Phone:</span>
+              <span className="w-2/3">{billTo.phone}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Address:</span>
+              <span className="w-2/3">{billTo.address}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">City:</span>
+              <span className="w-2/3">{billTo.city}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">State:</span>
+              <span className="w-2/3">{billTo.state}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Zip Code:</span>
+              <span className="w-2/3">{billTo.zip}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">GST No:</span>
+              <span className="w-2/3">{billTo.gst}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">Aadhaar No:</span>
+              <span className="w-2/3">{billTo.aadhaar}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="font-bold w-1/3">PAN No:</span>
+              <span className="w-2/3">{billTo.panno}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
               </div>
             </div>
           </div>
@@ -1211,16 +1313,16 @@ const Invoice = () => {
                     />
                   </td>
                   {/* Total Field */}
-                  <td className="border px-4 py-2">
+                  <td className=" border px-4 py-2">
                     {typeof product.total === "number"
                       ? product.total.toFixed(2)
                       : "0.00"}
                   </td>
                   {/* Remove Button */}
-                  <td className="border px-4 py-2">
+                  <td className=" print:hidden border px-4 py-2">
                     <button
                       onClick={() => handleRemoveProduct(index)}
-                      className="bg-red-500 text-white px-4 py-2 rounded-md"
+                      className=" print:hidden bg-red-500 text-white px-4 py-2 rounded-md"
                     >
                       Remove
                     </button>
@@ -1235,13 +1337,13 @@ const Invoice = () => {
         <div className="flex justify-between items-center mb-6">
           <button
             onClick={handleAddProduct}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md"
+            className=" print:hidden bg-blue-600 text-white px-6 py-2 rounded-md"
           >
             Add Product
           </button>
         </div>
 
-        <div className="text-right">
+        <div className="text-right print\\:right-align ">
           {/* Subtotal (Always Visible) */}
           <div className="text-xl font-semibold text-blue-600 mb-2">
             Subtotal: ₹{calculateSubtotal().toFixed(2)}
@@ -1285,14 +1387,14 @@ const Invoice = () => {
         <div className="flex justify-start items-center space-x-4 mb-6">
           <button
             onClick={handleOpenModal}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md"
+            className=" print:hidden bg-blue-600 text-white px-6 py-2 rounded-md"
           >
             Shipping & Payment Method
           </button>
 
           <button
             onClick={() => setIsCategoryModalOpen(true)}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md"
+            className="print:hidden bg-blue-600 text-white px-6 py-2 rounded-md"
           >
             Select Tax Values
           </button>
@@ -1370,7 +1472,7 @@ const Invoice = () => {
         {/* Display the modal */}
         {isCategoryModalOpen && (
           <div
-            className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
+            className="print\\:right-align fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
             onClick={handleCloseCategoryModal}
           >
             <div
@@ -1472,7 +1574,7 @@ const Invoice = () => {
         {/* Notes and Signature Section */}
         <div className="flex justify-between space-x-6 mb-4">
           {/* Notes */}
-          <div className="w-full sm:w-1/2">
+          <div className="mt-6 w-full sm:w-1/2">
             <label className="block text-xl font-semibold text-gray-800 mb-2">
               Notes
             </label>
@@ -1483,19 +1585,17 @@ const Invoice = () => {
               className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
-
-          {/* Signature */}
-          <div className="w-full sm:w-1/2">
-            <label className="block text-xl font-semibold text-gray-800 mb-2">
-              Signature
-            </label>
-            <textarea
-              value={signature}
-              onChange={(e) => setSignature(e.target.value)}
-              rows="3"
-              className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
+          <div className="mt-6 signature-right-align w-full sm:w-1/2">
+  <label className="signature-right-align block text-xl font-semibold text-gray-800 mb-2">
+    Signature
+  </label>
+  <textarea
+    value={signature}
+    onChange={(e) => setSignature(e.target.value)}
+    rows="3"
+    className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+  />
+</div>
         </div>
         <div>
           {/* Submit Button */}
@@ -1503,7 +1603,7 @@ const Invoice = () => {
             {/* Print Page Button aligned to the left */}
             <button
               onClick={handlePrint}
-              className="bg-blue-600 text-white px-8 py-3 text-lg font-semibold rounded-md mb-4 flex items-center"
+              className="bg-blue-600 text-white px-8 py-3 text-lg font-semibold rounded-md mb-4 flex items-center print:hidden "
             >
               <FontAwesomeIcon icon={faPrint} className="mr-2" />{" "}
               {/* Print icon with margin */}
@@ -1513,76 +1613,76 @@ const Invoice = () => {
             {/* Submit Button aligned to the right */}
             <button
               onClick={handleOpenPopup}
-              className="bg-blue-600 text-white px-8 py-4 text-xl font-semibold rounded-md"
+              className="print:hidden bg-blue-600 text-white px-8 py-4 text-xl font-semibold rounded-md"
             >
               Submit
             </button>
           </div>
 
-          {/* Popup Modal */}
-          {isPopupOpen && (
-            <div
-              className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
+           {/* Popup Modal */}
+      {isPopupOpen && (
+        <div
+          className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
+          onClick={handleDismissPopup}
+        >
+          <div
+            className="bg-white p-8 rounded-md shadow-lg w-1/3 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Icon */}
+            <button
               onClick={handleDismissPopup}
+              className="absolute top-2 right-4 text-2xl text-gray-600 hover:text-gray-900"
             >
-              <div
-                className="bg-white p-8 rounded-md shadow-lg w-1/3 relative" // 'relative' to position the close button
-                onClick={(e) => e.stopPropagation()} // Prevent modal closing if content is clicked
+              <FontAwesomeIcon icon={faCircleXmark} />
+            </button>
+
+            <h2 className="text-2xl font-semibold text-center mb-4 text-red-600">
+              Do you want to Save invoice?
+            </h2>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col items-center space-y-4">
+              {/* Toggle Button */}
+              <button
+                onClick={handleToggleMode}
+                className="relative w-80 h-12 rounded-md overflow-hidden border-2 border-gray-300 shadow-lg"
               >
-                {/* Close Icon */}
-                <button
-                  onClick={handleDismissPopup}
-                  className="absolute top-2 right-4 text-2xl text-gray-600 hover:text-gray-900"
+                {/* Paid Section */}
+                <div
+                  className={`absolute inset-y-0 left-0 w-1/2 flex items-center justify-center ${
+                    isLightMode ? "bg-green-600 text-black" : "bg-gray-200 text-gray-500"
+                  }`}
                 >
-                  <FontAwesomeIcon icon={faCircleXmark} />{" "}
-                  {/* FontAwesome Close Icon */}
-                </button>
-
-                <h2 className="text-2xl font-semibold text-center mb-4 text-red-600">
-                  Do you want to Save invoice?
-                </h2>
-
-                {/* Action Buttons */}
-                <div className="flex flex-col items-center space-y-4">
-                  {/* Toggle Button */}
-                  <button
-                    onClick={handleToggleMode}
-                    className="relative w-80 h-12 rounded-md overflow-hidden border-2 border-gray-300 shadow-lg"
-                  >
-                    {/* Paid Section */}
-                    <div
-                      className={`absolute inset-y-0 left-0 w-1/2 flex items-center justify-center ${
-                        isLightMode
-                          ? "bg-green-600 text-black"
-                          : "bg-gray-200 text-gray-500"
-                      }`}
-                    >
-                      Paid
-                    </div>
-
-                    {/* Unpaid Section */}
-                    <div
-                      className={`absolute inset-y-0 right-0 w-1/2 flex items-center justify-center ${
-                        isLightMode
-                          ? "bg-gray-200 text-gray-500"
-                          : "bg-red-600 text-white"
-                      }`}
-                    >
-                      Unpaid
-                    </div>
-                  </button>
-
-                  {/* Submit Button */}
-                  <button
-                    onClick={handleActionConfirm}
-                    className="bg-blue-400 text-white px-8 py-3 text-lg font-semibold rounded-md w-80"
-                  >
-                    Submit
-                  </button>
+                  Paid
                 </div>
-              </div>
+
+                {/* Unpaid Section */}
+                <div
+                  className={`absolute inset-y-0 right-0 w-1/2 flex items-center justify-center ${
+                    !isLightMode ? "bg-red-600 text-white" : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  Unpaid
+                </div>
+              </button>
+
+              {/* Error Message */}
+              {errorMessage && (
+                <div className="text-red-500 text-sm mt-2">{errorMessage}</div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                onClick={handleActionConfirm}
+                className="bg-blue-400 text-white px-8 py-3 text-lg font-semibold rounded-md w-80"
+              >
+                Submit
+              </button>
             </div>
-          )}
+          </div>
+        </div>
+      )}
         </div>
         {/* Invoice Footer */}
       </div>
