@@ -4,6 +4,7 @@ import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { db, auth } from "../config/firebase"; // Assuming Firebase setup is correct
 import { collection, query, getDocs, setDoc, doc ,getDoc,updateDoc,serverTimestamp } from "firebase/firestore";
 import { format } from "date-fns"; // Install date-fns for date formatting
+import Swal from 'sweetalert2';
 const Attendance = () => {
   const [employees, setEmployees] = useState([]);
   const [filterStatus, setFilterStatus] = useState("All");
@@ -39,33 +40,45 @@ const Attendance = () => {
     fetchAttendanceData(formattedDate);
   }, []);
 
-  // Toggle the employee status (Present / Absent)
   const handleStatusToggle = async (employeeId, currentStatus) => {
     const updatedEmployees = employees.map((employee) =>
       employee.id === employeeId
         ? { ...employee, status: currentStatus === "Present" ? "Absent" : "Present" }
         : employee
     );
+  
     setEmployees(updatedEmployees);
     setFilteredEmployees(updatedEmployees);
-
+  
     // Update Firestore with updated data
     try {
       const currentUser = auth.currentUser;
       if (currentUser) {
         const attendanceRef = doc(db, "admins", currentUser.email, "attendance", currentDate);
-        const dataToStore = {};
-        updatedEmployees.forEach((employee) => {
-          dataToStore[employee.id] = employee;
-        });
-
-        await setDoc(attendanceRef, dataToStore, { merge: true });
+        
+        // Fetch existing attendance data first
+        const docSnapshot = await getDoc(attendanceRef);
+        if (docSnapshot.exists()) {
+          const data = docSnapshot.data();
+  
+          // If data exists, only update the status of the specific employee
+          if (data && data.employees) {
+            const updatedData = { ...data.employees };
+  
+            // Update the status of the specific employee
+            updatedData[employeeId] = updatedEmployees.find(emp => emp.id === employeeId);
+  
+            // Save the updated employee status back to Firestore
+            await setDoc(attendanceRef, { employees: updatedData }, { merge: true });
+          }
+        } else {
+          console.log("No attendance data found for this date");
+        }
       }
     } catch (error) {
       console.error("Error updating attendance:", error);
     }
   };
-
   const fetchAttendanceData = async (date) => {
     try {
       const currentUser = auth.currentUser;
@@ -78,6 +91,7 @@ const Attendance = () => {
         if (docSnapshot.exists()) {
           const data = docSnapshot.data();
           console.log('Attendance data fetched: ', data);
+  
           if (data && data.employees) {
             setFilteredEmployees(data.employees); // Set employees if present
           } else {
@@ -93,37 +107,67 @@ const Attendance = () => {
       console.error("Error fetching attendance data: ", error);
     }
   };
+  
   const saveAttendanceData = async () => {
     const currentUser = auth.currentUser;
     const currentDate = new Date();
     const formattedDate = `${currentDate.getDate()}.${currentDate.getMonth() + 1}.${currentDate.getFullYear()}`;
 
     try {
-      // Prepare the data to be saved
-      const attendanceData = employees.map(employee => ({
-        employeeId: employee.id,
-        employeeName: employee.name,
-        dob: employee.dob,
-        contact: employee.contact,
-        email: employee.email,
-        status: employee.status,
-        photo: employee.photo,
-       
-      }));
+        // Prepare the data to be saved
+        const attendanceData = employees.map(employee => {
+            // Check for missing fields and handle them
+            if (!employee.id || !employee.name || !employee.dob || !employee.contact || !employee.email) {
+                console.error('Invalid employee data:', employee);
+                return null;  // Skip invalid employees
+            }
 
-      // Create a reference to the 'attendance' subcollection under the user's email in 'admins' collection
-      const attendanceRef = collection(db, "admins", currentUser.email, "attendance");
+            return {
+                employeeId: employee.id,
+                employeeName: employee.name,
+                dob: employee.dob,
+                contact: employee.contact,
+                email: employee.email,
+                status: employee.status || "Absent",  // Default to "Absent" if undefined
+                photo: employee.photo || "",  // Default to an empty string if undefined
+            };
+        }).filter(Boolean);  // Remove any invalid entries
 
-      // Save the attendance data for the current date
-      await setDoc(doc(attendanceRef, formattedDate), {
-        employees: attendanceData,
-      });
+        // If there's invalid data, don't proceed
+        if (attendanceData.some(data => data === null)) {
+            console.error('Some employees have invalid data.');
+            return;
+        }
 
-      console.log("Attendance data saved successfully!");
+        // Create a reference to the 'attendance' subcollection under the user's email in 'admins' collection
+        const attendanceRef = collection(db, "admins", currentUser.email, "attendance");
+
+        // Save the attendance data for the current date
+        await setDoc(doc(attendanceRef, formattedDate), {
+            employees: attendanceData,
+        });
+
+        // Success message
+        Swal.fire({
+            icon: 'success',
+            title: 'Attendance Saved!',
+            text: 'Your attendance data has been saved successfully.',
+            confirmButtonText: 'OK',
+        });
+
+        console.log("Attendance data saved successfully!");
     } catch (error) {
-      console.error("Error saving attendance data: ", error);
+        // Error handling
+        Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: `Error saving attendance data: ${error.message}`,
+            confirmButtonText: 'Try Again',
+        });
+        console.error("Error saving attendance data: ", error);
     }
-  };
+};
+
   const [currentDate, setCurrentDate] = useState("");
   
   const [statusFilter, setStatusFilter] = useState("All");
