@@ -17,6 +17,10 @@ const ViewAllInvoice = () => {
   const [user] = useAuthState(auth);
   const [invoiceData, setInvoiceData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [paidCount, setPaidCount] = useState(0);
+  const [unpaidCount, setUnpaidCount] = useState(0);
+  const [totalAmount, setTotalAmount] = useState(0); // New state for total amount
+
 
   // Fetch invoices from Firestore
   const fetchInvoices = async () => {
@@ -37,6 +41,22 @@ const ViewAllInvoice = () => {
       console.log("Fetched Invoices:", invoices);
       setInvoiceData(invoices);
       setLoading(false);
+
+// Count Paid and Unpaid invoices
+const paid = invoices.filter((invoice) => invoice.paymentStatus === "Paid").length;
+const unpaid = invoices.filter((invoice) => invoice.paymentStatus === "Unpaid").length;
+
+setPaidCount(paid);
+setUnpaidCount(unpaid);
+
+// Calculate the total amount
+const total = invoices.reduce((acc, invoice) => {
+  const invoiceTotal = (invoice.products || []).reduce((productAcc, product) => productAcc + (product.total || 0), 0);
+  return acc + invoiceTotal;
+}, 0);
+
+setTotalAmount(total); // Update total amount
+
     } catch (error) {
       console.error("Error fetching invoices:", error);
       Swal.fire({
@@ -121,6 +141,7 @@ const handleDeleteInvoice = async (invoiceNumber) => {
 
 const handleDownloadInvoice = async (invoiceNumber) => {
   try {
+    // Reference to the invoice document in Firestore
     const invoiceDocRef = doc(
       db,
       "admins",
@@ -128,6 +149,8 @@ const handleDownloadInvoice = async (invoiceNumber) => {
       "Invoices",
       invoiceNumber.toString()
     );
+
+    // Fetch the document
     const invoiceDocSnap = await getDoc(invoiceDocRef);
 
     if (invoiceDocSnap.exists()) {
@@ -136,18 +159,72 @@ const handleDownloadInvoice = async (invoiceNumber) => {
 
       // Create a new PDF document
       const pdfDoc = new jsPDF();
-      pdfDoc.text(`Invoice ID: ${invoiceData.invoiceNumber}`, 10, 10);
-      pdfDoc.text(`Customer Name: ${invoiceData.billTo?.name}`, 10, 20);
-      pdfDoc.text(`Amount: ₹${invoiceData.total}`, 10, 30);
-      pdfDoc.text(
-        `Invoice Date: ${new Date(invoiceData.invoiceDate).toLocaleDateString()}`,
-        10,
-        40
-      );
-      pdfDoc.text(`Payment Status: ${invoiceData.paymentStatus}`, 10, 50);
 
-      // Save the PDF
-      pdfDoc.save(`Invoice_${invoiceData.invoiceNumber}.pdf`);
+      // Add the main details to the PDF
+      pdfDoc.text(`Invoice Date: ${new Date(invoiceData.invoiceDate).toLocaleDateString()}`, 10, 60);
+      pdfDoc.text(`Invoice Number: ${invoiceData.invoiceNumber}`, 10, 10);
+      pdfDoc.text(`Customer Name: ${invoiceData.billTo?.name}`, 10, 20);
+      pdfDoc.text(`Email: ${invoiceData.billTo?.email}`, 10, 30);
+      pdfDoc.text(`Phone: ${invoiceData.billTo?.phone}`, 10, 40);
+      pdfDoc.text(`Address: ${invoiceData.billTo?.address}`, 10, 50);
+      pdfDoc.text(`City: ${invoiceData.billTo?.city}`, 10, 60);
+      pdfDoc.text(`State: ${invoiceData.billTo?.state}`, 10, 70);
+      pdfDoc.text(`ZipCode: ${invoiceData.billTo?.zipCode}`, 10, 80);
+      pdfDoc.text(`GstNumber: ${invoiceData.billTo?.gstNumber}`, 10, 90);
+      pdfDoc.text(`Aadhaar: ${invoiceData.billTo?.aadhaar}`, 10, 100);
+      pdfDoc.text(`Panno: ${invoiceData.billTo?.panno}`, 10, 110);
+      pdfDoc.text(`Website: ${invoiceData.billTo?.website}`, 10, 120);
+      pdfDoc.text(`BillFrom: ${invoiceData.billFrom}`, 10, 130);
+      pdfDoc.text(`Payment Status: ${invoiceData.paymentStatus}`, 10, 140);
+      pdfDoc.text(`Shipping Method: ${invoiceData.shippingMethod}`, 10, 150);
+      pdfDoc.text(`Payment Method: ${invoiceData.paymentMethod}`, 10, 160);
+
+      // Add tax details to the PDF
+      pdfDoc.text(`CGST: ₹${invoiceData.taxDetails?.CGST || 0}`, 10, 170);
+      pdfDoc.text(`SGST: ₹${invoiceData.taxDetails?.SGST || 0}`, 10, 180);
+      pdfDoc.text(`IGST: ₹${invoiceData.taxDetails?.IGST || 0}`, 10, 190);
+
+      // Add subtotal and total to the PDF
+      pdfDoc.text(`Subtotal: ₹${invoiceData.subtotal}`, 10, 200);
+      const totalAmount = Number(invoiceData.total);
+      if (!isNaN(totalAmount)) {
+        pdfDoc.text(`Total Amount: ₹${totalAmount.toFixed(2)}`, 10, 210);
+      } else {
+        console.error("Invalid total amount:", invoiceData.total);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Invalid total amount in invoice.",
+        });
+        return;
+      }
+
+      // Add products table if applicable
+      const products = invoiceData.products || [];
+      if (products.length > 0) {
+        let yOffset = 220; // Start position for the products table
+
+        // Table Header
+        pdfDoc.text("Products", 10, yOffset);
+        yOffset += 10;
+        pdfDoc.text("Name", 10, yOffset);
+        pdfDoc.text("Quantity", 70, yOffset);
+        pdfDoc.text("Rate", 100, yOffset);
+        pdfDoc.text("Total", 140, yOffset);
+        yOffset += 10;
+
+        // Table Content
+        products.forEach((product, index) => {
+          pdfDoc.text(`${index + 1}. ${product.name}`, 10, yOffset);
+          pdfDoc.text(`${product.quantity}`, 70, yOffset);
+          pdfDoc.text(`₹${Number(product.rate).toFixed(2)}`, 100, yOffset);
+          pdfDoc.text(`₹${Number(product.total).toFixed(2)}`, 140, yOffset);
+          yOffset += 10;
+        });
+      }
+
+      // Save the PDF with the invoice number
+      pdfDoc.save(`Invoice_${invoiceNumber}.pdf`);
     } else {
       Swal.fire({
         icon: "error",
@@ -165,9 +242,32 @@ const handleDownloadInvoice = async (invoiceNumber) => {
   }
 };
 
+
+
   return (
     <div className="container mx-auto p-6 mt-5 bg-white rounded-lg shadow-lg">
-      <h1 className="text-3xl font-bold mb-6">View All Invoices</h1>
+      <h1 className="text-5xl font-extrabold text-pink-700 mb-6 flex items-center">View All Invoices</h1>
+
+{/* Invoice counts */}
+<div className="flex justify-between mb-4">
+  <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center border-2 border-indigo-300 w-full mx-2">
+    <h3 className="text-xl font-semibold text-indigo-600">Paid Count</h3>
+    <p className="text-4xl font-bold text-yellow-500">{paidCount}</p>
+  </div>
+
+  <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center border-2 border-indigo-300 w-full mx-2">
+    <h3 className="text-xl font-semibold text-indigo-600">Unpaid Count </h3>
+    <p className="text-4xl font-bold text-yellow-500">{unpaidCount}</p>
+  </div>
+
+{/* Total Amount */}
+<div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center border-2 border-indigo-300 w-full mx-2">
+    <h3 className="text-xl font-semibold text-indigo-600" >Total Amount</h3>
+    <p className="text-4xl font-bold text-yellow-500" >₹{totalAmount.toFixed(2)}</p>
+  </div>
+
+</div>
+
       {loading ? (
         <div>Loading...</div>
       ) : (
