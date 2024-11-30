@@ -26,9 +26,11 @@ import EmployeeDetails from "./pages/EmployeeDetails";
 import Invoice from "./pages/Invoice";
 import Purchase from "./pages/Purchase";
 import Sales from "./pages/Sales";
-import Order from "./pages/Settings";
+import Orders from "./pages/orders";
 import Stock from "./pages/Stock";
 import View from "./pages/viewAllInvoice";
+import Manageproducts from "./pages/manageproducts";
+import Managecategories from "./pages/managecategories";
 
 import Notifications from "./Components/Notifications"; // Example page component
 import { AuthProvider } from "./authContext.jsx";
@@ -152,13 +154,25 @@ const App = () => {
                 element={isAuthenticated ? <Shop /> : <Navigate to="/" />}
               />
               <Route
-                path="/order"
-                element={isAuthenticated ? <Order /> : <Navigate to="/" />}
+                path="/orders"
+                element={isAuthenticated ? <Orders /> : <Navigate to="/" />}
               />
               <Route
                 path="/employee"
                 element={
                   isAuthenticated ? <EmployeeDetails /> : <Navigate to="/" />
+                }
+              />
+              <Route
+                path="/manageproducts"
+                element={
+                  isAuthenticated ? <Manageproducts /> : <Navigate to="/" />
+                }
+              />
+              <Route
+                path="/managecategories"
+                element={
+                  isAuthenticated ? <Managecategories /> : <Navigate to="/" />
                 }
               />
               <Route

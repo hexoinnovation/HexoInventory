@@ -160,7 +160,7 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
             </li>
             <li className={activeLink === "manage-products" ? "active" : ""}>
               <Link
-                to="/manage-products"
+                to="/manageproducts"
                 onClick={() => handleLinkClick("manage-products")}
               >
                 <i className="bx bxs-box"></i>
@@ -169,7 +169,7 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
             </li>
             <li className={activeLink === "manage-categories" ? "active" : ""}>
               <Link
-                to="/manage-categories"
+                to="/managecategories"
                 onClick={() => handleLinkClick("manage-categories")}
               >
                 <i className="bx bxs-category"></i>
