@@ -31,7 +31,7 @@ import Stock from "./pages/Stock";
 import View from "./pages/viewAllInvoice";
 import Manageproducts from "./pages/manageproducts";
 import Managecategories from "./pages/managecategories";
-
+import Ecomdashboard from "./pages/ecomdashboard";
 import Notifications from "./Components/Notifications"; // Example page component
 import { AuthProvider } from "./authContext.jsx";
 
@@ -163,7 +163,12 @@ const App = () => {
                   isAuthenticated ? <EmployeeDetails /> : <Navigate to="/" />
                 }
               />
-
+              <Route
+                path="/ecomdashboard"
+                element={
+                  isAuthenticated ? <Ecomdashboard /> : <Navigate to="/" />
+                }
+              />
               <Route
                 path="/manageproducts"
                 element={

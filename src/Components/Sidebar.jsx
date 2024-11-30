@@ -151,7 +151,7 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
           <ul className="ml-4 space-y-2 mt-2">
             <li className={activeLink === "dashboard" ? "active" : ""}>
               <Link
-                to="/ecommerce-dashboard"
+                to="/ecomdashboard"
                 onClick={() => handleLinkClick("dashboard")}
               >
                 <i className="bx bxs-dashboard"></i>
