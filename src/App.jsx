@@ -163,6 +163,7 @@ const App = () => {
                   isAuthenticated ? <EmployeeDetails /> : <Navigate to="/" />
                 }
               />
+
               <Route
                 path="/manageproducts"
                 element={

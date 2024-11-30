@@ -182,42 +182,6 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Orders</span>
               </Link>
             </li>
-            <li className={activeLink === "customer-reviews" ? "active" : ""}>
-              <Link
-                to="/customer-reviews"
-                onClick={() => handleLinkClick("customer-reviews")}
-              >
-                <i className="bx bxs-comment"></i>
-                <span className="text">Customer Reviews</span>
-              </Link>
-            </li>
-            <li className={activeLink === "discounts" ? "active" : ""}>
-              <Link
-                to="/discounts"
-                onClick={() => handleLinkClick("discounts")}
-              >
-                <i className="bx bxs-discount"></i>
-                <span className="text">Discounts</span>
-              </Link>
-            </li>
-            <li className={activeLink === "analytics" ? "active" : ""}>
-              <Link
-                to="/analytics"
-                onClick={() => handleLinkClick("analytics")}
-              >
-                <i className="bx bxs-bar-chart"></i>
-                <span className="text">Analytics</span>
-              </Link>
-            </li>
-            <li className={activeLink === "settings" ? "active" : ""}>
-              <Link
-                to="/ecommerce-settings"
-                onClick={() => handleLinkClick("settings")}
-              >
-                <i className="bx bxs-cog"></i>
-                <span className="text">Settings</span>
-              </Link>
-            </li>
           </ul>
         )}
 
