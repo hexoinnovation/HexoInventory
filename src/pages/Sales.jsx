@@ -7,6 +7,7 @@ import {
   setDoc,
   query, orderBy 
 } from "firebase/firestore";
+import Swal from "sweetalert2";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete } from "react-icons/ai";
 import { FaShoppingCart } from "react-icons/fa";
@@ -156,43 +157,103 @@ const Sales = () => {
 
   const handleRemoveProduct = async (Bno) => {
     if (!user) {
-      alert("User not authenticated.");
-      return;
-    }
-
-    const confirmDelete = window.confirm("Are you sure you want to delete this product?");
-    if (!confirmDelete) return;
-
-    try {
-      const productDoc = doc(db, "admins", user.email, "Sales", Bno);
-
-      await deleteDoc(productDoc);
-
-      setProducts((prevProducts) =>
-        prevProducts.filter((product) => product.Bno !== Bno)
-      );
-
-      alert("Product deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting product: ", error.message);
-      alert("Failed to delete product. Please try again.");
-    }
-  };
-  const RemoveProduct = async (invoiceId,invoiceNumber) => {
-    if (!user) {
-      alert("User not authenticated.");
+      Swal.fire({
+        icon: 'warning',
+        title: 'User Not Authenticated',
+        text: 'Please log in to delete a product.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#3085d6',
+      });
       return;
     }
   
-    const confirmDelete = window.confirm("Are you sure you want to delete this invoice?");
-    if (!confirmDelete) return;
+    // Confirm deletion with SweetAlert2
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'You won’t be able to undo this action!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+    });
+  
+    if (!result.isConfirmed) return; // Exit if the user cancels
+  
+    try {
+      const productDoc = doc(db, "admins", user.email, "Sales", Bno);
+  
+      // Delete product from Firestore
+      await deleteDoc(productDoc);
+  
+      // Update the products state
+      setProducts((prevProducts) =>
+        prevProducts.filter((product) => product.Bno !== Bno)
+      );
+  
+      // Success SweetAlert
+      Swal.fire({
+        icon: 'success',
+        title: 'Deleted!',
+        text: 'Product has been deleted successfully.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#3085d6',
+      });
+    } catch (error) {
+      console.error("Error deleting product: ", error.message);
+  
+      // Error SweetAlert
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: 'Failed to delete product. Please try again.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#d33',
+      });
+    }
+  };
+  
+
+  
+  const RemoveProduct = async (invoiceId, invoiceNumber) => {
+    if (!user) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'User Not Authenticated',
+        text: 'Please log in to delete an invoice.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#3085d6',
+      });
+      return;
+    }
+  
+    // Confirm deletion with SweetAlert2
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'You won’t be able to undo this action!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+    });
+  
+    if (!result.isConfirmed) return; // Exit if the user cancels
   
     // Debugging log to check invoiceId
     console.log("Deleting invoice with invoiceId: ", invoiceId);
   
     try {
       if (!invoiceId) {
-        alert("Invoice ID is missing. Please try again.");
+        Swal.fire({
+          icon: 'error',
+          title: 'Error!',
+          text: 'Invoice ID is missing. Please try again.',
+          confirmButtonText: 'Okay',
+          confirmButtonColor: '#d33',
+        });
         return;
       }
   
@@ -208,15 +269,31 @@ const Sales = () => {
   
       // Update the products state or handle UI update
       setProducts((prevProducts) =>
-        prevProducts.filter((product) => product.invoiceNumber !== invoiceNumber) // Ensure correct property for filtering
+        prevProducts.filter((product) => product.invoiceNumber !== invoiceNumber)
       );
   
-      alert("Invoice deleted successfully!");
+      // Success SweetAlert
+      Swal.fire({
+        icon: 'success',
+        title: 'Deleted!',
+        text: 'Invoice has been deleted successfully.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#3085d6',
+      });
     } catch (error) {
       console.error("Error deleting invoice: ", error.message);
-      alert("Failed to delete invoice. Please try again.");
+  
+      // Error SweetAlert
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: 'Failed to delete invoice. Please try again.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#d33',
+      });
     }
   };
+  
   
   const placeholderNames = {
     no: "Serial No.",

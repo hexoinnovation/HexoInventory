@@ -6,6 +6,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
+import Swal from "sweetalert2";
 import React, { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
@@ -123,15 +124,30 @@ const BusinessDetails = () => {
 
   const handleRemoveBusiness = async (registrationNumber) => {
     if (!user) {
-      alert("User not authenticated.");
+      Swal.fire({
+        icon: 'warning',
+        title: 'User Not Authenticated',
+        text: 'Please log in to delete a business.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#3085d6',
+      });
       return;
     }
-
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this business?"
-    );
-    if (!confirmDelete) return;
-
+  
+    // Confirm deletion with SweetAlert2
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'You won’t be able to undo this action!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+    });
+  
+    if (!result.isConfirmed) return; // Exit if the user cancels
+  
     try {
       const businessDoc = doc(
         db,
@@ -140,19 +156,36 @@ const BusinessDetails = () => {
         "Businesses",
         registrationNumber
       );
-
+  
+      // Delete business document from Firestore
       await deleteDoc(businessDoc);
-
+  
+      // Update the businesses state
       setBusinesses((prevBusinesses) =>
         prevBusinesses.filter(
           (business) => business.registrationNumber !== registrationNumber
         )
       );
-
-      alert("Business deleted successfully!");
+  
+      // Success SweetAlert
+      Swal.fire({
+        icon: 'success',
+        title: 'Deleted!',
+        text: 'Business has been deleted successfully.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#3085d6',
+      });
     } catch (error) {
       console.error("Error deleting business: ", error.message);
-      alert("Failed to delete business. Please try again.");
+  
+      // Error SweetAlert
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: 'Failed to delete business. Please try again.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#d33',
+      });
     }
   };
 
@@ -271,14 +304,14 @@ const BusinessDetails = () => {
       >
         Add Business
       </button>
-
-      <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center mb-6">
+      <div className="grid grid-cols-3 sm:grid-cols-3 gap-6 mb-6">
+      <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center border-2 border-indigo-300">
         <h3 className="text-xl font-semibold text-indigo-600">
           Total Businesses
         </h3>
         <p className="text-4xl font-bold text-yellow-500">{totalBusinesses}</p>
       </div>
-
+</div>
       <div className="w-full mt-5">
         <table className="min-w-full bg-white shadow-md rounded-lg">
           <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white">
