@@ -7,6 +7,7 @@ import { format } from "date-fns"; // Install date-fns for date formatting
 import Swal from 'sweetalert2';
 const Attendance = () => {
   const [employees, setEmployees] = useState([]);
+
   const [employee, setEmployee] = useState([]);
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDate, setFilterDate] = useState("");
@@ -82,115 +83,131 @@ const Attendance = () => {
   };
   const fetchAttendanceData = async (date) => {
     try {
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        console.log("Current user: ", currentUser.email); // Log current user for debugging
-  
-        const attendanceDocRef = doc(db, "admins", currentUser.email, "attendance", date); // Correct spelling of attendance
-        const docSnapshot = await getDoc(attendanceDocRef); // Fetch the document
-  
-        if (docSnapshot.exists()) {
-          const data = docSnapshot.data();
-          console.log('Attendance data fetched: ', data);
-  
-          if (data && data.employees) {
-            setFilteredEmployees(data.employees); // Set employees if present
-          } else {
-            console.log('No employees data found.');
-          }
-        } else {
-          console.log("No attendance data found for this date");
-        }
-      } else {
-        console.log("No user is logged in");
-      }
-    } catch (error) {
-      console.error("Error fetching attendance data: ", error);
-    }
-  };
-  
-  const saveAttendanceData = async () => {
-    const currentUser = auth.currentUser;
-    const currentDate = new Date();
-    const formattedDate = `${currentDate.getDate()}.${currentDate.getMonth() + 1}.${currentDate.getFullYear()}`;
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
 
-    try {
-        // Prepare the data to be saved
-        const attendanceData = employees.map(employee => {
-            // Check for missing fields and handle them
-            if (!employee.id || !employee.name || !employee.dob || !employee.contact || !employee.email) {
-                console.error('Invalid employee data:', employee);
-                return null;  // Skip invalid employees
-            }
-
-            return {
-                employeeId: employee.id,
-                employeeName: employee.name,
-                dob: employee.dob,
-                contact: employee.contact,
-                email: employee.email,
-                status: employee.status || "Absent",  // Default to "Absent" if undefined
-                photo: employee.photo || "",  // Default to an empty string if undefined
-            };
-        }).filter(Boolean);  // Remove any invalid entries
-
-        // If there's invalid data, don't proceed
-        if (attendanceData.some(data => data === null)) {
-            console.error('Some employees have invalid data.');
-            return;
-        }
-
-        // Create a reference to the 'attendance' subcollection under the user's email in 'admins' collection
         const attendanceRef = collection(db, "admins", currentUser.email, "attendance");
+        const docRef = doc(attendanceRef, date);
 
-        // Save the attendance data for the current date
-        await setDoc(doc(attendanceRef, formattedDate), {
-            employees: attendanceData,
-        });
+        console.log("Querying Firestore path:", `admins/${currentUser.email}/attendance/${date}`);
 
-        // Success message
-        Swal.fire({
-            icon: 'success',
-            title: 'Attendance Saved!',
-            text: 'Your attendance data has been saved successfully.',
-            confirmButtonText: 'OK',
-        });
+        const docSnapshot = await getDoc(docRef);
 
-        console.log("Attendance data saved successfully!");
+        if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            console.log("Attendance data fetched: ", data);
+
+            setFilteredEmployees(data.employees || []);
+        } else {
+            console.log("No attendance data found for this date.");
+            setFilteredEmployees([]);
+        }
     } catch (error) {
-        // Error handling
-        Swal.fire({
-            icon: 'error',
-            title: 'Oops...',
-            text: `Error saving attendance data: ${error.message}`,
-            confirmButtonText: 'Try Again',
-        });
-        console.error("Error saving attendance data: ", error);
+        console.error("Error fetching attendance data: ", error);
     }
+};
+
+const saveAttendanceData = async () => {
+  const currentUser = auth.currentUser;
+  const currentDate = new Date();
+  const formattedDate = `${currentDate.getUTCDate()}.${currentDate.getUTCMonth() + 1}.${currentDate.getUTCFullYear()}`;  // Use UTC
+
+  try {
+      // Prepare the data to be saved
+      const attendanceData = employees.map(employee => {
+          // Check for missing fields and handle them
+          if (!employee.id || !employee.name || !employee.dob || !employee.contact || !employee.email) {
+              console.error('Invalid employee data:', employee);
+              return null;  // Skip invalid employees
+          }
+
+          return {
+              employeeId: employee.id,
+              employeeName: employee.name,
+              dob: employee.dob,
+              contact: employee.contact,
+              email: employee.email,
+              status: employee.status || "Absent",  // Default to "Absent" if undefined
+              photo: employee.photo || "",  // Default to an empty string if undefined
+          };
+      }).filter(Boolean);  // Remove any invalid entries
+
+      // If there's invalid data, don't proceed
+      if (attendanceData.some(data => data === null)) {
+          console.error('Some employees have invalid data.');
+          return;
+      }
+
+      // Create a reference to the 'attendance' subcollection under the user's email in 'admins' collection
+      const attendanceRef = collection(db, "admins", currentUser.email, "attendance");
+
+      // Save the attendance data for the current date
+      await setDoc(doc(attendanceRef, formattedDate), {
+          employees: attendanceData,
+      });
+
+      // Success message
+      Swal.fire({
+          icon: 'success',
+          title: 'Attendance Saved!',
+          text: 'Your attendance data has been saved successfully.',
+          confirmButtonText: 'OK',
+      });
+
+      console.log("Attendance data saved successfully!");
+  } catch (error) {
+      // Error handling
+      Swal.fire({
+          icon: 'error',
+          title: 'Oops...',
+          text: `Error saving attendance data: ${error.message}`,
+          confirmButtonText: 'Try Again',
+      });
+      console.error("Error saving attendance data: ", error);
+  }
 };
 
   const [currentDate, setCurrentDate] = useState("");
   
   const [statusFilter, setStatusFilter] = useState("All");
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    if (name === "date") {
-      setFilterDate(value);
-      fetchAttendanceData(value);
-    } else if (name === "status") {
-      setStatusFilter(value);
+  const handleMonthlyFilter = (e) => {
+    const isChecked = e.target.checked;
+    setMonthlyFilter(isChecked);
+    if (!isChecked) {
+      setFilterDate(''); // Reset the date filter when monthly filter is unchecked
+      applyFilter('', false); // Apply filter with no date for all records
+    } else {
+      applyFilter(filterDate, true); // Apply filter by month
     }
   };
-  const filteredEmployeesList = employees.filter((employee) => {
-    const matchesStatus = statusFilter === "All" || employee.status === statusFilter;
-    return matchesStatus;
-  });
-  // Handle Monthly Filter
-  const handleMonthlyFilter = () => {
-    setMonthlyFilter(!monthlyFilter);
-  };
 
-  
+  // Handle date input field change
+  const handleFilterChange = (e) => {
+    setFilterDate(e.target.value);
+    applyFilter(e.target.value, monthlyFilter); // Apply the filter whenever date changes
+  };
+  const applyFilter = (date, isMonthly) => {
+    if (!date) {
+        setFilteredEmployees([]);
+        return;
+    }
+
+    const selectedDate = new Date(date);
+    const selectedMonth = selectedDate.getUTCMonth(); // Use UTC to avoid timezone offsets
+    const selectedYear = selectedDate.getUTCFullYear();
+    const selectedDay = selectedDate.getUTCDate(); // Get UTC day
+
+    const formattedDate = `${selectedDay}.${selectedMonth + 1}.${selectedYear}`;  // Format as DD.MM.YYYY
+
+    console.log("Formatted Date for query:", formattedDate);
+
+    if (!isMonthly) {
+        fetchAttendanceData(formattedDate);
+    } else {
+        // Monthly filter logic
+    }
+};
+
   // Show Employee Details Popup
   const handleEmployeeClick = (employee) => {
     setSelectedEmployee(employee);
@@ -271,7 +288,7 @@ const Attendance = () => {
                         e.stopPropagation();
                         handleStatusToggle(employee.id, employee.status);
                       }}
-                      className={`px-5 py-2 rounded-full ${
+                      className={`px-4 py-2 rounded-full ${
                         employee.status === "Present" ? "bg-green-500" : "bg-red-500"
                       } text-white`}
                     >
@@ -309,25 +326,38 @@ const Attendance = () => {
         <div className="mb-4">
           <label htmlFor="date" className="text-sm font-semibold">Date</label>
           <input
-            type="date"
+          type="date"
+          name="date"
+          value={filterDate}
+          onChange={handleFilterChange}
+          className="w-full px-4 py-2 mt-2 border rounded-lg"
+        />
+        </div>
+
+        <div className="mb-4 flex items-center gap-3">
+        <input
+          type="checkbox"
+          checked={monthlyFilter}
+          onChange={handleMonthlyFilter}
+          id="monthlyFilter"
+          className="h-5 w-5"
+        />
+        <label htmlFor="monthlyFilter" className="text-sm font-semibold">Monthly Filter</label>
+        </div>
+      </div>
+  {/* Show date input only when monthly filter is checked */}
+  {monthlyFilter && (
+        <div className="mb-4">
+          <label htmlFor="date" className="text-sm font-semibold">Select Month</label>
+          <input
+            type="month"
             name="date"
             value={filterDate}
             onChange={handleFilterChange}
             className="w-full px-4 py-2 mt-2 border rounded-lg"
           />
         </div>
-
-        <div className="mb-4 flex items-center gap-3">
-          <input
-            type="checkbox"
-            checked={monthlyFilter}
-            onChange={handleMonthlyFilter}
-            id="monthlyFilter"
-            className="h-5 w-5"
-          />
-          <label htmlFor="monthlyFilter" className="text-sm font-semibold">Monthly Filter</label>
-        </div>
-      </div>
+      )}
 
       {/* Employee Detail Modal */}
       {modalVisible && selectedEmployee && (
@@ -359,7 +389,7 @@ const Attendance = () => {
                     onClick={() =>
                       handleStatusToggle(employee.id, employee.status)
                     }
-                    className={`px-8 py-4 rounded ${
+                    className={`px-2 py-1 rounded ${
                       employee.status === "Present"
                         ? "bg-green-500 text-white"
                         : "bg-red-500 text-white"
