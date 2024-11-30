@@ -42,7 +42,7 @@ const Invoice = () => {
     {
       id: 1,
       description: "Product 1",
-      hsnCode: "1234",
+      hsnCode: "",
       quantity: 1,
       price: 100,
       total: 118,
@@ -671,70 +671,87 @@ const Invoice = () => {
   const [errorMessage, setErrorMessage] = useState(""); // Tracks the error message
 
   
-
-
-const handleActionConfirm = async () => {
-  // Check if paymentStatus is selected
-  if (!paymentStatus) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Missing Status',
-      text: 'Please select a status (Paid or Unpaid) before submitting.',
-    });
-    return;
-  }
-
-  try {
-    // Reference the user's document (admins collection)
-    const userDocRef = doc(db, "admins", user.email);
-
-    // Reference the specific document in the "Invoices" collection
-    const invoicesDocRef = doc(userDocRef, "Invoices", "default"); // "default" can be replaced with your invoice identifier
-
-    // Reference the subcollection ("paid" or "unpaid") under the Invoices document
-    const subCollectionName = paymentStatus === "Paid" ? "paid" : "unpaid";
-    
-    // Use invoiceNumber as the document ID in the subcollection
-    const subCollectionRef = doc(invoicesDocRef, subCollectionName, invoiceNumber.toString());
-
-    // Add or update the document with the payment status and invoice details
-    await setDoc(subCollectionRef, {
+  const handleActionConfirm = async () => {
+    // Ensure all required fields are defined or fall back to default values
+    const paymentStatus = isLightMode ? "Paid" : "Unpaid"; // Set payment status
+  
+    const category2 = category || null;
+    const status2 = status || null;
+    const icst2 = icst || null;
+    const invoiceDate2 = invoiceDate || new Date();
+    const invoiceNumber2 = invoiceNumber || 0;
+    const billFrom2 = billFrom || {};
+    const billTo2 = billTo || {};
+    const products2 = products || [];
+    const shippingMethod2 = shippingMethod || '';
+    const paymentMethod2 = paymentMethod || '';
+  
+    const dataToSave = {
       paymentStatus,
-      invoiceDate,
-      invoiceNumber,
-      billFrom,
-      billTo,
-      products,
-      shippingMethod, // Add shipping method
-      paymentMethod, // Add payment method
+      invoiceDate: invoiceDate2,
+      invoiceNumber: invoiceNumber2,
+      billFrom: billFrom2,
+      billTo: billTo2,
+      products: products2,
+      shippingMethod: shippingMethod2,
+      paymentMethod: paymentMethod2,
       taxDetails: {
-        CGST: category || null, // Set CGST if selected, otherwise null
-        SGST: status || null, // Set SGST if selected, otherwise null
-        IGST: icst || null, // Set IGST if selected, otherwise null
+        CGST: category2,
+        SGST: status2,
+        IGST: icst2,
       },
-      subtotal: calculateSubtotal().toFixed(2), // Include the subtotal value
-      total: calculateTotal().toFixed(2), // Include the total value
+      subtotal: calculateSubtotal().toFixed(2),
+      total: calculateTotal().toFixed(2),
       createdAt: new Date(),
-      // Add any other invoice details you need to store here
-    });
-    // Success alert using SweetAlert2
-    Swal.fire({
-      icon: 'success',
-      title: 'Status Saved!',
-      text: `Status "${paymentStatus}" for Invoice No: ${invoiceNumber} has been saved successfully!`,
-    });
-  } catch (error) {
-    console.error("Error saving status to Firestore:", error);
+    };
+  
+    // Log the entire data object before saving to Firestore
+    console.log('Data to be saved:', dataToSave);
+  
+    // Check if any values are undefined
+    for (const [key, value] of Object.entries(dataToSave)) {
+      if (value === undefined) {
+        console.error(`The field '${key}' is undefined!`);
+      }
+    }
+  
+    try {
+      const userDocRef = doc(db, "admins", user.email);
+      const invoicesDocRef = doc(userDocRef, "Invoices", "paid unpaid");
+      const subCollectionName = paymentStatus === "Paid" ? "paid" : "unpaid";
+      const subCollectionRef = doc(
+        invoicesDocRef,
+        subCollectionName,
+        invoiceNumber2.toString()
+      );
+  
+      // Save the data to Firestore
+      await setDoc(subCollectionRef, dataToSave);
+  
+      Swal.fire({
+        icon: 'success',
+        title: 'Status Saved!',
+        text: `Status "${paymentStatus}" for Invoice No: ${invoiceNumber2} has been saved successfully!`,
+      });
+    } catch (error) {
+      console.error("Error saving status to Firestore:", error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: 'There was an error saving the status. Please try again.',
+      });
+    }
+  };
+  
+  
+  
+  
+  
+  
+  
 
-    // Error alert using SweetAlert2
-    Swal.fire({
-      icon: 'error',
-      title: 'Error!',
-      text: 'There was an error saving the status. Please try again.',
-    });
-  }
-};
-
+  
+  
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-r from-indigo-200 via-blue-100 to-green-100 p-8">
