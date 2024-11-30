@@ -7,6 +7,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -110,33 +111,65 @@ const CustomerDetails = () => {
       console.error("Error adding customer: ", error);
     }
   };
-
   const handleRemoveCustomer = async (email) => {
     if (!user) {
-      alert("User not authenticated.");
+      Swal.fire({
+        icon: 'warning',
+        title: 'User Not Authenticated',
+        text: 'Please log in to delete a customer.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#3085d6',
+      });
       return;
     }
-
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this customer?"
-    );
-    if (!confirmDelete) return;
-
+  
+    // Confirm deletion with SweetAlert2
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'You won’t be able to undo this action!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+    });
+  
+    if (!result.isConfirmed) return; // Exit if the user cancels
+  
     try {
       const customerDoc = doc(db, "admins", user.email, "Customers", email);
-
+  
+      // Delete customer from Firestore
       await deleteDoc(customerDoc);
-
+  
+      // Update the customers state
       setCustomers((prevCustomers) =>
         prevCustomers.filter((customer) => customer.email !== email)
       );
-
-      alert("Customer deleted successfully!");
+  
+      // Success SweetAlert
+      Swal.fire({
+        icon: 'success',
+        title: 'Deleted!',
+        text: 'Customer has been deleted successfully.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#3085d6',
+      });
     } catch (error) {
       console.error("Error deleting customer: ", error.message);
-      alert("Failed to delete customer. Please try again.");
+  
+      // Error SweetAlert
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: 'Failed to delete customer. Please try again.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#d33',
+      });
     }
   };
+  
 
   const handleEditCustomer = (customer) => {
     setSelectedCustomer(customer); // Set the customer data to edit
