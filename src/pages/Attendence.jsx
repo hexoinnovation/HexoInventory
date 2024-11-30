@@ -107,6 +107,7 @@ const Attendance = () => {
     }
 };
 
+
 const saveAttendanceData = async () => {
   const currentUser = auth.currentUser;
   const currentDate = new Date();
