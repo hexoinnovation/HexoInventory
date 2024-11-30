@@ -671,82 +671,130 @@ const Invoice = () => {
   const [errorMessage, setErrorMessage] = useState(""); // Tracks the error message
 
   
+  // const handleActionConfirm = async () => {
+  //   // Ensure all required fields are defined or fall back to default values
+  //   const paymentStatus = isLightMode ? "Paid" : "Unpaid"; // Set payment status
+  
+  //   const category2 = category || null;
+  //   const status2 = status || null;
+  //   const icst2 = icst || null;
+  //   const invoiceDate2 = invoiceDate || new Date();
+  //   const invoiceNumber2 = invoiceNumber || 0;
+  //   const billFrom2 = billFrom || {};
+  //   const billTo2 = billTo || {};
+  //   const products2 = products || [];
+  //   const shippingMethod2 = shippingMethod || '';
+  //   const paymentMethod2 = paymentMethod || '';
+  
+  //   const dataToSave = {
+  //     paymentStatus,
+  //     invoiceDate: invoiceDate2,
+  //     invoiceNumber: invoiceNumber2,
+  //     billFrom: billFrom2,
+  //     billTo: billTo2,
+  //     products: products2,
+  //     shippingMethod: shippingMethod2,
+  //     paymentMethod: paymentMethod2,
+  //     taxDetails: {
+  //       CGST: category2,
+  //       SGST: status2,
+  //       IGST: icst2,
+  //     },
+  //     subtotal: calculateSubtotal().toFixed(2),
+  //     total: calculateTotal().toFixed(2),
+  //     createdAt: new Date(),
+  //   };
+  
+  //   // Log the entire data object before saving to Firestore
+  //   console.log('Data to be saved:', dataToSave);
+  
+  //   // Check if any values are undefined
+  //   for (const [key, value] of Object.entries(dataToSave)) {
+  //     if (value === undefined) {
+  //       console.error(`The field '${key}' is undefined!`);
+  //     }
+  //   }
+  
+  //   try {
+  //     const userDocRef = doc(db, "admins", user.email);
+  //     const invoicesDocRef = doc(userDocRef, "Invoices", "paid unpaid");
+  //     const subCollectionName = paymentStatus === "Paid" ? "paid" : "unpaid";
+  //     const subCollectionRef = doc(
+  //       invoicesDocRef,
+  //       subCollectionName,
+  //       invoiceNumber2.toString()
+  //     );
+  
+  //     // Save the data to Firestore
+  //     await setDoc(subCollectionRef, dataToSave);
+  
+  //     Swal.fire({
+  //       icon: 'success',
+  //       title: 'Status Saved!',
+  //       text: `Status "${paymentStatus}" for Invoice No: ${invoiceNumber2} has been saved successfully!`,
+  //     });
+  //   } catch (error) {
+  //     console.error("Error saving status to Firestore:", error);
+  //     Swal.fire({
+  //       icon: 'error',
+  //       title: 'Error!',
+  //       text: 'There was an error saving the status. Please try again.',
+  //     });
+  //   }
+  // };
+  
+  
   const handleActionConfirm = async () => {
-    // Ensure all required fields are defined or fall back to default values
-    const paymentStatus = isLightMode ? "Paid" : "Unpaid"; // Set payment status
-  
-    const category2 = category || null;
-    const status2 = status || null;
-    const icst2 = icst || null;
-    const invoiceDate2 = invoiceDate || new Date();
-    const invoiceNumber2 = invoiceNumber || 0;
-    const billFrom2 = billFrom || {};
-    const billTo2 = billTo || {};
-    const products2 = products || [];
-    const shippingMethod2 = shippingMethod || '';
-    const paymentMethod2 = paymentMethod || '';
-  
     const dataToSave = {
-      paymentStatus,
-      invoiceDate: invoiceDate2,
-      invoiceNumber: invoiceNumber2,
-      billFrom: billFrom2,
-      billTo: billTo2,
-      products: products2,
-      shippingMethod: shippingMethod2,
-      paymentMethod: paymentMethod2,
+      paymentStatus: isLightMode ? "Paid" : "Unpaid",
+      invoiceDate: invoiceDate || new Date(),
+      invoiceNumber: invoiceNumber || 0,
+      billFrom: billFrom || {},
+      billTo: billTo || {},
+      products: products || [],
+      shippingMethod: shippingMethod || "",
+      paymentMethod: paymentMethod || "",
       taxDetails: {
-        CGST: category2,
-        SGST: status2,
-        IGST: icst2,
+        CGST: category || null,
+        SGST: status || null,
+        IGST: icst || null,
       },
       subtotal: calculateSubtotal().toFixed(2),
       total: calculateTotal().toFixed(2),
       createdAt: new Date(),
     };
   
-    // Log the entire data object before saving to Firestore
-    console.log('Data to be saved:', dataToSave);
-  
-    // Check if any values are undefined
-    for (const [key, value] of Object.entries(dataToSave)) {
-      if (value === undefined) {
-        console.error(`The field '${key}' is undefined!`);
-      }
-    }
+    console.log("Data to be saved:", dataToSave);
   
     try {
-      const userDocRef = doc(db, "admins", user.email);
-      const invoicesDocRef = doc(userDocRef, "Invoices", "paid unpaid");
-      const subCollectionName = paymentStatus === "Paid" ? "paid" : "unpaid";
-      const subCollectionRef = doc(
-        invoicesDocRef,
-        subCollectionName,
-        invoiceNumber2.toString()
-      );
+      const invoiceRef = doc(db, "admins", user.email, "Invoices", dataToSave.invoiceNumber.toString());
   
-      // Save the data to Firestore
-      await setDoc(subCollectionRef, dataToSave);
+      await setDoc(invoiceRef, dataToSave);
   
       Swal.fire({
-        icon: 'success',
-        title: 'Status Saved!',
-        text: `Status "${paymentStatus}" for Invoice No: ${invoiceNumber2} has been saved successfully!`,
+        icon: "success",
+        title: "Invoice Saved!",
+        text: `Invoice No: ${dataToSave.invoiceNumber} has been saved successfully!`,
       });
     } catch (error) {
-      console.error("Error saving status to Firestore:", error);
+      console.error("Error saving invoice to Firestore:", error);
       Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: 'There was an error saving the status. Please try again.',
+        icon: "error",
+        title: "Error!",
+        text: "There was an error saving the invoice. Please try again.",
       });
     }
   };
   
+  // const fetchPaidInvoices = async () => {
+  //   const invoicesRef = collection(db, "admins", user.email, "Invoices");
+  //   const q = query(invoicesRef, where("paymentStatus", "==", "Paid"));
   
-  
-  
-  
+  //   const querySnapshot = await getDocs(q);
+  //   querySnapshot.forEach((doc) => {
+  //     console.log(doc.id, "=>", doc.data());
+  //   });
+  // };
   
   
 
