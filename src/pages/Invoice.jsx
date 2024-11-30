@@ -700,11 +700,23 @@ const handleActionConfirm = async () => {
     // Add or update the document with the payment status and invoice details
     await setDoc(subCollectionRef, {
       paymentStatus,
+      invoiceDate,
       invoiceNumber,
+      billFrom,
+      billTo,
+      products,
+      shippingMethod, // Add shipping method
+      paymentMethod, // Add payment method
+      taxDetails: {
+        CGST: category || null, // Set CGST if selected, otherwise null
+        SGST: status || null, // Set SGST if selected, otherwise null
+        IGST: icst || null, // Set IGST if selected, otherwise null
+      },
+      subtotal: calculateSubtotal().toFixed(2), // Include the subtotal value
+      total: calculateTotal().toFixed(2), // Include the total value
       createdAt: new Date(),
       // Add any other invoice details you need to store here
     });
-
     // Success alert using SweetAlert2
     Swal.fire({
       icon: 'success',
