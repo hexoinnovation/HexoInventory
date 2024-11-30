@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { Link } from "react-router-dom"; // Import Link from React Router
+import { Link } from "react-router-dom";
 
 const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
-  const [activeLink, setActiveLink] = useState("Dashboard"); // Set 'Dashboard' as the default active link
+  const [activeLink, setActiveLink] = useState("Dashboard");
   const [isEcommerceDropdownOpen, setIsEcommerceDropdownOpen] = useState(false);
   const [isHRMDropdownOpen, setIsHRMDropdownOpen] = useState(false);
-  const [isInventoryDropdownOpen, setIsInventoryDropdownOpen] = useState(false); // State for Inventory dropdown
-  const [isInvoiceDropdownOpen, setIsInvoiceDropdownOpen] = useState(false); // State for Invoice dropdown
+  const [isInventoryDropdownOpen, setIsInventoryDropdownOpen] = useState(false);
+  const [isInvoiceDropdownOpen, setIsInvoiceDropdownOpen] = useState(false);
 
-  // Handle link click and set active link
   const handleLinkClick = (link) => {
     setActiveLink(link);
   };
@@ -26,26 +25,23 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
       });
   };
 
-  // Toggle dropdown visibility on click
   const toggleEcommerceDropdown = () =>
     setIsEcommerceDropdownOpen(!isEcommerceDropdownOpen);
   const toggleHRMDropdown = () => setIsHRMDropdownOpen(!isHRMDropdownOpen);
   const toggleInventoryDropdown = () =>
-    setIsInventoryDropdownOpen(!isInventoryDropdownOpen); // Toggle Inventory dropdown
+    setIsInventoryDropdownOpen(!isInventoryDropdownOpen);
   const toggleInvoiceDropdown = () =>
-    setIsInvoiceDropdownOpen(!isInvoiceDropdownOpen); // Toggle Invoice dropdown
+    setIsInvoiceDropdownOpen(!isInvoiceDropdownOpen);
 
   return (
     <section id="sidebar" className={sidebarVisible ? "" : "hide print:hidden"}>
-      {/* Sidebar Logo and Toggle Button for Mobile */}
-      <div className="sidebar-header print:">
+      <div className="sidebar-header">
         <a href="#" className="brand">
           <i className="bx bxs-store-alt"></i>
           <span className="text print:hidden">IMEX</span>
         </a>
       </div>
 
-      {/* Sidebar menu */}
       <ul className="side-menu print:hidden">
         <div className="dash">
           <li className={activeLink === "Dashboard" ? "active" : ""}>
@@ -56,7 +52,6 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
           </li>
         </div>
 
-        {/* Inventory Dropdown (click to toggle) */}
         <li className="cursor-pointer" onClick={toggleInventoryDropdown}>
           <div className="label">
             <i className="bx bxs-package"></i>
@@ -68,8 +63,6 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
             ></i>
           </div>
         </li>
-
-        {/* Dropdown Content for Inventory */}
         {isInventoryDropdownOpen && (
           <ul className="ml-4 space-y-2 mt-2">
             <li className={activeLink === "purchase" ? "active" : ""}>
@@ -93,7 +86,6 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
           </ul>
         )}
 
-        {/* Invoice Dropdown (click to toggle) */}
         <li className="cursor-pointer" onClick={toggleInvoiceDropdown}>
           <div className="label">
             <i className="bx bxs-file"></i>
@@ -105,20 +97,14 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
             ></i>
           </div>
         </li>
-
-        {/* Dropdown Content for Invoice */}
         {isInvoiceDropdownOpen && (
           <ul className="ml-4 space-y-2 mt-2">
             <li className={activeLink === "invoice" ? "active" : ""}>
-              <Link
-                to="/invoice" // The link for the Invoice Page
-                onClick={() => handleLinkClick("invoice")}
-              >
+              <Link to="/invoice" onClick={() => handleLinkClick("invoice")}>
                 <i className="bx bxs-file"></i>
                 <span className="text">Invoice Page</span>
               </Link>
             </li>
-
             <li className={activeLink === "CustomerDetails" ? "active" : ""}>
               <Link
                 to="/CustomerDetails"
@@ -128,7 +114,6 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Customer-Details</span>
               </Link>
             </li>
-
             <li className={activeLink === "BusinessDetails" ? "active" : ""}>
               <Link
                 to="/BusinessDetails"
@@ -138,11 +123,9 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Business Details</span>
               </Link>
             </li>
-
-            {/* View All Invoice Link moved under Invoice Menu */}
             <li className={activeLink === "viewAllInvoice" ? "active" : ""}>
               <Link
-                to="/viewAllInvoice" // Link for View All Invoice
+                to="/viewAllInvoice"
                 onClick={() => handleLinkClick("viewAllInvoice")}
               >
                 <i className="bx bxs-file"></i>
@@ -152,11 +135,11 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
           </ul>
         )}
 
-        {/* Ecommerce Dropdown (click to toggle) */}
+        {/* Enhanced Ecommerce Admin Panel */}
         <li className="cursor-pointer" onClick={toggleEcommerceDropdown}>
           <div className="label">
             <i className="bx bxs-store-alt"></i>
-            <span className="ml-2 font-extrabold">Ecommerce Menu</span>
+            <span className="ml-2 font-extrabold">Ecommerce Admin Panel</span>
             <i
               className={`bx ml-auto ${
                 isEcommerceDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"
@@ -164,41 +147,80 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
             ></i>
           </div>
         </li>
-
-        {/* Dropdown Content for Ecommerce */}
         {isEcommerceDropdownOpen && (
           <ul className="ml-4 space-y-2 mt-2">
-            <li className={activeLink === "shop" ? "active" : ""}>
-              <Link to="/shop" onClick={() => handleLinkClick("shop")}>
-                <i className="bx bxs-store-alt"></i>
-                <span className="text">Shop</span>
-              </Link>
-            </li>
-            <li className={activeLink === "order" ? "active" : ""}>
-              <Link to="/order" onClick={() => handleLinkClick("order")}>
-                <i className="bx bxs-cart-add"></i>
-                <span className="text">Order</span>
-              </Link>
-            </li>
-            <li className={activeLink === "products" ? "active" : ""}>
-              <Link to="/products" onClick={() => handleLinkClick("products")}>
-                <i className="bx bxs-box"></i>
-                <span className="text">Products</span>
-              </Link>
-            </li>
-            <li className={activeLink === "categories" ? "active" : ""}>
+            <li className={activeLink === "dashboard" ? "active" : ""}>
               <Link
-                to="/categories"
-                onClick={() => handleLinkClick("categories")}
+                to="/ecommerce-dashboard"
+                onClick={() => handleLinkClick("dashboard")}
+              >
+                <i className="bx bxs-dashboard"></i>
+                <span className="text">Dashboard</span>
+              </Link>
+            </li>
+            <li className={activeLink === "manage-products" ? "active" : ""}>
+              <Link
+                to="/manage-products"
+                onClick={() => handleLinkClick("manage-products")}
+              >
+                <i className="bx bxs-box"></i>
+                <span className="text">Manage Products</span>
+              </Link>
+            </li>
+            <li className={activeLink === "manage-categories" ? "active" : ""}>
+              <Link
+                to="/manage-categories"
+                onClick={() => handleLinkClick("manage-categories")}
               >
                 <i className="bx bxs-category"></i>
-                <span className="text">Categories</span>
+                <span className="text">Manage Categories</span>
+              </Link>
+            </li>
+            <li className={activeLink === "orders" ? "active" : ""}>
+              <Link to="/orders" onClick={() => handleLinkClick("orders")}>
+                <i className="bx bxs-cart"></i>
+                <span className="text">Orders</span>
+              </Link>
+            </li>
+            <li className={activeLink === "customer-reviews" ? "active" : ""}>
+              <Link
+                to="/customer-reviews"
+                onClick={() => handleLinkClick("customer-reviews")}
+              >
+                <i className="bx bxs-comment"></i>
+                <span className="text">Customer Reviews</span>
+              </Link>
+            </li>
+            <li className={activeLink === "discounts" ? "active" : ""}>
+              <Link
+                to="/discounts"
+                onClick={() => handleLinkClick("discounts")}
+              >
+                <i className="bx bxs-discount"></i>
+                <span className="text">Discounts</span>
+              </Link>
+            </li>
+            <li className={activeLink === "analytics" ? "active" : ""}>
+              <Link
+                to="/analytics"
+                onClick={() => handleLinkClick("analytics")}
+              >
+                <i className="bx bxs-bar-chart"></i>
+                <span className="text">Analytics</span>
+              </Link>
+            </li>
+            <li className={activeLink === "settings" ? "active" : ""}>
+              <Link
+                to="/ecommerce-settings"
+                onClick={() => handleLinkClick("settings")}
+              >
+                <i className="bx bxs-cog"></i>
+                <span className="text">Settings</span>
               </Link>
             </li>
           </ul>
         )}
 
-        {/* HRM Section Dropdown (click to toggle) */}
         <li className="cursor-pointer" onClick={toggleHRMDropdown}>
           <div className="label">
             <i className="bx bxs-user-detail"></i>
@@ -210,8 +232,6 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
             ></i>
           </div>
         </li>
-
-        {/* Dropdown Content for HRM Section */}
         {isHRMDropdownOpen && (
           <ul className="ml-4 space-y-2 mt-2">
             <li className={activeLink === "employee" ? "active" : ""}>
@@ -235,10 +255,35 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Salary</span>
               </Link>
             </li>
+            <li className={activeLink === "leave-management" ? "active" : ""}>
+              <Link
+                to="/leave-management"
+                onClick={() => handleLinkClick("leave-management")}
+              >
+                <i className="bx bxs-calendar"></i>
+                <span className="text">Leave Management</span>
+              </Link>
+            </li>
+            <li className={activeLink === "training" ? "active" : ""}>
+              <Link to="/training" onClick={() => handleLinkClick("training")}>
+                <i className="bx bxs-book"></i>
+                <span className="text">Training</span>
+              </Link>
+            </li>
+            <li
+              className={activeLink === "performance-reviews" ? "active" : ""}
+            >
+              <Link
+                to="/performance-reviews"
+                onClick={() => handleLinkClick("performance-reviews")}
+              >
+                <i className="bx bxs-star"></i>
+                <span className="text">Performance Reviews</span>
+              </Link>
+            </li>
           </ul>
         )}
 
-        {/* Logout Menu */}
         <li className={activeLink === "logout" ? "active" : ""}>
           <Link
             to="#"
@@ -253,7 +298,6 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
           </Link>
         </li>
 
-        {/* Help Menu */}
         <li>
           <Link to="/help">
             <i className="bx bxs-help-circle"></i>
