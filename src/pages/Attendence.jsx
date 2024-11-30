@@ -7,6 +7,7 @@ import { format } from "date-fns"; // Install date-fns for date formatting
 import Swal from 'sweetalert2';
 const Attendance = () => {
   const [employees, setEmployees] = useState([]);
+  const [employee, setEmployee] = useState([]);
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDate, setFilterDate] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -270,7 +271,7 @@ const Attendance = () => {
                         e.stopPropagation();
                         handleStatusToggle(employee.id, employee.status);
                       }}
-                      className={`px-4 py-2 rounded-full ${
+                      className={`px-5 py-2 rounded-full ${
                         employee.status === "Present" ? "bg-green-500" : "bg-red-500"
                       } text-white`}
                     >
@@ -354,18 +355,18 @@ const Attendance = () => {
               <div><strong>Date: </strong>{currentDate}</div>
             </div>
             <div className="flex justify-center">
-            <button
+            {/* <button
                     onClick={() =>
                       handleStatusToggle(employee.id, employee.status)
                     }
-                    className={`px-2 py-1 rounded ${
+                    className={`px-8 py-4 rounded ${
                       employee.status === "Present"
                         ? "bg-green-500 text-white"
                         : "bg-red-500 text-white"
                     }`}
                   >
                     {employee.status}
-                  </button>
+                  </button> */}
             </div>
           </div>
         </div>
