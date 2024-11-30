@@ -6,17 +6,18 @@ import {
   getDocs,
   orderBy,
   query,
+  getDoc
 } from "firebase/firestore";
 import Swal from "sweetalert2";
 import React, { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete, AiOutlineEdit, AiOutlineFilePdf } from "react-icons/ai";
-import { Link } from "react-router-dom"; // Import Link from react-router-dom for navigation
-import { auth, db } from "../config/firebase"; // Replace with your Firebase configuration path
+import { Link } from "react-router-dom";
+import { auth, db } from "../config/firebase"; // Replace with your Firebase config
 
 const ViewAllInvoice = () => {
   const [user] = useAuthState(auth);
-  const [infobox, setInfobox] = useState(null); // State to manage the infobox message
+  const [infobox, setInfobox] = useState(null); // State to manage infobox message
   const [invoiceData, setInvoiceData] = useState([]); // State to store invoices
   const [loading, setLoading] = useState(true);
 
@@ -28,23 +29,17 @@ const ViewAllInvoice = () => {
     }
 
     try {
-      // Reference the user's document
       const userDocRef = doc(db, "admins", user.email);
-
-      // Reference the "Invoices" document
       const invoicesDocRef = doc(userDocRef, "Invoices", "paid unpaid");
 
-      // Reference the "paid" and "unpaid" subcollections under "Invoices"
       const paidInvoicesCollection = collection(invoicesDocRef, "paid");
       const unpaidInvoicesCollection = collection(invoicesDocRef, "unpaid");
 
-      // Fetch data from both collections
       const [paidSnapshot, unpaidSnapshot] = await Promise.all([
         getDocs(paidInvoicesCollection),
         getDocs(unpaidInvoicesCollection),
       ]);
 
-      // Map the data from snapshots
       const paidInvoices = paidSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -55,7 +50,6 @@ const ViewAllInvoice = () => {
         ...doc.data(),
       }));
 
-      // Combine both arrays into a single array and set it to state
       setInvoiceData([...paidInvoices, ...unpaidInvoices]);
       console.log("Invoices fetched successfully:", [...paidInvoices, ...unpaidInvoices]);
     } catch (error) {
@@ -71,94 +65,70 @@ const ViewAllInvoice = () => {
     }
   }, [user]);
 
-  const handleDeleteInvoice = async (invoiceId, paymentStatus) => {
-    if (!user || !user.email) {
-      Swal.fire({
-        icon: "warning",
-        title: "User Not Authenticated",
-        text: "Please log in to delete an invoice.",
-        confirmButtonText: "Okay",
-        confirmButtonColor: "#3085d6",
-      });
-      return;
-    }
-  
-    // Log user email for debugging
-    console.log("User email:", user.email);
-  
-    // Log paymentStatus for debugging
-    console.log("Payment status:", paymentStatus);
-  
-    // Confirm deletion
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: "You won’t be able to undo this action!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, delete it!",
-      cancelButtonText: "Cancel",
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-    });
-  
-    if (!result.isConfirmed) return; // Exit if canceled
-  
+  const handleDeleteInvoice = async (invoiceNumber, paymentStatus) => {
     try {
-      // Construct the Firestore document reference
-      const invoiceRef = doc(
-        db,
-        "admins",
-        user.email,
-        "Invoices",
-        paymentStatus, // 'paid' or 'unpaid'
-        invoiceId // invoiceId is the document ID (invoiceNumber)
-      );
+      // Log the parameters to check if they're valid
+      console.log("Invoice Number (Before Trim):", invoiceNumber);
+      console.log("Payment Status:", paymentStatus);
   
-      // Log the path to make sure it's correct
-      console.log("Firestore Document Path:", invoiceRef.path);
+      // Ensure invoiceNumber is a valid string and not empty or just whitespace
+      const invoiceNumberStr = String(invoiceNumber).trim(); // Ensure it's a string and trim whitespace
   
-      // Delete the document from Firestore
-      await deleteDoc(invoiceRef);
+      if (!invoiceNumberStr || invoiceNumberStr === '') {
+        throw new Error("Invalid or missing invoice number");
+      }
   
-      // Update state to remove deleted invoice
-      setInvoiceData((prevData) =>
-        prevData.filter((invoice) => invoice.id !== invoiceId)
-      );
+      // Check payment status
+      const paymentStatusStr = String(paymentStatus).trim();
+      if (!paymentStatusStr || paymentStatusStr === '') {
+        throw new Error("Invalid or missing payment status");
+      }
   
-      // Success alert
+      // Construct Firestore document reference for the invoice to delete
+      const invoiceDocRef = doc(db, "admins", user.email, "Invoices", paymentStatusStr, invoiceNumberStr);
+  
+      console.log("Document reference path:", invoiceDocRef.path); // Log the reference path for debugging
+  
+      // Delete invoice document
+      await deleteDoc(invoiceDocRef);
+  
+      // Show success message
       Swal.fire({
         icon: "success",
-        title: "Deleted!",
-        text: "Invoice deleted successfully!",
+        title: "Deleted",
+        text: `Invoice ${invoiceNumberStr} has been deleted.`,
         confirmButtonText: "Okay",
         confirmButtonColor: "#3085d6",
       });
+  
+      // Fetch updated invoices
+      fetchInvoices();
     } catch (error) {
       console.error("Error deleting invoice:", error);
-  
-      // Error alert
       Swal.fire({
         icon: "error",
-        title: "Error!",
-        text: "Failed to delete invoice. Please try again.",
+        title: "Error",
+        text: "There was an issue deleting the invoice. Please try again.",
         confirmButtonText: "Okay",
         confirmButtonColor: "#d33",
       });
     }
   };
+  
+  
+
+  // Handle invoice download
   const handleDownloadInvoice = async (invoiceNumber, status) => {
     console.log(`Downloading invoice with ID: ${invoiceNumber}, Status: ${status}`);
-  
+
     try {
-      // Construct the Firestore path
       const invoiceDocRef = doc(db, "admins", user.email, "Invoices", status, invoiceNumber);
       const invoiceDocSnap = await getDoc(invoiceDocRef);
-  
+
       if (invoiceDocSnap.exists()) {
         const invoiceData = invoiceDocSnap.data();
         console.log("Invoice details:", invoiceData);
-  
-        // Now generate the PDF using the fetched invoice data
+
         const doc = new jsPDF();
         doc.text(`Invoice ID: ${invoiceData.invoiceNumber}`, 10, 10);
         doc.text(`Customer Name: ${invoiceData.customerName}`, 10, 20);
@@ -189,9 +159,7 @@ const ViewAllInvoice = () => {
 
   return (
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
-      <h1 className="text-5xl font-extrabold text-pink-700 mb-6">
-        View All Invoices
-      </h1>
+      <h1 className="text-5xl font-extrabold text-pink-700 mb-6">View All Invoices</h1>
 
       {/* Infobox control */}
       {infobox && (
@@ -215,13 +183,13 @@ const ViewAllInvoice = () => {
           <table className="min-w-full bg-white shadow-md rounded-lg">
             <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white">
               <tr>
-                <th className="py-3 px-4 text-left">Invoice Number</th>
-                <th className="py-3 px-4 text-left">Name</th>
-                <th className="py-3 px-4 text-left">Email</th>
-                <th className="py-3 px-4 text-left">Total</th>
-                <th className="py-3 px-4 text-left">Payment Status</th>
-                <th className="py-3 px-4 text-left">Invoice Date</th>
-                <th className="py-3 px-4 text-left">Actions</th>
+                <th className="py-3 px-4 text-left">UID</th>
+                <th className="py-3 px-4 text-left">CLIENT</th>
+                <th className="py-3 px-4 text-left">EMAIL</th>
+                <th className="py-3 px-4 text-left">AMOUNT</th>
+                <th className="py-3 px-4 text-left">ISSUEDATE</th>
+                <th className="py-3 px-4 text-left">STATUS</th>
+                <th className="py-3 px-4 text-left">ACTIONS</th>
               </tr>
             </thead>
             <tbody>
@@ -235,17 +203,29 @@ const ViewAllInvoice = () => {
                       ? invoice.products.reduce((acc, product) => acc + product.total, 0).toFixed(2)
                       : "0.00"}
                   </td>
-                  <td className="py-3 px-4">{invoice.paymentStatus}</td>
                   <td className="py-3 px-4">{new Date(invoice.invoiceDate).toLocaleDateString()}</td>
+                  <td
+  className={`py-1 px-3 ${
+    invoice.paymentStatus === "Paid" 
+      ? "text-green-700 bg-green-300 bg-opacity-80 shadow-lg hover:shadow-xl" 
+      : invoice.paymentStatus === "Unpaid" 
+      ? "text-red-700 bg-red-300 bg-opacity-80 shadow-lg hover:shadow-xl" 
+      : ""
+  } 
+  rounded-full text-center font-semibold text-sm transition-all duration-300 ease-in-out transform hover:scale-110 hover:rotate-2 cursor-pointer`}
+>
+  {invoice.paymentStatus}
+</td>
+
                   <td className="py-3 px-4">
                     <button
-                      onClick={() => handleDownloadInvoice(invoice.id)}
+                      onClick={() => handleDownloadInvoice(invoice.id, invoice.paymentStatus)}
                       className="ml-4 text-green-500 hover:text-green-700"
                     >
                       <AiOutlineFilePdf size={20} />
                     </button>
                     <button
-                      onClick={() => handleDeleteInvoice(invoice.invoiceNumber, invoice.status)}
+                      onClick={() => handleDeleteInvoice(invoice.invoiceNumber, invoice.paymentStatus)} // Ensure these are correct properties
                       className="ml-4 text-red-500 hover:text-red-700"
                     >
                       <AiOutlineDelete size={20} />
