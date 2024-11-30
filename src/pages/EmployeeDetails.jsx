@@ -4,12 +4,15 @@ import { getAuth } from "firebase/auth";
 import { storage } from "../config/firebase"; // Import Firebase storage
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Swal from 'sweetalert2';
+
+import Notiflix from 'notiflix';
 // Firebase setup (replace with your Firebase config)
 const db = getFirestore();
 const auth = getAuth();
 
 const App = () => {
   const [employees, setEmployees] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newEmployee, setNewEmployee] = useState({
     name: "",
@@ -229,7 +232,11 @@ const App = () => {
       e.preventDefault(); // Prevent default form submission behavior
     
       if (!user) {
-        alert('Please log in to update employee details.');
+        Notiflix.Notify.warning('Please log in to update employee details.', {
+          timeout: 4000,
+          position: 'right-bottom',
+          cssAnimationStyle: 'zoom',
+        });
         return;
       }
     
@@ -254,12 +261,23 @@ const App = () => {
           // Update the employee list in the UI
           setEmployees((prev) =>
             prev.map((emp) =>
-              emp.id === selectedEmployee.id ? { ...emp, ...selectedEmployee, photo: photoURL } : emp
+              emp.id === selectedEmployee.id
+                ? { ...emp, ...selectedEmployee, photo: photoURL }
+                : emp
             )
           );
-          alert('Employee details updated successfully!');
+    
+          Notiflix.Notify.success('Employee details updated successfully!', {
+            timeout: 3000,
+            position: 'right-bottom',
+            cssAnimationStyle: 'fade',
+          });
         } else {
-          alert('Employee ID is missing. Cannot update.');
+          Notiflix.Notify.failure('Employee ID is missing. Cannot update.', {
+            timeout: 3000,
+            position: 'right-bottom',
+            cssAnimationStyle: 'zoom',
+          });
         }
     
         // Close drawer and reset selected employee
@@ -267,11 +285,14 @@ const App = () => {
         setSelectedEmployee(null);
       } catch (error) {
         console.error('Error updating employee details:', error);
-        alert('Failed to update employee details. Please try again.');
+        Notiflix.Notify.failure('Failed to update employee details. Please try again.', {
+          timeout: 4000,
+          position: 'right-bottom',
+          cssAnimationStyle: 'zoom',
+        });
       }
     };
-    
-    
+   
     const handleCloseDrawer = () => {
       setIsDrawerOpen(false);
     };
@@ -281,34 +302,93 @@ const App = () => {
         [field]: e.target.value
       }));
     };  
+    const handlePhotoUpload = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          // Update the selectedEmployee object with the new photo URL
+          handleChange({ target: { value: reader.result } }, 'photo');
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    const handleSearchChange = (e) => {
+      setSearchTerm(e.target.value);
+    };
+  
+    const filteredEmployees = employees.filter((employee) =>
+      employee.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-4xl font-extrabold text-center text-purple-600 mb-8">
-        Employee Management System
-      </h1>
+    
+  <div className="flex justify-between items-center mb-8">
+    {/* Employee Management Title (Aligned to the left) */}
+    <h1 className="text-4xl font-extrabold text-left text-purple-600">
+      Employee Management System
+    </h1>
+  </div>
+  <div className="container mx-auto p-6 ">
+  <div className="flex items-center mb-2 ">
+    {/* Total Employees Section */}
+    <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center border-2 border-indigo-300 w-80 transform transition duration-500 ease-in-out hover:scale-105">
+    <h3 className="text-xl font-semibold text-indigo-600">Total Employees</h3>
+    <p className="text-4xl font-bold text-indigo-500">{employees.length}</p>
+  </div>
+    <button
+      onClick={() => setIsModalOpen(true)}
+      className="bg-gradient-to-r from-purple-400 to-indigo-500 text-white px-6 py-3 rounded-lg shadow-md hover:from-teal-600 hover:to-blue-600 ml-6"
+    >
+      Add New Employee
+    </button>
+  </div>
+</div>
 
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className="bg-gradient-to-r from-purple-400 to-indigo-500  text-white px-6 py-3 rounded-lg shadow-md hover:from-teal-600 hover:to-blue-600 mb-8"
+  {/* Search Bar (Aligned to the side, next to Total Employees) */}
+  <div className="relative w-full max-w-xs ml-0">
+    <input
+      type="text"
+      placeholder="Search Employee..."
+      className="w-full py-3 pl-10 ml-8 pr-4 border-2 border-indigo-300 rounded-lg shadow-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 ease-in-out"
+      value={searchTerm}
+      onChange={handleSearchChange}
+    />
+    {/* Search Icon */}
+    <span className="absolute left-3 top-3 text-indigo-500 ml-6">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        className="w-6 h-6 text-indigo-500"
       >
-        Add New Employee
-      </button>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M10 19l5-5m0 0a7 7 0 1 0-1 1 7 7 0 0 0 1-1zm0 0l4 4"
+        />
+      </svg>
+    </span>
+  </div>
+
+
 
 {/* Modal */}
 {isModalOpen && (
   <div className="fixed inset-0 flex items-center justify-center bg-gray-700 bg-opacity-50 z-50 overflow-y-auto">
     <div className="bg-white p-6 rounded-xl shadow-lg w-11/12 max-w-md max-h-[80vh] overflow-y-auto mt-16">
-      {/* Header */}
+      {/* Header */} 
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-purple-600">Add Employee</h2>
         <button
           onClick={() => setIsModalOpen(false)}
-          className="text-gray-500 hover:text-red-500 text-3xl font-bold"
+          className="text-red-500 hover:text-indigo-500 text-4xl font-bold"
         >
           &times;
         </button>
       </div>
-
       {/* Form */}
       <form onSubmit={handleFormSubmit} className="space-y-6">
         <div>
@@ -322,7 +402,6 @@ const App = () => {
             required
           />
         </div>
-
         <div>
           <label className="block text-sm font-medium text-gray-700">Photo</label>
           <input
@@ -460,7 +539,7 @@ const App = () => {
 
       {/* Employee Table */}
       <div className="overflow-x-auto shadow-xl rounded-xl border border-gray-200">
-        <table className="min-w-full table-auto">
+        <table className="min-w-full table-auto mt-4">
           <thead className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
  
     <tr>
@@ -476,18 +555,25 @@ const App = () => {
     </tr>
   </thead>
   <tbody>
-  {employees.map((employee) => (
-    <tr key={employee.id} className="border-b">
-      <td className="px-4 py-2">
-        <div className="flex items-center gap-5"> {/* Add gap between elements */}
-          <img
-            src={employee.photo}
-            alt="Employee"
-            className="rounded-full w-15 h-14"
-          />
-          <span>{employee.name}</span>
-        </div>
+  {filteredEmployees.length === 0 ? (
+    <tr>
+      <td colSpan="8" className="text-center py-4 text-red-500 font-semibold">
+        No Employee Found
       </td>
+    </tr>
+  ) : (
+    filteredEmployees.map((employee) => (
+      <tr key={employee.id} className="border-b">
+        <td className="px-4 py-2">
+          <div className="flex items-center gap-5">
+            <img
+              src={employee.photo}
+              alt="Employee"
+              className="rounded-full w-15 h-14"
+            />
+            <span>{employee.name}</span>
+          </div>
+        </td>
       <td className="px-4 py-2">{employee.dob}</td>
       <td className="px-4 py-2">{employee.contact}</td>
       <td className="px-4 py-2">{employee.email}</td>
@@ -502,9 +588,6 @@ const App = () => {
     >
       <i className="fas fa-eye"></i> {/* Eye Icon */}
     </button>
-
- 
-
     <button
       className="text-red-500 hover:text-red-700 p-2 rounded-full transition duration-200"
       onClick={() => handleDelete(employee.id)}
@@ -514,7 +597,8 @@ const App = () => {
   </div>
 </td>
     </tr>
-  ))}
+     ))
+  )}
 </tbody>
 
 </table>
@@ -539,14 +623,27 @@ const App = () => {
       {/* Employee Details Form */}
       <div className="mt-4 space-y-4">
         {/* Profile Image */}
-        <div className="flex justify-center">
-          <img
-            src={selectedEmployee?.photo || 'https://via.placeholder.com/150'}
-            alt="Employee"
-            className="rounded-full w-32 h-34 "
-          />
-        </div>
-
+        <div className="flex flex-col items-center space-y-3">
+  {/* Editable Profile Image */}
+  <label className="relative cursor-pointer group">
+    <img
+      src={selectedEmployee?.photo || 'https://via.placeholder.com/150'}
+      alt="Employee"
+      className="rounded-full w-32 h-34 object-cover border-2 border-indigo-500 group-hover:opacity-70 transition"
+    />
+    {/* Upload Icon */}
+    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition bg-gray-900 bg-opacity-50 rounded-full">
+      <i className="fas fa-camera text-white text-xl"></i>
+    </div>
+    {/* Hidden File Input */}
+    <input
+      type="file"
+      accept="image/*"
+      onChange={handlePhotoUpload}
+      className="hidden"
+    />
+  </label>
+</div>
         {/* Editable Fields */}
         <div>
           <label className="block font-semibold text-purple-700">Name:</label>
@@ -626,8 +723,6 @@ const App = () => {
   </div>
 )}
 
-
-    
       </div>
     </div>
   );
