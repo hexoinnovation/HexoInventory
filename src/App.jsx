@@ -33,7 +33,8 @@ import Manageproducts from "./pages/manageproducts";
 import Managecategories from "./pages/managecategories";
 import Ecomdashboard from "./pages/ecomdashboard";
 import Notifications from "./Components/Notifications"; // Example page component
-import { AuthProvider } from "./authContext.jsx";
+import { AuthProvider } from "./authContext";
+import Profile from "./Components/profile";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -180,6 +181,10 @@ const App = () => {
                 element={
                   isAuthenticated ? <Managecategories /> : <Navigate to="/" />
                 }
+              />
+              <Route
+                path="/profile"
+                element={isAuthenticated ? <Profile /> : <Navigate to="/" />}
               />
               <Route
                 path="/attendence"

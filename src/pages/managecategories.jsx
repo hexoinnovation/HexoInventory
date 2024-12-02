@@ -121,22 +121,22 @@ const ManageCategories = () => {
   const categoriesWithoutImages = totalCategories - categoriesWithImages;
 
   return (
-    <div className="p-8 bg-gradient-to-br from-blue-50 via-yellow-50 to-blue-50 min-h-screen">
+    <div className="p-8 bg-gradient-to-br from-blue-100 via-white to-gray-100 min-h-screen">
       <h1 className="text-4xl font-bold text-center text-blue-600 mb-8">
         Manage Categories
       </h1>
 
       {/* Info Boxes */}
-      <div className="grid grid-cols-3 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-blue-500 text-white p-4 rounded-lg shadow-md">
+      <div className="grid grid-cols-4 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-700 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
           <h2 className="text-lg font-semibold">Total Categories</h2>
           <p className="text-3xl font-bold">{totalCategories}</p>
         </div>
-        <div className="bg-green-500 text-white p-4 rounded-lg shadow-md">
+        <div className="bg-gradient-to-r from-green-500 to-green-700 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
           <h2 className="text-lg font-semibold">Categories with Images</h2>
           <p className="text-3xl font-bold">{categoriesWithImages}</p>
         </div>
-        <div className="bg-red-500 text-white p-4 rounded-lg shadow-md">
+        <div className="bg-gradient-to-r from-red-500 to-red-700 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
           <h2 className="text-lg font-semibold">Categories without Images</h2>
           <p className="text-3xl font-bold">{categoriesWithoutImages}</p>
         </div>
@@ -145,7 +145,7 @@ const ManageCategories = () => {
       {/* Two-Column Layout */}
       <div className="grid grid-cols-2 lg:grid-cols-2 gap-8">
         {/* Category Form */}
-        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+        <div className="bg-white p-6 rounded-lg shadow-lg">
           <h2 className="text-2xl font-semibold text-blue-500 mb-4">
             {editCategoryId ? "Edit Category" : "Add Category"}
           </h2>
@@ -153,7 +153,7 @@ const ManageCategories = () => {
             <input
               type="text"
               placeholder="Category Name"
-              className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
               value={newCategory.name}
               onChange={(e) =>
                 setNewCategory({ ...newCategory, name: e.target.value })
@@ -161,7 +161,7 @@ const ManageCategories = () => {
             />
             <textarea
               placeholder="Description"
-              className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 transition"
+              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 h-24"
               value={newCategory.description}
               onChange={(e) =>
                 setNewCategory({ ...newCategory, description: e.target.value })
@@ -170,7 +170,7 @@ const ManageCategories = () => {
             <input
               type="file"
               accept="image/*"
-              className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
               onChange={handleImageUpload}
             />
             {previewImage && (
@@ -183,7 +183,7 @@ const ManageCategories = () => {
           </div>
           <div className="mt-4 flex justify-between">
             <button
-              className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition"
+              className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-6 py-2 rounded-lg hover:from-blue-600 hover:to-blue-800 transition-all duration-200"
               onClick={
                 editCategoryId ? handleUpdateCategory : handleAddCategory
               }
@@ -191,7 +191,7 @@ const ManageCategories = () => {
               {editCategoryId ? "Update Category" : "Add Category"}
             </button>
             <button
-              className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 transition"
+              className="bg-gradient-to-r from-gray-500 to-gray-700 text-white px-6 py-2 rounded-lg hover:from-gray-600 hover:to-gray-800 transition-all duration-200"
               onClick={resetForm}
             >
               Clear Form
@@ -200,7 +200,7 @@ const ManageCategories = () => {
         </div>
 
         {/* Category List */}
-        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+        <div className="bg-white p-6 rounded-lg shadow-lg">
           <h2 className="text-2xl font-semibold text-blue-500 mb-4">
             Category List
           </h2>
@@ -224,7 +224,7 @@ const ManageCategories = () => {
                 categories.map((category) => (
                   <tr
                     key={category.id}
-                    className="hover:bg-gray-100 transition"
+                    className="hover:bg-gray-50 transition duration-200"
                   >
                     <td className="border p-3">
                       <img
@@ -238,7 +238,7 @@ const ManageCategories = () => {
                     <td className="border p-3 flex justify-around">
                       <FontAwesomeIcon
                         icon={faEdit}
-                        className="text-yellow-500 cursor-pointer"
+                        className="text-yellow-500 cursor-pointer hover:scale-110 transition-transform duration-200"
                         onClick={() => {
                           setEditCategoryId(category.id);
                           setNewCategory(category);
@@ -247,7 +247,7 @@ const ManageCategories = () => {
                       />
                       <FontAwesomeIcon
                         icon={faTrash}
-                        className="text-red-500 cursor-pointer"
+                        className="text-red-500 cursor-pointer hover:scale-110 transition-transform duration-200"
                         onClick={() => handleDeleteCategory(category.id)}
                       />
                     </td>

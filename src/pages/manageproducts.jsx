@@ -167,26 +167,26 @@ const ManageProducts = () => {
   ).length;
 
   return (
-    <div className="p-8 bg-gradient-to-br from-blue-50 via-yellow-50 to-blue-50 min-h-screen">
+    <div className="p-8 bg-gradient-to-br from-blue-100 via-white to-gray-100 min-h-screen">
       <h1 className="text-4xl font-bold text-center text-blue-600 mb-8">
         Manage Products
       </h1>
 
       {/* Info Boxes */}
-      <div className="grid grid-cols-4 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-blue-500 text-white p-4 rounded-lg shadow-md">
+      <div className="grid grid-cols-4 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-blue-500 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
           <h2 className="text-lg font-semibold">Total Products</h2>
           <p className="text-3xl font-bold">{totalProducts}</p>
         </div>
-        <div className="bg-green-500 text-white p-4 rounded-lg shadow-md">
+        <div className="bg-green-500 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
           <h2 className="text-lg font-semibold">Products in Stock</h2>
           <p className="text-3xl font-bold">{productsInStock}</p>
         </div>
-        <div className="bg-yellow-500 text-white p-4 rounded-lg shadow-md">
+        <div className="bg-yellow-500 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
           <h2 className="text-lg font-semibold">Average Price</h2>
           <p className="text-3xl font-bold">${averagePrice}</p>
         </div>
-        <div className="bg-pink-500 text-white p-4 rounded-lg shadow-md">
+        <div className="bg-pink-500 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
           <h2 className="text-lg font-semibold">Products with Discounts</h2>
           <p className="text-3xl font-bold">{productsWithDiscounts}</p>
         </div>
@@ -195,7 +195,7 @@ const ManageProducts = () => {
       {/* Two-Column Layout */}
       <div className="grid grid-cols-2 lg:grid-cols-2 gap-8">
         {/* Product Form */}
-        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+        <div className="bg-white p-6 rounded-lg shadow-lg">
           <h2 className="text-2xl font-semibold text-blue-500 mb-4">
             {editProductId ? "Edit Product" : "Add Product"}
           </h2>
@@ -203,7 +203,7 @@ const ManageProducts = () => {
             <input
               type="text"
               placeholder="Product Name"
-              className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
               value={newProduct.name}
               onChange={(e) =>
                 setNewProduct({ ...newProduct, name: e.target.value })
@@ -212,14 +212,14 @@ const ManageProducts = () => {
             <input
               type="number"
               placeholder="Price"
-              className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
               value={newProduct.price}
               onChange={(e) =>
                 setNewProduct({ ...newProduct, price: e.target.value })
               }
             />
             <select
-              className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
               value={newProduct.category}
               onChange={(e) =>
                 setNewProduct({ ...newProduct, category: e.target.value })
@@ -234,7 +234,7 @@ const ManageProducts = () => {
             </select>
             <textarea
               placeholder="Description"
-              className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 transition"
+              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 h-24"
               value={newProduct.description}
               onChange={(e) =>
                 setNewProduct({ ...newProduct, description: e.target.value })
@@ -243,7 +243,7 @@ const ManageProducts = () => {
             <input
               type="number"
               placeholder="Stock Quantity"
-              className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
               value={newProduct.stock}
               onChange={(e) =>
                 setNewProduct({ ...newProduct, stock: e.target.value })
@@ -252,7 +252,7 @@ const ManageProducts = () => {
             <input
               type="number"
               placeholder="Discount (%)"
-              className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
               value={newProduct.discount}
               onChange={(e) =>
                 setNewProduct({ ...newProduct, discount: e.target.value })
@@ -261,7 +261,7 @@ const ManageProducts = () => {
             <input
               type="file"
               accept="image/*"
-              className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
               onChange={handleImageUpload}
             />
             {previewImage && (
@@ -274,13 +274,13 @@ const ManageProducts = () => {
           </div>
           <div className="mt-4 flex justify-between">
             <button
-              className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition"
+              className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-6 py-2 rounded-lg hover:from-blue-600 hover:to-blue-800 transition-all duration-200"
               onClick={editProductId ? handleUpdateProduct : handleAddProduct}
             >
               {editProductId ? "Update Product" : "Add Product"}
             </button>
             <button
-              className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 transition"
+              className="bg-gradient-to-r from-gray-500 to-gray-700 text-white px-6 py-2 rounded-lg hover:from-gray-600 hover:to-gray-800 transition-all duration-200"
               onClick={resetForm}
             >
               Clear Form
@@ -289,7 +289,7 @@ const ManageProducts = () => {
         </div>
 
         {/* Product List */}
-        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+        <div className="bg-white p-6 rounded-lg shadow-lg">
           <h2 className="text-2xl font-semibold text-blue-500 mb-4">
             Product List
           </h2>
@@ -313,7 +313,7 @@ const ManageProducts = () => {
                 </tr>
               ) : (
                 products.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-100 transition">
+                  <tr key={product.id} className="hover:bg-gray-50">
                     <td className="border p-3">
                       <img
                         src={product.image}
@@ -328,12 +328,12 @@ const ManageProducts = () => {
                     <td className="border p-3 flex justify-around">
                       <FontAwesomeIcon
                         icon={faEdit}
-                        className="text-yellow-500 cursor-pointer"
+                        className="text-yellow-500 cursor-pointer hover:scale-110 transition-transform duration-200"
                         onClick={() => handleEditProduct(product)}
                       />
                       <FontAwesomeIcon
                         icon={faTrash}
-                        className="text-red-500 cursor-pointer"
+                        className="text-red-500 cursor-pointer hover:scale-110 transition-transform duration-200"
                         onClick={() => handleDeleteProduct(product.id)}
                       />
                     </td>
