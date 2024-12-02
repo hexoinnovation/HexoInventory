@@ -266,21 +266,32 @@ const CustomerDetails = () => {
         <FontAwesomeIcon icon={faUsers} className="ml-4 text-blue-600" />
       </h1>
 
-      <div className="grid grid-cols-2 gap-6 mb-6">
-        <div className="p-6 rounded-lg bg-gradient-to-r from-blue-500 to-blue-300 text-white shadow-lg">
+      <div className="grid grid-cols-3 gap-6 mb-6">
+        <div className="p-6 rounded-lg bg-gradient-to-r from-red-900 to-red-300 text-white shadow-lg">
           <h3 className="text-xl font-semibold">Total Customers</h3>
           <p className="text-4xl font-bold">{totalCustomers}</p>
         </div>
-        <div className="p-6 rounded-lg bg-gradient-to-r from-green-500 to-green-300 text-white shadow-lg">
+        <div className="p-6 rounded-lg bg-gradient-to-r from-green-900 to-green-300 text-white shadow-lg">
           <h3 className="text-xl font-semibold">Phone Numbers Collected</h3>
           <p className="text-4xl font-bold">{totalPhoneNumbers}</p>
         </div>
+        <div className="p-6 rounded-lg bg-gradient-to-r from-purple-900 to-purple-300 text-white shadow-lg">
+          <h3 className="text-xl font-semibold">GST Numbers Provided</h3>
+          <p className="text-4xl font-bold">
+            {Customers.filter((customer) => customer.gst).length}
+          </p>
+        </div>
       </div>
-
-      <div className="grid grid-cols-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-3 p-2 bg-gradient-to-r from-blue-700 via-blue to-blue-700 rounded-lg shadow-lg">
+      <button
+        onClick={() => setShowModal(true)}
+        className="bg-blue-900 text-white py-2 px-4 rounded-lg mb-4 hover:bg-blue-600"
+      >
+        Add Customer
+      </button>
+      <div className="grid grid-cols-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-2 p-2 bg-gradient-to-r from-blue-700 via-blue to-blue-700 rounded-lg shadow-lg">
         <div className="col-span-full">
           <label
-            className="block text-lg font-semibold text-gray-100 mb-2"
+            className="block text-lg font-semibold text-gray-100 mb-0"
             htmlFor="search"
           >
             Global Search:
@@ -306,13 +317,6 @@ const CustomerDetails = () => {
           </div>
         ))}
       </div>
-
-      <button
-        onClick={() => setShowModal(true)}
-        className="bg-blue-500 text-white py-2 px-4 rounded-lg mb-4 hover:bg-blue-600"
-      >
-        Add Customer
-      </button>
 
       <div className="w-full mt-5">
         <table className="min-w-full bg-white shadow-md rounded-lg">
