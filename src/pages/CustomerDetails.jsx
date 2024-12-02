@@ -10,9 +10,9 @@ import React, { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUsers } from '@fortawesome/free-solid-svg-icons';
-import { auth, db } from "../config/firebase"; // Replace with your Firebase configuration path
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUsers } from "@fortawesome/free-solid-svg-icons";
+import { auth, db } from "../config/firebase";
 
 const CustomerDetails = () => {
   const [showModal, setShowModal] = useState(false);
@@ -26,9 +26,18 @@ const CustomerDetails = () => {
     state: "",
     zip: "",
     gst: "",
+    aadhaar: "",
+    panno: "",
   });
-  const [selectedCustomer, setSelectedCustomer] = useState(null); // Store selected customer for editing
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [Customers, setCustomers] = useState([]);
+  const [filters, setFilters] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    city: "",
+    state: "",
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [user] = useAuthState(auth);
 
@@ -111,65 +120,38 @@ const CustomerDetails = () => {
       console.error("Error adding customer: ", error);
     }
   };
+
   const handleRemoveCustomer = async (email) => {
     if (!user) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'User Not Authenticated',
-        text: 'Please log in to delete a customer.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#3085d6',
-      });
+      Swal.fire("Warning", "Please log in to delete a customer.", "warning");
       return;
     }
-  
-    // Confirm deletion with SweetAlert2
+
     const result = await Swal.fire({
-      title: 'Are you sure?',
-      text: 'You won’t be able to undo this action!',
-      icon: 'warning',
+      title: "Are you sure?",
+      text: "You won’t be able to undo this action!",
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
     });
-  
-    if (!result.isConfirmed) return; // Exit if the user cancels
-  
+
+    if (!result.isConfirmed) return;
+
     try {
       const customerDoc = doc(db, "admins", user.email, "Customers", email);
-  
-      // Delete customer from Firestore
       await deleteDoc(customerDoc);
-  
-      // Update the customers state
-      setCustomers((prevCustomers) =>
-        prevCustomers.filter((customer) => customer.email !== email)
+
+      setCustomers((prev) =>
+        prev.filter((customer) => customer.email !== email)
       );
-  
-      // Success SweetAlert
-      Swal.fire({
-        icon: 'success',
-        title: 'Deleted!',
-        text: 'Customer has been deleted successfully.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#3085d6',
-      });
+
+      Swal.fire("Deleted!", "Customer has been deleted.", "success");
     } catch (error) {
-      console.error("Error deleting customer: ", error.message);
-  
-      // Error SweetAlert
-      Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: 'Failed to delete customer. Please try again.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#d33',
-      });
+      console.error("Error deleting customer: ", error);
+      Swal.fire("Error", "Failed to delete customer.", "error");
     }
   };
-  
 
   const handleEditCustomer = (customer) => {
     setSelectedCustomer(customer); // Set the customer data to edit
@@ -179,7 +161,18 @@ const CustomerDetails = () => {
 
   const handleUpdateCustomer = async (e) => {
     e.preventDefault();
-    const { name, email, phone, address, city, state, zip, gst, aadhaar, panno } = newCustomer;
+    const {
+      name,
+      email,
+      phone,
+      address,
+      city,
+      state,
+      zip,
+      gst,
+      aadhaar,
+      panno,
+    } = newCustomer;
 
     if (
       !name ||
@@ -191,7 +184,8 @@ const CustomerDetails = () => {
       !zip ||
       !gst ||
       !aadhaar ||
-      !panno) {
+      !panno
+    ) {
       return alert("Please fill all the fields.");
     }
 
@@ -243,59 +237,94 @@ const CustomerDetails = () => {
     panno: "PAN No",
   };
 
-  const filteredCustomers = Customers.filter(
-    (customer) =>
-      customer.name &&
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const filteredCustomers = Customers.filter((customer) =>
+    Object.keys(filters).every((key) =>
+      customer[key]?.toLowerCase().includes(filters[key].toLowerCase())
+    )
+  ).filter((customer) =>
+    searchQuery
+      ? Object.values(customer).some((value) =>
+          value.toString().toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : true
   );
 
-  const totalCustomers = filteredCustomers.length;
-
-  // Calculate the total GST
-  const totalGst = Customers.reduce((acc, customer) => {
-    return acc + (parseFloat(customer.gst) || 0);
-  }, 0);
+  const totalCustomers = Customers.length;
+  const totalPhoneNumbers = Customers.filter(
+    (customer) => customer.phone
+  ).length;
 
   return (
-    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
-       <h1 className="text-5xl font-extrabold text-pink-700 mb-6 flex items-center">
-        Customer Details 
-        <FontAwesomeIcon icon={faUsers} className="text-5xl ml-5 text-pink-700 animate-bounce" />
+    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
+      <h1 className="text-5xl font-bold text-blue-600 mb-6">
+        Customer Details
+        <FontAwesomeIcon icon={faUsers} className="ml-4 text-blue-600" />
       </h1>
+
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        <div className="p-6 rounded-lg bg-gradient-to-r from-blue-500 to-blue-300 text-white shadow-lg">
+          <h3 className="text-xl font-semibold">Total Customers</h3>
+          <p className="text-4xl font-bold">{totalCustomers}</p>
+        </div>
+        <div className="p-6 rounded-lg bg-gradient-to-r from-green-500 to-green-300 text-white shadow-lg">
+          <h3 className="text-xl font-semibold">Phone Numbers Collected</h3>
+          <p className="text-4xl font-bold">{totalPhoneNumbers}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-3 p-2 bg-gradient-to-r from-blue-700 via-blue to-blue-700 rounded-lg shadow-lg">
+        <div className="col-span-full">
+          <label
+            className="block text-lg font-semibold text-gray-100 mb-2"
+            htmlFor="search"
+          >
+            Global Search:
+          </label>
+        </div>
+        {["name", "email", "phone", "city", "state"].map((filterKey) => (
+          <div key={filterKey} className="bg-green p-2 rounded-lg shadow-md">
+            <label
+              className="block text-md font-medium text-gray-100 mb-2 capitalize"
+              htmlFor={filterKey}
+            >
+              Filter by {filterKey}:
+            </label>
+            <input
+              type="text"
+              id={filterKey}
+              name={filterKey}
+              placeholder={`Enter ${filterKey}...`}
+              value={filters[filterKey]}
+              onChange={handleFilterChange}
+              className="border border-gray-300 rounded-lg px-4 py-2 w-full focus:ring focus:ring-blue-400 focus:outline-none"
+            />
+          </div>
+        ))}
+      </div>
 
       <button
         onClick={() => setShowModal(true)}
-        className="bg-blue-500 text-white py-2 px-4 rounded-lg mb-4 transition hover:bg-blue-600"
+        className="bg-blue-500 text-white py-2 px-4 rounded-lg mb-4 hover:bg-blue-600"
       >
         Add Customer
       </button>
 
-      <div className="grid grid-cols-3 sm:grid-cols-3 gap-6 mb-6">
-        <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center border-2 border-indigo-300">
-          <h3 className="text-xl font-semibold text-indigo-600">
-            Total Customers
-          </h3>
-          <p className="text-4xl font-bold text-yellow-500">{totalCustomers}</p>
-        </div>
-        {/* <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center">
-          <h3 className="text-xl font-semibold text-indigo-600">Total GST</h3>
-          <p className="text-4xl font-bold text-yellow-500">
-            {totalGst.toFixed(2)}
-          </p>
-        </div> */}
-      </div>
-
       <div className="w-full mt-5">
         <table className="min-w-full bg-white shadow-md rounded-lg">
-          <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white">
+          <thead className="bg-gradient-to-r from-blue-600 to-blue-600 text-white">
             <tr>
               <th className="py-3 px-4 text-left">Name</th>
               <th className="py-3 px-4 text-left">Email</th>
               <th className="py-3 px-4 text-left">Phone</th>
               <th className="py-3 px-4 text-left">Address</th>
-              {/* <th className="py-3 px-4 text-left">City</th>
+              <th className="py-3 px-4 text-left">City</th>
               <th className="py-3 px-4 text-left">State</th>
-              <th className="py-3 px-4 text-left">Zip Code</th> */}
+              <th className="py-3 px-4 text-left">Zip Code</th>
               <th className="py-3 px-4 text-left">GST No</th>
               <th className="py-3 px-4 text-left">Aadhaar No</th>
               <th className="py-3 px-4 text-left">PAN No</th>
@@ -312,9 +341,9 @@ const CustomerDetails = () => {
                 <td className="py-3 px-4">{customer.email}</td>
                 <td className="py-3 px-4">{customer.phone}</td>
                 <td className="py-3 px-4">{customer.address}</td>
-                {/* <td className="py-3 px-4">{customer.city}</td>
+                <td className="py-3 px-4">{customer.city}</td>
                 <td className="py-3 px-4">{customer.state}</td>
-                <td className="py-3 px-4">{customer.zip}</td> */}
+                <td className="py-3 px-4">{customer.zip}</td>
                 <td className="py-3 px-4">{customer.gst}</td>
                 <td className="py-3 px-4">{customer.aadhaar}</td>
                 <td className="py-3 px-4">{customer.panno}</td>
