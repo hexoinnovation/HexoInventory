@@ -73,71 +73,72 @@ setTotalAmount(total); // Update total amount
     }
   }, [user]);
 
-  // Delete invoice
-const handleDeleteInvoice = async (invoiceNumber) => {
-  if (!user) {
-    Swal.fire({
-      icon: "warning",
-      title: "Not Logged In",
-      text: "Please log in to delete an invoice.",
-      confirmButtonText: "Okay",
-      confirmButtonColor: "#3085d6",
-    });
-    return;
-  }
-
-  try {
-    // Confirm deletion with SweetAlert
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: "You won’t be able to undo this action!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, delete it!",
-      cancelButtonText: "Cancel",
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-    });
-
-    if (result.isConfirmed) {
-      const invoiceDocRef = doc(
-        db,
-        "admins",
-        user.email,
-        "Invoices",
-        invoiceNumber.toString()
-      );
-
-      // Delete the invoice from Firestore
-      await deleteDoc(invoiceDocRef);
-
-      // Update the UI by filtering out the deleted invoice
-      setInvoiceData((prevInvoices) =>
-        prevInvoices.filter((invoice) => invoice.invoiceNumber !== invoiceNumber)
-      );
-
-      // Success SweetAlert
+  const handleDeleteInvoice = async (invoiceNumber) => {
+    if (!user) {
       Swal.fire({
-        icon: "success",
-        title: "Deleted!",
-        text: `Invoice ${invoiceNumber} has been deleted successfully.`,
+        icon: "warning",
+        title: "Not Logged In",
+        text: "Please log in to delete an invoice.",
         confirmButtonText: "Okay",
         confirmButtonColor: "#3085d6",
       });
+      return;
     }
-  } catch (error) {
-    console.error("Error deleting invoice:", error);
-
-    // Error SweetAlert
-    Swal.fire({
-      icon: "error",
-      title: "Error!",
-      text: "Failed to delete the invoice. Please try again later.",
-      confirmButtonText: "Okay",
-      confirmButtonColor: "#d33",
-    });
-  }
-};
+  
+    try {
+      // Confirm deletion
+      const result = await Swal.fire({
+        title: "Are you sure?",
+        text: "You won’t be able to undo this action!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Yes, delete it!",
+        cancelButtonText: "Cancel",
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+      });
+  
+      if (result.isConfirmed) {
+        // Reference to the Firestore document
+        const invoiceDocRef = doc(
+          db,
+          "admins",
+          user.email,
+          "Invoices",
+          invoiceNumber.toString()
+        );
+  
+        // Delete document in Firestore
+        await deleteDoc(invoiceDocRef);
+  
+        // Update state to remove the deleted invoice
+        setInvoiceData((prevInvoices) =>
+          prevInvoices.filter((invoice) => invoice.invoiceNumber !== invoiceNumber)
+        );
+  
+        // Success notification
+        Swal.fire({
+          icon: "success",
+          title: "Deleted!",
+          text: `Invoice ${invoiceNumber} has been deleted successfully.`,
+          confirmButtonText: "Okay",
+          confirmButtonColor: "#3085d6",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+  
+      // Error notification
+      Swal.fire({
+        icon: "error",
+        title: "Error!",
+        text: "Failed to delete the invoice. Please try again later.",
+        confirmButtonText: "Okay",
+        confirmButtonColor: "#d33",
+      });
+    }
+  };
+  
 
 const handleDownloadInvoice = async (invoiceNumber) => {
   try {
@@ -160,89 +161,190 @@ const handleDownloadInvoice = async (invoiceNumber) => {
       // Create a new PDF document
       const pdfDoc = new jsPDF();
 
-      // Add the main details to the PDF
-      pdfDoc.text(`Invoice Date: ${new Date(invoiceData.invoiceDate).toLocaleDateString()}`, 10, 60);
-      pdfDoc.text(`Invoice Number: ${invoiceData.invoiceNumber}`, 10, 10);
-      pdfDoc.text(`Customer Name: ${invoiceData.billTo?.name}`, 10, 20);
-      pdfDoc.text(`Email: ${invoiceData.billTo?.email}`, 10, 30);
-      pdfDoc.text(`Phone: ${invoiceData.billTo?.phone}`, 10, 40);
-      pdfDoc.text(`Address: ${invoiceData.billTo?.address}`, 10, 50);
-      pdfDoc.text(`City: ${invoiceData.billTo?.city}`, 10, 60);
-      pdfDoc.text(`State: ${invoiceData.billTo?.state}`, 10, 70);
-      pdfDoc.text(`ZipCode: ${invoiceData.billTo?.zipCode}`, 10, 80);
-      pdfDoc.text(`GstNumber: ${invoiceData.billTo?.gstNumber}`, 10, 90);
-      pdfDoc.text(`Aadhaar: ${invoiceData.billTo?.aadhaar}`, 10, 100);
-      pdfDoc.text(`Panno: ${invoiceData.billTo?.panno}`, 10, 110);
-      pdfDoc.text(`Website: ${invoiceData.billTo?.website}`, 10, 120);
-      pdfDoc.text(`BillFrom: ${invoiceData.billFrom}`, 10, 130);
-      pdfDoc.text(`Payment Status: ${invoiceData.paymentStatus}`, 10, 140);
-      pdfDoc.text(`Shipping Method: ${invoiceData.shippingMethod}`, 10, 150);
-      pdfDoc.text(`Payment Method: ${invoiceData.paymentMethod}`, 10, 160);
+      // Get the page width and height
+      const pageWidth = pdfDoc.internal.pageSize.getWidth();
+      const pageHeight = pdfDoc.internal.pageSize.getHeight();
 
-      // Add tax details to the PDF
-      pdfDoc.text(`CGST: ₹${invoiceData.taxDetails?.CGST || 0}`, 10, 170);
-      pdfDoc.text(`SGST: ₹${invoiceData.taxDetails?.SGST || 0}`, 10, 180);
-      pdfDoc.text(`IGST: ₹${invoiceData.taxDetails?.IGST || 0}`, 10, 190);
+      // Set margins for the content to avoid overlap with the border
+      const margin = 10;
 
-      // Add subtotal and total to the PDF
-      pdfDoc.text(`Subtotal: ₹${invoiceData.subtotal}`, 10, 200);
-      const totalAmount = Number(invoiceData.total);
-      if (!isNaN(totalAmount)) {
-        pdfDoc.text(`Total Amount: ₹${totalAmount.toFixed(2)}`, 10, 210);
-      } else {
-        console.error("Invalid total amount:", invoiceData.total);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Invalid total amount in invoice.",
-        });
-        return;
-      }
+      // Draw the border around the entire page (with some margin from the edges)
+      pdfDoc.setLineWidth(0.5);
+      pdfDoc.rect(margin, margin, pageWidth - 2 * margin, pageHeight - 2 * margin); // Border for the page
+      pdfDoc.setTextColor(0, 0, 255); // Blue
+      // Add the title
+      pdfDoc.setFontSize(16); // Set a larger font size for the title
+      pdfDoc.text("Invoice Generator", pageWidth / 2, 20, { align: "center" , });
 
-      // Add products table if applicable
+      // Set font size for content
+      pdfDoc.setFontSize(8);
+      pdfDoc.setTextColor('red');
+      pdfDoc.text(`Invoice Date: ${new Date(invoiceData.invoiceDate).toLocaleDateString()}`, 20, 30);
+      pdfDoc.text(`Invoice Number: ${invoiceData.invoiceNumber}`, 20, 35);
+
+      pdfDoc.setFontSize(11); 
+      pdfDoc.setTextColor('black');
+      // Define the starting Y position and line height
+      let startYPosition = 35; // Starting vertical position
+      const lineHeight = 10; // Space between lines
+      const marginLeft = 20; // Left margin for "Bill From"
+      const marginRight = 30; // Right margin for "Bill To"
+     
+      // Add "Bill From" details (Left side)
+
+      pdfDoc.text(`Company: ${invoiceData.billFrom?.businessName}`, marginLeft, (startYPosition += lineHeight));
+      pdfDoc.text(`Reg Number: ${invoiceData.billFrom?.registrationNumber}`, marginLeft, (startYPosition += lineHeight));
+      pdfDoc.text(`Address: ${invoiceData.billFrom?.address}`, marginLeft, (startYPosition += lineHeight));
+      pdfDoc.text(`Contact: ${invoiceData.billFrom?.contactNumber}`, marginLeft, (startYPosition += lineHeight));
+      pdfDoc.text(`Email: ${invoiceData.billFrom?.email}`, marginLeft, (startYPosition += lineHeight));
+      pdfDoc.text(`GST Number: ${invoiceData.billFrom?.gstNumber}`, marginLeft, (startYPosition += lineHeight));
+      pdfDoc.text(`Aadhar: ${invoiceData.billFrom?.aadhaar}`, marginLeft, (startYPosition += lineHeight));
+      pdfDoc.text(`PAN Number: ${invoiceData.billFrom?.panno}`, marginLeft, (startYPosition += lineHeight));
+
+      // Reset starting Y position for "Bill To"
+      startYPosition = 35;
+// Helper function for right-aligned text
+const addRightAlignedText = (text, yPosition) => {
+  // Get the width of the text
+  const textWidth = pdfDoc.getTextWidth(text);
+  
+  // Calculate the X position to align the text to the right
+  const marginRight = 20;  // Right margin
+  const xPosition = pageWidth - textWidth - marginRight;
+
+  // Add the text to the PDF at the calculated position
+  pdfDoc.text(text, xPosition, yPosition);
+};
+// Add "Bill To" details (Right side)
+addRightAlignedText(`Customer Name: ${invoiceData.billTo?.name}`, (startYPosition += lineHeight));
+addRightAlignedText(`Email: ${invoiceData.billTo?.email}`, (startYPosition += lineHeight));
+addRightAlignedText(`Phone: ${invoiceData.billTo?.phone}`, (startYPosition += lineHeight));
+addRightAlignedText(`Address: ${invoiceData.billTo?.address}`, (startYPosition += lineHeight));
+addRightAlignedText(`City: ${invoiceData.billTo?.city}`, (startYPosition += lineHeight));
+addRightAlignedText(`State: ${invoiceData.billTo?.state}`, (startYPosition += lineHeight));
+addRightAlignedText(`ZipCode: ${invoiceData.billTo?.zipCode}`, (startYPosition += lineHeight));
+addRightAlignedText(`GstNumber: ${invoiceData.billTo?.gstNumber}`, (startYPosition += lineHeight));
+addRightAlignedText(`Aadhaar: ${invoiceData.billTo?.aadhaar}`, (startYPosition += lineHeight));
+addRightAlignedText(`Panno: ${invoiceData.billTo?.panno}`, (startYPosition += lineHeight));
+addRightAlignedText(`Website: ${invoiceData.billTo?.website}`, (startYPosition += lineHeight));
+
+      // Define the starting Y position for the products table
+      let yOffset = 170;
+
+      // Define table header columns
+      const headers = ["Name", "Quantity", "Rate", "Price"];
+      const columnXPositions = [10, 70, 100, 140]; // X positions for each column
+      const rowHeight = 12; // Height of each row
+
+      // Set line width for the borders
+      pdfDoc.setLineWidth(0.5);
+      
+      // Add table header with outline
+      pdfDoc.rect(10, yOffset - rowHeight, 130, rowHeight).stroke(); // Outline for the header row
+      headers.forEach((header, index) => {
+        pdfDoc.text(header, columnXPositions[index], yOffset); // Add header content
+      });
+      yOffset += rowHeight; // Move to the next row for products
+
+      // Add outline for each product row (including borders around product rows)
       const products = invoiceData.products || [];
       if (products.length > 0) {
-        let yOffset = 220; // Start position for the products table
-
-        // Table Header
-        pdfDoc.text("Products", 10, yOffset);
-        yOffset += 10;
-        pdfDoc.text("Name", 10, yOffset);
-        pdfDoc.text("Quantity", 70, yOffset);
-        pdfDoc.text("Rate", 100, yOffset);
-        pdfDoc.text("Total", 140, yOffset);
-        yOffset += 10;
-
-        // Table Content
         products.forEach((product, index) => {
-          pdfDoc.text(`${index + 1}. ${product.name}`, 10, yOffset);
-          pdfDoc.text(`${product.quantity}`, 70, yOffset);
-          pdfDoc.text(`₹${Number(product.rate).toFixed(2)}`, 100, yOffset);
-          pdfDoc.text(`₹${Number(product.total).toFixed(2)}`, 140, yOffset);
-          yOffset += 10;
+          // Check for undefined or missing fields and provide fallback values
+          const productName = product.name || 'Unknown'; // Fallback to 'Unknown' if name is missing
+          const quantity = product.quantity || 0; // Fallback to 0 if quantity is missing
+          const price = product.price && !isNaN(product.price) ? product.price : 0; // Fallback to 0 if price is invalid
+          const rate = product.rate && !isNaN(product.rate) ? product.rate : 0; // Fallback to 0 if rate is invalid
+
+          // Draw border for each product row
+          pdfDoc.rect(40, yOffset - rowHeight, 140, rowHeight).stroke(); // Border for the product row
+
+          // Add product content
+       
+          pdfDoc.text(`${productName}`, columnXPositions[0], yOffset); // Product name
+          pdfDoc.text(`${quantity}`, columnXPositions[1], yOffset); // Product quantity
+          pdfDoc.text(`₹${Number(price).toFixed(2)}`, columnXPositions[3], yOffset); // Product price
+          pdfDoc.text(`₹${Number(rate).toFixed(2)}`, columnXPositions[2], yOffset); // Product rate
+
+          yOffset += rowHeight; // Move to the next row
         });
       }
 
-      // Save the PDF with the invoice number
+      // Optionally, you can add a border around the entire table (optional)
+      pdfDoc.rect(10, 160, 130, rowHeight * (products.length + 1)).stroke(); // Border for the entire table
+
+      // Define top margin for consistency
+      const topMargin = 220;
+      let yPosition = topMargin;
+
+      // Payment details alignment
+      pdfDoc.text(`Payment Status: ${invoiceData.paymentStatus}`, 20, yPosition);
+      yPosition += 10; // Add some space for the next line
+
+      pdfDoc.text(`Shipping Method: ${invoiceData.shippingMethod}`, 20, yPosition);
+      yPosition += 10;
+
+      pdfDoc.text(`Payment Method: ${invoiceData.paymentMethod}`, 20, yPosition);
+      yPosition += 10; // Adjust space if needed for next content
+
+      // Add tax details to the PDF on the right side with top alignment
+      pdfDoc.setTextColor('red'); // Green
+      pdfDoc.text(`CGST: ₹${invoiceData.taxDetails?.CGST || 0}`, 140, 220);
+      pdfDoc.text(`SGST: ₹${invoiceData.taxDetails?.SGST || 0}`, 140, 220 + 10); // Add 10px space between each line
+      pdfDoc.text(`IGST: ₹${invoiceData.taxDetails?.IGST || 0}`, 140, 220 + 20); // Add space for the third line
+
+      // Add subtotal and total to the PDF with left alignment
+      pdfDoc.setTextColor('red'); // Green
+      pdfDoc.text(`Subtotal: ₹${invoiceData.subtotal}`, 140, yPosition);
+      yPosition += 10; // Move to the next line for the total amount
+
+      const totalAmount = Number(invoiceData.total);
+      pdfDoc.setTextColor('red'); // Green
+      if (!isNaN(totalAmount)) {
+        pdfDoc.text(`Total: ₹${totalAmount.toFixed(2)}`, 140, yPosition);
+      }
+
+      // Save the PDF
       pdfDoc.save(`Invoice_${invoiceNumber}.pdf`);
     } else {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Invoice not found.",
-      });
+      console.log("No such document!");
     }
   } catch (error) {
-    console.error("Error downloading invoice:", error);
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "Failed to download invoice.",
-    });
+    console.error("Error generating invoice PDF:", error);
   }
 };
 
+const [filter, setFilter] = useState({
+  paymentStatus: "",
+  startDate: "",
+  endDate: "",
+  customerName: "",
+});
 
+const handleFilterChange = (e) => {
+  const { name, value } = e.target;
+  setFilter({
+    ...filter,
+    [name]: value,
+  });
+};
+
+
+const applyFilter = (data,filterCriteria) => {
+  let filteredData = data;
+
+  if (filter.paymentStatus) {
+    filteredData = filteredData.filter(item => item.paymentStatus === filter.paymentStatus);
+  }
+  if (filter.customerName) {
+    filteredData = filteredData.filter(item => item.customerName.toLowerCase().includes(filter.customerName.toLowerCase()));
+  }
+  if (filter.specificDate) {
+    filteredData = filteredData.filter(item => new Date(item.date).toDateString() === new Date(filter.specificDate).toDateString());
+  }
+
+  setFilteredResults(filteredData);
+};
 
   return (
     <div className="container mx-auto p-6 mt-5 bg-white rounded-lg shadow-lg">
@@ -265,8 +367,56 @@ const handleDownloadInvoice = async (invoiceNumber) => {
     <h3 className="text-xl font-semibold text-indigo-600" >Total Amount</h3>
     <p className="text-4xl font-bold text-yellow-500" >₹{totalAmount.toFixed(2)}</p>
   </div>
-
 </div>
+
+
+<div className="flex flex-wrap gap-4 mb-8">
+  <label className="flex flex-col font-bold w-48">
+    Payment Status:
+    <select
+      name="paymentStatus"
+      value={filter.paymentStatus}
+      onChange={handleFilterChange}
+      className="mt-2 p-2 border border-gray-300 rounded-md"
+    >
+      <option value="">All</option>
+      <option value="Paid">Paid</option>
+      <option value="Unpaid">Unpaid</option>
+    </select>
+  </label>
+
+  <label className="flex flex-col font-bold w-48">
+    Customer Name:
+    <input
+      type="text"
+      name="customerName"
+      value={filter.customerName}
+      onChange={handleFilterChange}
+      placeholder="Customer Name"
+      className="mt-2 p-2 border border-gray-300 rounded-md"
+    />
+  </label>
+
+  {/* New Date Filter */}
+  <label className="flex flex-col font-bold w-48">
+    Specific Date:
+    <input
+      type="date"
+      name="specificDate"
+      value={filter.specificDate}
+      onChange={handleFilterChange}
+      className="mt-2 p-2 border border-gray-300 rounded-md"
+    />
+  </label>
+
+  <button
+    onClick={applyFilter}
+    className="mt-4 py-3 px-6 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+  >
+    Apply Filter
+  </button>
+</div>
+
 
       {loading ? (
         <div>Loading...</div>
@@ -304,11 +454,11 @@ const handleDownloadInvoice = async (invoiceNumber) => {
                     <AiOutlineFilePdf size={20} />
                   </button>
                   <button
-                    onClick={() => handleDeleteInvoice(invoice)}
-                    className="text-red-500 hover:text-red-700 mx-1"
-                  >
-                    <AiOutlineDelete size={20} />
-                  </button>
+              onClick={() => handleDeleteInvoice(invoice.invoiceNumber)}
+              className="text-red-500 hover:text-red-700 mx-1"
+            >
+              <AiOutlineDelete size={20} />
+            </button>
                 </td>
               </tr>
             ))}
