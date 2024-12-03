@@ -16,6 +16,7 @@ import DownloadInvoice from '../Components/DownloadInvoice';
 const ViewAllInvoice = () => {
   const [user] = useAuthState(auth);
   const [invoiceData, setInvoiceData] = useState([]);
+  const [filteredInvoiceData, setFilteredInvoiceData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [paidCount, setPaidCount] = useState(0);
   const [unpaidCount, setUnpaidCount] = useState(0);
@@ -28,6 +29,7 @@ const ViewAllInvoice = () => {
     specificDate: "",
     customerName: "",
     invoiceNumber: "",
+    existingClient: "", // New filter for existing clients
   });
 
   useEffect(() => {
@@ -35,6 +37,10 @@ const ViewAllInvoice = () => {
       fetchInvoices();
     }
   }, [user]);
+
+  useEffect(() => {
+    applyFilter();
+  }, [filter, invoiceData]);
 
   const fetchInvoices = async () => {
     try {
@@ -47,6 +53,7 @@ const ViewAllInvoice = () => {
       }));
 
       setInvoiceData(invoices);
+      setFilteredInvoiceData(invoices);
 
       const paid = invoices.filter(
         (invoice) => invoice.paymentStatus === "Paid"
@@ -92,9 +99,12 @@ const ViewAllInvoice = () => {
 
     if (filter.paymentStatus) {
       filteredData = filteredData.filter(
-        (item) => item.paymentStatus === filter.paymentStatus
+        (item) =>
+          item.paymentStatus?.toLowerCase() ===
+          filter.paymentStatus.toLowerCase()
       );
     }
+
     if (filter.customerName) {
       filteredData = filteredData.filter((item) =>
         item.billTo?.name
@@ -102,16 +112,19 @@ const ViewAllInvoice = () => {
           .includes(filter.customerName.toLowerCase())
       );
     }
+
     if (filter.startDate) {
       filteredData = filteredData.filter(
         (item) => new Date(item.invoiceDate) >= new Date(filter.startDate)
       );
     }
+
     if (filter.endDate) {
       filteredData = filteredData.filter(
         (item) => new Date(item.invoiceDate) <= new Date(filter.endDate)
       );
     }
+
     if (filter.specificDate) {
       filteredData = filteredData.filter(
         (item) =>
@@ -119,6 +132,7 @@ const ViewAllInvoice = () => {
           new Date(filter.specificDate).toDateString()
       );
     }
+
     if (filter.invoiceNumber) {
       filteredData = filteredData.filter((item) =>
         item.invoiceNumber.toString().includes(filter.invoiceNumber)
@@ -168,88 +182,79 @@ const ViewAllInvoice = () => {
     }
   };
 
-  // const handleDownloadInvoice = async (invoiceNumber) => {
-  //   try {
-  //     const invoiceDocRef = doc(
-  //       db,
-  //       "admins",
-  //       user.email,
-  //       "Invoices",
-  //       invoiceNumber.toString()
-  //     );
-  //     const invoiceDocSnap = await getDoc(invoiceDocRef);
-
-  //     if (invoiceDocSnap.exists()) {
-  //       const invoiceData = invoiceDocSnap.data();
-  //       const pdfDoc = new jsPDF({ unit: "mm", format: "a4" });
-  //       const pageWidth = pdfDoc.internal.pageSize.getWidth();
-
-  //       pdfDoc.setFontSize(18);
-  //       pdfDoc.setFont("helvetica", "bold");
-  //       pdfDoc.text("Invoice", pageWidth / 2, 20, { align: "center" });
-
-  //       pdfDoc.setFontSize(10);
-  //       pdfDoc.setFont("helvetica", "normal");
-  //       pdfDoc.text(`Invoice Number: ${invoiceData.invoiceNumber}`, 10, 30);
-  //       pdfDoc.text(
-  //         `Invoice Date: ${new Date(
-  //           invoiceData.invoiceDate
-  //         ).toLocaleDateString()}`,
-  //         10,
-  //         35
-  //       );
-
-  //       // Add "Bill From" section
-  //       pdfDoc.text("Bill From:", 10, 50);
-  //       pdfDoc.text(
-  //         `Name: ${invoiceData.billFrom?.businessName || "N/A"}`,
-  //         10,
-  //         55
-  //       );
-
-  //       // Add "Bill To" section
-  //       pdfDoc.text("Bill To:", pageWidth / 2, 50);
-  //       pdfDoc.text(
-  //         `Name: ${invoiceData.billTo?.name || "N/A"}`,
-  //         pageWidth / 2,
-  //         55
-  //       );
-
-  //       let yPosition = 70;
-  //       pdfDoc.text("Products:", 10, yPosition);
-  //       yPosition += 10;
-
-  //       (invoiceData.products || []).forEach((product, index) => {
-  //         pdfDoc.text(`${index + 1}. ${product.name}`, 10, yPosition);
-  //         pdfDoc.text(
-  //           `Qty: ${product.quantity} | Rate: ₹${product.rate} | Total: ₹${product.total}`,
-  //           10,
-  //           yPosition + 5
-  //         );
-  //         yPosition += 15;
-  //       });
-
-  //       pdfDoc.text(
-  //         `Total Amount: ₹${totalAmount.toFixed(2)}`,
-  //         10,
-  //         yPosition + 10
-  //       );
-
-  //       pdfDoc.save(`Invoice_${invoiceNumber}.pdf`);
-  //     } else {
-  //       console.error("Invoice not found!");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error downloading invoice:", error);
-  //   }
-  // };
-
   const handleDownloadInvoice = async (invoiceNumber) => {
     try {
-      // Call the DownloadInvoice function from the imported file
-      await DownloadInvoice(invoiceNumber);
+      const invoiceDocRef = doc(
+        db,
+        "admins",
+        user.email,
+        "Invoices",
+        invoiceNumber.toString()
+      );
+      const invoiceDocSnap = await getDoc(invoiceDocRef);
+
+      if (invoiceDocSnap.exists()) {
+        const invoiceData = invoiceDocSnap.data();
+        const pdfDoc = new jsPDF({ unit: "mm", format: "a4" });
+        const pageWidth = pdfDoc.internal.pageSize.getWidth();
+
+        pdfDoc.setFontSize(18);
+        pdfDoc.setFont("helvetica", "bold");
+        pdfDoc.text("Invoice", pageWidth / 2, 20, { align: "center" });
+
+        pdfDoc.setFontSize(10);
+        pdfDoc.setFont("helvetica", "normal");
+        pdfDoc.text(`Invoice Number: ${invoiceData.invoiceNumber}`, 10, 30);
+        pdfDoc.text(
+          `Invoice Date: ${new Date(
+            invoiceData.invoiceDate
+          ).toLocaleDateString()}`,
+          10,
+          35
+        );
+
+        // Add "Bill From" section
+        pdfDoc.text("Bill From:", 10, 50);
+        pdfDoc.text(
+          `Name: ${invoiceData.billFrom?.businessName || "N/A"}`,
+          10,
+          55
+        );
+
+        // Add "Bill To" section
+        pdfDoc.text("Bill To:", pageWidth / 2, 50);
+        pdfDoc.text(
+          `Name: ${invoiceData.billTo?.name || "N/A"}`,
+          pageWidth / 2,
+          55
+        );
+
+        let yPosition = 70;
+        pdfDoc.text("Products:", 10, yPosition);
+        yPosition += 10;
+
+        (invoiceData.products || []).forEach((product, index) => {
+          pdfDoc.text(`${index + 1}. ${product.name}`, 10, yPosition);
+          pdfDoc.text(
+            `Qty: ${product.quantity} | Rate: ₹${product.rate} | Total: ₹${product.total}`,
+            10,
+            yPosition + 5
+          );
+          yPosition += 15;
+        });
+
+        pdfDoc.text(
+          `Total Amount: ₹${totalAmount.toFixed(2)}`,
+          10,
+          yPosition + 10
+        );
+
+        pdfDoc.save(`Invoice_${invoiceNumber}.pdf`);
+      } else {
+        console.error("Invoice not found!");
+      }
     } catch (error) {
-      console.error("Error calling DownloadInvoice:", error);
+      console.error("Error downloading invoice:", error);
     }
   };
   
@@ -277,8 +282,8 @@ const ViewAllInvoice = () => {
         </div>
       </div>
 
-     {/* Filters */}
-     <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
+      {/* Filters */}
+      <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
         <h2 className="text-lg font-bold text-gray-100 mb-4">
           Filter Invoices
         </h2>
@@ -372,6 +377,8 @@ const ViewAllInvoice = () => {
             />
           </div>
 
+          {/* Existing Client */}
+
           {/* Filter Button */}
           <div className="flex items-end">
             <button
@@ -398,7 +405,7 @@ const ViewAllInvoice = () => {
           </tr>
         </thead>
         <tbody>
-          {invoiceData.map((invoice) => (
+          {filteredInvoiceData.map((invoice) => (
             <tr key={invoice.id} className="hover:bg-gray-100">
               <td className="py-3 px-4">{invoice.invoiceNumber}</td>
               <td className="py-3 px-4">{invoice.billTo?.name}</td>
@@ -411,12 +418,12 @@ const ViewAllInvoice = () => {
               </td>
               <td className="py-3 px-4">{invoice.paymentStatus}</td>
               <td className="py-3 px-4 flex gap-2">
-              <button
-      onClick={() => handleDownloadInvoice(invoice.invoiceNumber)}  // Pass the invoice number
-      className="text-blue-500 hover:text-blue-700"
-    >
-      <AiOutlineFilePdf size={20} />
-    </button>
+                <button
+                  onClick={() => handleDownloadInvoice(invoice.invoiceNumber)}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  <AiOutlineFilePdf size={20} />
+                </button>
                 <button
                   onClick={() => handleDeleteInvoice(invoice.invoiceNumber)}
                   className="text-red-500 hover:text-red-700"

@@ -8,16 +8,16 @@ import {
 import React, { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
-import { auth, db } from "../config/firebase"; // Ensure firebase is correctly initialized
+import { auth, db } from "../config/firebase";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faStore } from "@fortawesome/free-solid-svg-icons";
-import Swal from 'sweetalert2';
+import Swal from "sweetalert2";
 
-// The Purchase Component
 const Purchase = () => {
-  const [showModal, setShowModal] = useState(false); // For modal visibility
+  const [showModal, setShowModal] = useState(false);
+  const [editMode, setEditMode] = useState(false); // To differentiate between Add and Edit
   const [newProduct, setNewProduct] = useState({
-    no:"",
+    no: "",
     sname: "",
     phone: "",
     add: "",
@@ -30,8 +30,16 @@ const Purchase = () => {
   });
 
   const [products, setProducts] = useState([]);
-  const [searchQuery, setSearchQuery] = useState(""); // For searching/filtering products
-  const [user] = useAuthState(auth); // To get the current authenticated user
+  const [filters, setFilters] = useState({
+    no: "",
+    sname: "",
+    phone: "",
+    add: "",
+    pname: "",
+    categories: "",
+  });
+
+  const [user] = useAuthState(auth);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -56,31 +64,26 @@ const Purchase = () => {
     setNewProduct((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Add New Product
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleAddProduct = async (e) => {
     e.preventDefault();
-
-    const { no ,sname, pname, phone, add, categories, estock, price } = newProduct;
-    if (!no || !sname || !pname || !phone || !add || !categories || !estock || !price) {
-      return alert("Please fill all the fields.");
-    }
+    if (!user) return;
 
     try {
       const userDocRef = doc(db, "admins", user.email);
-      const productRef = collection(userDocRef, "Purchase");
-      await setDoc(doc(productRef, phone), {
-        ...newProduct,
-      });
+      const productsRef = collection(userDocRef, "Purchase");
 
-      setProducts((prev) => [
-        ...prev,
-        {
-          ...newProduct,
-        },
-      ]);
-      alert("Product added successfully!");
+      await setDoc(doc(productsRef, newProduct.phone), newProduct);
+
+      setProducts((prev) => [...prev, newProduct]);
+      Swal.fire("Success", "Product added successfully!", "success");
+      setShowModal(false);
       setNewProduct({
-        no:"",
+        no: "",
         sname: "",
         phone: "",
         add: "",
@@ -91,166 +94,255 @@ const Purchase = () => {
         sales: 0,
         stock: 0,
       });
-      setShowModal(false); // Close modal after adding product
     } catch (error) {
       console.error("Error adding product: ", error);
+      Swal.fire("Error", "Failed to add product.", "error");
     }
   };
 
-  // Update Product
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
-
-    const {no, sname, pname, phone, add, categories,estock, price } = newProduct;
-    if (!no|| !sname || !pname || !phone || !add || !categories || !estock || !price) {
-      return alert("Please fill all the fields.");
-    }
+    if (!user) return;
 
     try {
       const userDocRef = doc(db, "admins", user.email);
-      const productRef = collection(userDocRef, "Purchase");
-      await setDoc(doc(productRef, phone), {
-        ...newProduct,
-      });
+      const productsRef = collection(userDocRef, "Purchase");
+
+      await setDoc(doc(productsRef, newProduct.phone), newProduct);
 
       setProducts((prev) =>
         prev.map((product) =>
-          product.phone === newProduct.phone ? { ...newProduct } : product
+          product.phone === newProduct.phone ? newProduct : product
         )
       );
-      alert("Product updated successfully!");
-      setShowModal(false); // Close modal after updating product
+      Swal.fire("Success", "Product updated successfully!", "success");
+      setShowModal(false);
+      setEditMode(false);
     } catch (error) {
       console.error("Error updating product: ", error);
+      Swal.fire("Error", "Failed to update product.", "error");
     }
   };
 
   const handleRemoveProduct = async (phone) => {
-  try {
-    const userDocRef = doc(db, "admins", user.email);
-    const productRef = collection(userDocRef, "Purchase");
+    if (!user) return;
 
-    // Show confirmation dialog before deletion
-    const result = await Swal.fire({
-      title: 'Are you sure?',
-      text: 'You won’t be able to undo this action!',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-    });
+    try {
+      const userDocRef = doc(db, "admins", user.email);
+      const productsRef = collection(userDocRef, "Purchase");
 
-    if (result.isConfirmed) {
-      // Perform the delete operation
-      await deleteDoc(doc(productRef, phone));
+      await deleteDoc(doc(productsRef, phone));
 
-      // Update the UI
       setProducts((prev) => prev.filter((product) => product.phone !== phone));
-
-      // Show success alert
-      await Swal.fire({
-        icon: 'success',
-        title: 'Product Removed!',
-        text: 'Product has been removed successfully.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#3085d6',
-      });
+      Swal.fire("Success", "Product deleted successfully!", "success");
+    } catch (error) {
+      console.error("Error deleting product: ", error);
+      Swal.fire("Error", "Failed to delete product.", "error");
     }
-  } catch (error) {
-    console.error("Error removing product: ", error);
+  };
 
-    // Show error alert
-    Swal.fire({
-      icon: 'error',
-      title: 'Error!',
-      text: 'There was an issue removing the product.',
-      confirmButtonText: 'Try Again',
-      confirmButtonColor: '#d33',
-    });
-  }
-};
-
-  
-  // Filter products based on search query
   const filteredProducts = products.filter((product) =>
-    product.pname.toLowerCase().includes(searchQuery.toLowerCase())
+    Object.keys(filters).every((key) => {
+      if (!filters[key]) return true;
+      return product[key]
+        ?.toString()
+        .toLowerCase()
+        .includes(filters[key].toLowerCase());
+    })
   );
 
-  // Purchase Info: Product, Supplier, and Price
-  const totalProducts = filteredProducts.length;
-  const totalSuppliers = new Set(
-    filteredProducts.map((product) => product.sname)
-  ).size; // Unique suppliers
-  const totalPurchasePrice = filteredProducts
-    .reduce(
-      (total, product) =>
-        total + parseFloat(product.price) * parseInt(product.estock),
-      0
-    )
-    .toFixed(2);
+  const totalProducts = products.length;
+  const totalSuppliers = new Set(products.map((product) => product.sname)).size;
+  const totalStockValue = products.reduce(
+    (acc, product) =>
+      acc + parseFloat(product.price || 0) * parseInt(product.estock || 0),
+    0
+  );
 
   return (
-    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
-      <h1 className="text-5xl font-extrabold text-pink-700 mb-6">
+    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
+      {/* Info Boxes */}
+
+      <h1 className="text-5xl font-extrabold text-blue-900 mb-6">
         Purchase Orders
         <FontAwesomeIcon
-        icon={faStore}
-        className="text-5xl ml-5 text-pink-700 animate-bounce"
-      />
+          icon={faStore}
+          className="text-5xl ml-5 text-blue-900 animate-bounce"
+        />
       </h1>
-      
-      {/* Add Product Button */}
+      <div className="mb-6 grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="bg-blue-900 p-4 rounded-md shadow-md border-l-4 border-blue-400">
+          <h3 className="text-lg font-semibold text-gray-100">
+            Total Products
+          </h3>
+          <p className="text-3xl font-bold text-gray-100">{totalProducts}</p>
+        </div>
+        <div className="bg-green-900 p-4 rounded-md shadow-md border-l-4 border-green-400">
+          <h3 className="text-lg font-semibold text-gray-100">
+            Total Suppliers
+          </h3>
+          <p className="text-3xl font-bold text-gray-100">{totalSuppliers}</p>
+        </div>
+        <div className="bg-red-900 p-4 rounded-md shadow-md border-l-4 border-red-400">
+          <h3 className="text-lg font-semibold text-gray-100">
+            Total Stock Value
+          </h3>
+          <p className="text-3xl font-bold text-gray-100">
+            ${totalStockValue.toFixed(2)}
+          </p>
+        </div>
+      </div>
+
+      {/* Filter Panel */}
+      <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
+        <h3 className="text-lg font-semibold mb-4 text-gray-100">Filters</h3>
+        <div className="grid grid-cols-6 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div>
+            <label htmlFor="no" className="text-white block mb-1 font-semibold">
+              Product Number
+            </label>
+            <input
+              type="text"
+              id="no"
+              name="no"
+              value={filters.no}
+              onChange={handleFilterChange}
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Product Number"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="sname"
+              className="text-white block mb-1 font-semibold"
+            >
+              Supplier Name
+            </label>
+            <input
+              type="text"
+              id="sname"
+              name="sname"
+              value={filters.sname}
+              onChange={handleFilterChange}
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Supplier Name"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="phone"
+              className="text-white block mb-1 font-semibold"
+            >
+              Phone Number
+            </label>
+            <input
+              type="text"
+              id="phone"
+              name="phone"
+              value={filters.phone}
+              onChange={handleFilterChange}
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Phone Number"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="add"
+              className="text-white block mb-1 font-semibold"
+            >
+              Address
+            </label>
+            <input
+              type="text"
+              id="add"
+              name="add"
+              value={filters.add}
+              onChange={handleFilterChange}
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Address"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="pname"
+              className="text-white block mb-1 font-semibold"
+            >
+              Product Name
+            </label>
+            <input
+              type="text"
+              id="pname"
+              name="pname"
+              value={filters.pname}
+              onChange={handleFilterChange}
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Product Name"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="categories"
+              className="text-white block mb-1 font-semibold"
+            >
+              Categories
+            </label>
+            <input
+              type="text"
+              id="categories"
+              name="categories"
+              value={filters.categories}
+              onChange={handleFilterChange}
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Categories"
+            />
+          </div>
+        </div>
+      </div>
+
       <button
-        onClick={() => setShowModal(true)}
-        className="bg-blue-500 text-white py-2 px-4 rounded-lg mb-4 transition duration-300 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onClick={() => {
+          setShowModal(true);
+          setEditMode(false);
+          setNewProduct({
+            no: "",
+            sname: "",
+            phone: "",
+            add: "",
+            pname: "",
+            categories: "",
+            estock: "",
+            price: "",
+            sales: 0,
+            stock: 0,
+          });
+        }}
+        className="bg-blue-900 text-white py-2 px-4 rounded-lg mb-4 transition duration-300 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         Add Product
       </button>
 
-      {/* Info Box - Split into Product, Supplier, and Price Sections */}
-      <div className="grid grid-cols-3 sm:grid-cols-3 gap-6 mb-6">
-        {/* Product Info */}
-        <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center border-2 border-indigo-300">
-          <h3 className="text-xl font-semibold text-indigo-600">Total Products</h3>
-          <p className="text-4xl font-bold text-yellow-500">{totalProducts}</p>
-        </div>
-
-        {/* Supplier Info */}
-        <div className="bg-green-100 p-6 rounded-lg shadow-lg text-center border-2 border-green-300">
-          <h3 className="text-xl font-semibold text-green-600">Total Suppliers</h3>
-          <p className="text-4xl font-bold text-yellow-500">{totalSuppliers}</p>
-        </div>
-
-        {/* Price Info */}
-        <div className="bg-pink-100 p-6 rounded-lg shadow-lg text-center border-2 border-pink-300">
-          <h3 className="text-xl font-semibold text-pink-600">Total Purchase Price</h3>
-          <p className="text-4xl font-bold text-yellow-500">${totalPurchasePrice}</p>
-        </div>
-      </div>
-
       {/* Product Table */}
       <div className="overflow-x-auto bg-white shadow-xl rounded-lg">
         <table className="min-w-full bg-white border border-gray-200 shadow-md">
-          <thead className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white">
+          <thead className="bg-gradient-to-r from-blue-700 to-blue-700 text-white">
             <tr>
-              <th className="py-3 px-4 text-left ">P.No</th>
-              <th className="py-3 px-4 text-left ">Supplier</th>
-              <th className="py-3 px-4 text-left ">Phone</th>
-              <th className="py-3 px-4 text-left ">Address</th>
-              <th className="py-3 px-4 text-left ">Categories</th>
-              <th className="py-3 px-4 text-left ">Product Name</th>
-              <th className="py-3 px-4 text-left ">Existing Stock</th>
-              <th className="py-3 px-4 text-left ">Unit Price</th>
-              {/* <th className="py-3 px-4">Sales</th>
-              <th className="py-3 px-4">Stock</th> */}
+              <th className="py-3 px-4">P.No</th>
+              <th className="py-3 px-4">Supplier</th>
+              <th className="py-3 px-4">Phone</th>
+              <th className="py-3 px-4">Address</th>
+              <th className="py-3 px-4">Categories</th>
+              <th className="py-3 px-4">Product Name</th>
+              <th className="py-3 px-4">Existing Stock</th>
+              <th className="py-3 px-4">Unit Price</th>
               <th className="py-3 px-4">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredProducts.map((product) => (
-              <tr key={product.sname} className="hover:bg-yellow-100 transition duration-300">
+              <tr
+                key={product.phone}
+                className="hover:bg-yellow-100 transition duration-300"
+              >
                 <td className="py-3 px-4">{product.no}</td>
                 <td className="py-3 px-4">{product.sname}</td>
                 <td className="py-3 px-4">{product.phone}</td>
@@ -259,12 +351,11 @@ const Purchase = () => {
                 <td className="py-3 px-4">{product.pname}</td>
                 <td className="py-3 px-4 text-left">{product.estock}</td>
                 <td className="py-3 px-4">{product.price}</td>
-                {/* <td className="py-3 px-4">{product.sales}</td>
-                <td className="py-3 px-4">{product.stock}</td> */}
                 <td className="py-3 px-4">
                   <button
                     onClick={() => {
                       setShowModal(true);
+                      setEditMode(true);
                       setNewProduct(product);
                     }}
                     className="text-blue-500 hover:text-blue-700"
@@ -284,33 +375,30 @@ const Purchase = () => {
         </table>
       </div>
 
-      {/* Modal for Add/Update Product */}
+      {/* Modal for Add/Edit Product */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-gray-500 bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-96">
             <h2 className="text-2xl font-semibold mb-4 text-purple-700">
-              {newProduct.sname ? "Update Product" : "Add Product"}
+              {editMode ? "Edit Product" : "Add Product"}
             </h2>
-            <form
-              onSubmit={newProduct.sname ? handleUpdateProduct : handleAddProduct}
-            >
+            <form onSubmit={editMode ? handleUpdateProduct : handleAddProduct}>
               <input
-                type="number"
+                type="text"
                 name="no"
                 value={newProduct.no}
                 onChange={handleInputChange}
-                className="w-full mb-2 p-2 border-2 border-purple-300 rounded-md focus:ring-2 focus:ring-purple-500"
-                placeholder="Product Number"
+                placeholder="Product No."
+                className="w-full mb-4 p-2 border rounded"
                 required
               />
-              {/* Form Inputs for Product Details */}
               <input
                 type="text"
                 name="sname"
                 value={newProduct.sname}
                 onChange={handleInputChange}
-                className="w-full mb-2 p-2 border-2 border-purple-300 rounded-md focus:ring-2 focus:ring-purple-500"
                 placeholder="Supplier Name"
+                className="w-full mb-4 p-2 border rounded"
                 required
               />
               <input
@@ -318,8 +406,8 @@ const Purchase = () => {
                 name="phone"
                 value={newProduct.phone}
                 onChange={handleInputChange}
-                className="w-full mb-2 p-2 border-2 border-purple-300 rounded-md focus:ring-2 focus:ring-purple-500"
-                placeholder="Phone Number"
+                placeholder="Phone"
+                className="w-full mb-4 p-2 border rounded"
                 required
               />
               <input
@@ -327,8 +415,8 @@ const Purchase = () => {
                 name="add"
                 value={newProduct.add}
                 onChange={handleInputChange}
-                className="w-full mb-2 p-2 border-2 border-purple-300 rounded-md focus:ring-2 focus:ring-purple-500"
                 placeholder="Address"
+                className="w-full mb-4 p-2 border rounded"
                 required
               />
               <input
@@ -336,8 +424,8 @@ const Purchase = () => {
                 name="pname"
                 value={newProduct.pname}
                 onChange={handleInputChange}
-                className="w-full mb-2 p-2 border-2 border-purple-300 rounded-md focus:ring-2 focus:ring-purple-500"
                 placeholder="Product Name"
+                className="w-full mb-4 p-2 border rounded"
                 required
               />
               <input
@@ -345,8 +433,8 @@ const Purchase = () => {
                 name="categories"
                 value={newProduct.categories}
                 onChange={handleInputChange}
-                className="w-full mb-2 p-2 border-2 border-purple-300 rounded-md focus:ring-2 focus:ring-purple-500"
                 placeholder="Categories"
+                className="w-full mb-4 p-2 border rounded"
                 required
               />
               <input
@@ -354,8 +442,8 @@ const Purchase = () => {
                 name="estock"
                 value={newProduct.estock}
                 onChange={handleInputChange}
-                className="w-full mb-2 p-2 border-2 border-purple-300 rounded-md focus:ring-2 focus:ring-purple-500"
                 placeholder="Existing Stock"
+                className="w-full mb-4 p-2 border rounded"
                 required
               />
               <input
@@ -363,22 +451,22 @@ const Purchase = () => {
                 name="price"
                 value={newProduct.price}
                 onChange={handleInputChange}
-                className="w-full mb-2 p-2 border-2 border-purple-300 rounded-md focus:ring-2 focus:ring-purple-500"
                 placeholder="Price"
+                className="w-full mb-4 p-2 border rounded"
                 required
               />
               <button
                 type="submit"
-                className="bg-green-500 text-white py-2 px-4 rounded-lg w-full transition duration-300 hover:bg-green-600"
+                className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition"
               >
-                {newProduct.sname ? "Update" : "Add"} Product
+                {editMode ? "Update Product" : "Add Product"}
               </button>
             </form>
             <button
               onClick={() => setShowModal(false)}
-              className="mt-4 text-red-500"
+              className="mt-4 w-full text-red-500"
             >
-              Close
+              Cancel
             </button>
           </div>
         </div>

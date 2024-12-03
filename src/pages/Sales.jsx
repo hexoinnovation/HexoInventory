@@ -5,16 +5,14 @@ import {
   doc,
   getDocs,
   setDoc,
-  query, orderBy 
 } from "firebase/firestore";
 import Swal from "sweetalert2";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete } from "react-icons/ai";
 import { FaShoppingCart } from "react-icons/fa";
-import { auth, db } from "../config/firebase"; // Replace with your Firebase configuration path
+import { auth, db } from "../config/firebase";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css"; // Import the styles
-import { getAuth } from "firebase/auth";
 
 const Sales = () => {
   const [showModal, setShowModal] = useState(false);
@@ -26,21 +24,25 @@ const Sales = () => {
     pname: "",
     categories: "",
     quantity: "",
-    // cstock: "",
     sales: "",
     price: "",
   });
   const [products, setProducts] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState({
+    Bno: "",
+    cname: "",
+    pname: "",
+    categories: "",
+  });
   const [user] = useAuthState(auth);
 
   useEffect(() => {
     const fetchProducts = async () => {
       if (!user) return;
-  
+
       try {
         const userDocRef = doc(db, "admins", user.email);
-  
+
         // Fetch Sales collection
         const salesRef = collection(userDocRef, "Sales");
         const salesSnapshot = await getDocs(salesRef);
@@ -48,7 +50,7 @@ const Sales = () => {
           id: doc.id,
           ...doc.data(),
         }));
-  
+
         // Fetch Purchase collection (for estock)
         const purchaseRef = collection(userDocRef, "Purchase");
         const purchaseSnapshot = await getDocs(purchaseRef);
@@ -56,64 +58,42 @@ const Sales = () => {
           id: doc.id,
           ...doc.data(),
         }));
-  
+
         // Match and merge `estock` into `salesList` based on your criteria
         const combinedProducts = salesList.map((sale) => {
           const matchingPurchase = purchaseData.find(
-            (purchase) => purchase.id === sale.id // Adjust this matching condition if necessary
+            (purchase) => purchase.id === sale.id
           );
-  
+
           return {
             ...sale,
-            estock: matchingPurchase ? matchingPurchase.estock : 0, // Default to 0 if no match
+            estock: matchingPurchase ? matchingPurchase.estock : 0,
           };
         });
-  
+
         setProducts(combinedProducts);
       } catch (error) {
         console.error("Error fetching products: ", error);
       }
     };
-  
+
     fetchProducts();
   }, [user]);
-
-  // useEffect(() => {
-  //   const fetchProducts = async () => {
-  //     if (!user) return;
-
-  //     try {
-  //       const userDocRef = doc(db, "admins", user.email);
-  //       const productsRef = collection(userDocRef, "Sales");
-  //       const productSnapshot = await getDocs(productsRef);
-  //       const productList = productSnapshot.docs.map((doc) => doc.data());
-  //       setProducts(productList);
-  //     } catch (error) {
-  //       console.error("Error fetching products: ", error);
-  //     }
-  //   };
-
-  //   fetchProducts();
-  // }, [user]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewProduct((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleAddProduct = async (e) => {
     e.preventDefault();
-    const {
-      date,
-      Bno,
-      cname,
-      pname,
-      categories,
-      quantity,
-      // cstock,
-      sales,
-      price,
-    } = newProduct;
+    const { date, Bno, cname, pname, categories, quantity, sales, price } =
+      newProduct;
 
     if (
       !date ||
@@ -122,7 +102,6 @@ const Sales = () => {
       !pname ||
       !categories ||
       !quantity ||
-      // !cstock ||
       !sales ||
       !price
     ) {
@@ -145,7 +124,6 @@ const Sales = () => {
         pname: "",
         categories: "",
         quantity: "",
-        // cstock: "",
         sales: "",
         price: "",
       });
@@ -158,281 +136,218 @@ const Sales = () => {
   const handleRemoveProduct = async (Bno) => {
     if (!user) {
       Swal.fire({
-        icon: 'warning',
-        title: 'User Not Authenticated',
-        text: 'Please log in to delete a product.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#3085d6',
+        icon: "warning",
+        title: "User Not Authenticated",
+        text: "Please log in to delete a product.",
+        confirmButtonText: "Okay",
+        confirmButtonColor: "#3085d6",
       });
       return;
     }
-  
+
     // Confirm deletion with SweetAlert2
     const result = await Swal.fire({
-      title: 'Are you sure?',
-      text: 'You won’t be able to undo this action!',
-      icon: 'warning',
+      title: "Are you sure?",
+      text: "You won’t be able to undo this action!",
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
     });
-  
+
     if (!result.isConfirmed) return; // Exit if the user cancels
-  
+
     try {
       const productDoc = doc(db, "admins", user.email, "Sales", Bno);
-  
+
       // Delete product from Firestore
       await deleteDoc(productDoc);
-  
+
       // Update the products state
       setProducts((prevProducts) =>
         prevProducts.filter((product) => product.Bno !== Bno)
       );
-  
+
       // Success SweetAlert
       Swal.fire({
-        icon: 'success',
-        title: 'Deleted!',
-        text: 'Product has been deleted successfully.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#3085d6',
+        icon: "success",
+        title: "Deleted!",
+        text: "Product has been deleted successfully.",
+        confirmButtonText: "Okay",
+        confirmButtonColor: "#3085d6",
       });
     } catch (error) {
       console.error("Error deleting product: ", error.message);
-  
-      // Error SweetAlert
-      Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: 'Failed to delete product. Please try again.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#d33',
-      });
-    }
-  };
-  
 
-  
-  const RemoveProduct = async (invoiceId, invoiceNumber) => {
-    if (!user) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'User Not Authenticated',
-        text: 'Please log in to delete an invoice.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#3085d6',
-      });
-      return;
-    }
-  
-    // Confirm deletion with SweetAlert2
-    const result = await Swal.fire({
-      title: 'Are you sure?',
-      text: 'You won’t be able to undo this action!',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-    });
-  
-    if (!result.isConfirmed) return; // Exit if the user cancels
-  
-    // Debugging log to check invoiceId
-    console.log("Deleting invoice with invoiceId: ", invoiceId);
-  
-    try {
-      if (!invoiceId) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error!',
-          text: 'Invoice ID is missing. Please try again.',
-          confirmButtonText: 'Okay',
-          confirmButtonColor: '#d33',
-        });
-        return;
-      }
-  
-      // Reference to the specific invoice document
-      const userDocRef = doc(db, "admins", user.email);
-      const invoiceRef = doc(collection(userDocRef, "Invoices"), invoiceId);
-  
-      // Ensure that the invoiceRef path is valid
-      console.log("Invoice reference path:", invoiceRef.path);
-  
-      // Delete the invoice document
-      await deleteDoc(invoiceRef);
-  
-      // Update the products state or handle UI update
-      setProducts((prevProducts) =>
-        prevProducts.filter((product) => product.invoiceNumber !== invoiceNumber)
-      );
-  
-      // Success SweetAlert
-      Swal.fire({
-        icon: 'success',
-        title: 'Deleted!',
-        text: 'Invoice has been deleted successfully.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#3085d6',
-      });
-    } catch (error) {
-      console.error("Error deleting invoice: ", error.message);
-  
       // Error SweetAlert
       Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: 'Failed to delete invoice. Please try again.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#d33',
+        icon: "error",
+        title: "Error!",
+        text: "Failed to delete product. Please try again.",
+        confirmButtonText: "Okay",
+        confirmButtonColor: "#d33",
       });
     }
-  };
-  
-  
-  const placeholderNames = {
-    no: "Serial No.",
-    date: "Select Date",
-    Bno: "Bill No.",
-    cname: "Customer Name",
-    pname: "Product Name",
-    categories: "Categories",
-    quantity: "Quantity",
-    // cstock: "Current Stock",
-    sales: "Sales Count",
-    price: "Price",
   };
 
   const filteredProducts = products.filter(
     (product) =>
-      product.pname && 
-      product.pname.toLowerCase().includes(searchQuery.toLowerCase())
+      product.pname &&
+      product.pname.toLowerCase().includes(filters.pname.toLowerCase()) &&
+      product.categories &&
+      product.categories
+        .toLowerCase()
+        .includes(filters.categories.toLowerCase()) &&
+      product.Bno &&
+      product.Bno.toLowerCase().includes(filters.Bno.toLowerCase()) &&
+      product.cname &&
+      product.cname.toLowerCase().includes(filters.cname.toLowerCase())
   );
 
+  // Info Box Calculations
   const totalProducts = filteredProducts.length;
   const totalSalesPrice = filteredProducts
-    .reduce((total, product) => total + product.quantity * product.price, 0)
+    .reduce((total, product) => total + product.sales * product.price, 0)
     .toFixed(2);
-    const [invoiceData, setInvoiceData] = useState([]); // Store invoices data
-    const [loading, setLoading] = useState(true);
-  
-    useEffect(() => {
-      const fetchInvoiceData = async () => {
-        const auth = getAuth();
-        const user = auth.currentUser;
-  
-        if (user) {
-          try {
-            // Reference to the user's document in Firestore
-            const userDocRef = doc(db, "admins", user.email);
-  
-            // Query the 'Invoices' collection to fetch all invoice data
-            const invoiceQuery = query(
-              collection(userDocRef, "Invoices"),
-              orderBy("createdAt", "desc") // Order by the latest createdAt field
-            );
-  
-            const querySnapshot = await getDocs(invoiceQuery);
-  
-            // Map through the query results and set the invoice data
-            const fetchedData = [];
-            querySnapshot.forEach((doc) => {
-              fetchedData.push(doc.data());
-            });
-  
-            setInvoiceData(fetchedData); // Set the invoice data
-          } catch (error) {
-            console.error("Error fetching invoice data:", error);
-          }
-        } else {
-          console.log("No user is signed in.");
-        }
-        setLoading(false);
-      };
-  
-      fetchInvoiceData();
-    }, []);
-  
-    // Calculate the remaining stock based on sales
-    const calculateRemainingStock = (stock, sales) => {
-      return stock - sales;
-    };
+  const totalQuantity = filteredProducts
+    .reduce((total, product) => total + parseInt(product.quantity), 0)
+    .toFixed(0);
+
   return (
-    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
-      <h1 className="text-5xl font-extrabold text-pink-700 mb-6 flex items-center">
+    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
+      <h1 className="text-5xl font-extrabold text-blue-900 mb-6 flex items-center">
         Sales Management
         <FaShoppingCart className="animate-drift ml-4" />
       </h1>
+      {/* Info Boxes */}
+      <div className="mb-6 grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="bg-blue-900 p-4 rounded-md shadow-md border-l-4 border-blue-400">
+          <h3 className="text-lg font-semibold text-gray-100">
+            Total Products
+          </h3>
+          <p className="text-3xl font-bold text-gray-100">{totalProducts}</p>
+        </div>
+        <div className="bg-green-900 p-4 rounded-md shadow-md border-l-4 border-green-400">
+          <h3 className="text-lg font-semibold text-gray-100">Total Sales</h3>
+          <p className="text-3xl font-bold text-gray-100">${totalSalesPrice}</p>
+        </div>
+        <div className="bg-red-900 p-4 rounded-md shadow-md border-l-4 border-red-400">
+          <h3 className="text-lg font-semibold text-gray-100">
+            Total Quantity
+          </h3>
+          <p className="text-3xl font-bold text-gray-100">{totalQuantity}</p>
+        </div>
+      </div>
 
+      {/* Filter Panel */}
+      <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
+        <h3 className="text-lg font-semibold mb-4 text-gray-100">Filters</h3>
+        <div className="grid grid-cols-4 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div>
+            <label
+              htmlFor="Bno"
+              className="text-white block mb-1 font-semibold"
+            >
+              Bill Number
+            </label>
+            <input
+              type="text"
+              id="Bno"
+              name="Bno"
+              value={filters.Bno}
+              onChange={handleFilterChange}
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Bill No."
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="cname"
+              className="text-white block mb-1 font-semibold"
+            >
+              Customer Name
+            </label>
+            <input
+              type="text"
+              id="cname"
+              name="cname"
+              value={filters.cname}
+              onChange={handleFilterChange}
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Customer Name"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="pname"
+              className="text-white block mb-1 font-semibold"
+            >
+              Product Name
+            </label>
+            <input
+              type="text"
+              id="pname"
+              name="pname"
+              value={filters.pname}
+              onChange={handleFilterChange}
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Product Name"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="categories"
+              className="text-white block mb-1 font-semibold"
+            >
+              Categories
+            </label>
+            <input
+              type="text"
+              id="categories"
+              name="categories"
+              value={filters.categories}
+              onChange={handleFilterChange}
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Categories"
+            />
+          </div>
+        </div>
+      </div>
       <button
         onClick={() => setShowModal(true)}
-        className="bg-blue-500 text-white py-2 px-4 rounded-lg mb-4 transition hover:bg-blue-600"
+        className="bg-blue-900 text-white py-2 px-4 rounded-lg mb-4 transition hover:bg-blue-600"
       >
         Offline Billing
       </button>
 
-      <div className="grid grid-cols-3 gap-6 mb-6">
-        <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center">
-          <h3 className="text-xl font-semibold text-indigo-600">Total Products</h3>
-          <p className="text-4xl font-bold text-yellow-500">{totalProducts}</p>
-        </div>
-        <div className="bg-pink-100 p-6 rounded-lg shadow-lg text-center">
-          <h3 className="text-xl font-semibold text-pink-600">Total Sales Price</h3>
-          <p className="text-4xl font-bold text-yellow-500">${totalSalesPrice}</p>
-        </div>
-      </div>
-
+      {/* Product Table */}
       <div className="w-full mt-5">
         <table className="min-w-full bg-white shadow-md rounded-lg">
-          <thead className= "bg-gradient-to-r from-pink-500 to-yellow-500 text-white" >
+          <thead className="bg-gradient-to-r from-blue-700 to-blue-700 text-white">
             <tr>
               <th className="py-3 px-4 text-left">Bill No.</th>
+              <th className="py-3 px-4 text-left">Customer</th>
               <th className="py-3 px-4 text-left">Product</th>
               <th className="py-3 px-4 text-left">Categories</th>
-              <th className="py-3 px-4 text-left">Price</th>
-              {/* <th className="py-3 px-4 text-left">Current Stock</th> */}
               <th className="py-3 px-4 text-left">Sales</th>
+              <th className="py-3 px-4 text-left">Price</th>
               <th className="py-3 px-4 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {invoiceData.map((invoice, index) => (
-              invoice.products.map((product, productIndex) => (
-                <tr key={`${index}-${productIndex}`}>
-                  <td className="py-3 px-4">{invoice.invoiceNumber}</td>
-                  <td className="py-3 px-4">{product.description}</td>
-                  <td className="py-3 px-4">{product.Category}</td>
-                  <td className="py-3 px-4">{product.rate}</td>
-                  {/* <td className="py-3 px-4">{product.cstock}</td> */}
-                  
-                  <td className="py-3 px-4">{product.quantity}</td>
-                  <td className="py-3 px-4">
-                  <button
-  onClick={() => RemoveProduct(invoice.invoiceNumber)} // Pass invoiceId to the function
-  className="ml-4 text-red-500 hover:text-red-700"
->
-  <AiOutlineDelete size={20} />
-</button>
-
-                </td>
-                </tr>
-              ))
-            ))}
-          </tbody>
-          <tbody>
             {filteredProducts.map((product) => (
-              <tr key={product.Bno} className="hover:bg-yellow-100 text-sm sm:text-base">
+              <tr
+                key={product.Bno}
+                className="hover:bg-yellow-100 text-sm sm:text-base"
+              >
                 <td className="py-3 px-4">{product.Bno}</td>
+                <td className="py-3 px-4">{product.cname}</td>
                 <td className="py-3 px-4">{product.pname}</td>
                 <td className="py-3 px-4">{product.categories}</td>
-                <td className="py-3 px-4">${product.price}</td>
-               
                 <td className="py-3 px-4">{product.sales}</td>
+                <td className="py-3 px-4">{product.price}</td>
                 <td className="py-3 px-4">
                   <button
                     onClick={() => handleRemoveProduct(product.Bno)}
@@ -447,40 +362,45 @@ const Sales = () => {
         </table>
       </div>
 
+      {/* Modal for Add/Edit Product */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-semibold mb-4">Offline Billing</h2>
+            <h2 className="text-2xl mb-4">Offline Billing</h2>
             <form onSubmit={handleAddProduct}>
-            <div className="grid grid-cols-2 gap-4">
-  {Object.keys(placeholderNames).map((key) => (
-    <div key={key} className="flex flex-col">
-      <label htmlFor={key}>
-        {placeholderNames[key]}
-      </label>
-
-      {/* Use DatePicker for the date field */}
-      {key === "date" ? (
-        <DatePicker
-          selected={newProduct.date ? new Date(newProduct.date) : null}
-          onChange={(date) => handleInputChange({ target: { name: key, value: date.toISOString() } })}
-          className="border px-3 py-2 rounded-lg"
-          dateFormat="yyyy/MM/dd"
-          placeholderText="Select Date"
-        />
-      ) : (
-        <input
-          type="text"
-          id={key}
-          name={key}
-          value={newProduct[key]}
-          onChange={handleInputChange}
-          className="border px-3 py-2 rounded-lg"
-        />
-      )}
-    </div>
-  ))}
-</div>
+              <div className="grid grid-cols-2 gap-4">
+                {Object.keys(newProduct).map((key) => (
+                  <div key={key} className="flex flex-col">
+                    <label htmlFor={key} className="mb-2">
+                      {key.charAt(0).toUpperCase() + key.slice(1)}
+                    </label>
+                    {key === "date" ? (
+                      <DatePicker
+                        selected={
+                          newProduct.date ? new Date(newProduct.date) : null
+                        }
+                        onChange={(date) =>
+                          handleInputChange({
+                            target: { name: key, value: date.toISOString() },
+                          })
+                        }
+                        className="border px-3 py-2 rounded-lg"
+                        dateFormat="yyyy/MM/dd"
+                        placeholderText="Select Date"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        id={key}
+                        name={key}
+                        value={newProduct[key]}
+                        onChange={handleInputChange}
+                        className="border px-3 py-2 rounded-lg"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
               <button
                 type="submit"
                 className="mt-4 bg-green-500 text-white py-2 px-6 rounded-lg"
