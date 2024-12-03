@@ -24,7 +24,6 @@ const Stocks = () => {
     cstock: "",
     price: "",
   });
-
   const [newStock, setNewStock] = useState({
     no: "",
     pname: "",
@@ -48,7 +47,7 @@ const Stocks = () => {
 
       try {
         const userDocRef = doc(db, "admins", user.email);
-        const productsRef = collection(userDocRef, "Stocks");
+        const productsRef = collection(userDocRef, "Purchase");
         const productSnapshot = await getDocs(productsRef);
 
         const productList = productSnapshot.docs.map((doc) => ({
@@ -184,17 +183,18 @@ const Stocks = () => {
     }
   };
 
-  const filteredProducts = products.filter(
-    (product) =>
-      product.pname &&
-      product.pname.toLowerCase().includes(filters.pname.toLowerCase()) &&
-      product.categories
-        .toLowerCase()
-        .includes(filters.categories.toLowerCase()) &&
-      product.estock.toLowerCase().includes(filters.estock.toLowerCase()) &&
-      product.cstock.toLowerCase().includes(filters.cstock.toLowerCase()) &&
-      product.price.toLowerCase().includes(filters.price.toLowerCase())
-  );
+  const filteredProducts = products.filter((product) => {
+    const { pname, categories, estock, cstock, price } = product;
+    const query = searchQuery.toLowerCase();
+  
+    return (
+      (pname && pname.toLowerCase().includes(query)) ||
+      (categories && categories.toLowerCase().includes(query)) ||
+      (estock && estock.toString().toLowerCase().includes(query)) ||
+      (cstock && cstock.toString().toLowerCase().includes(query)) ||
+      (price && price.toString().toLowerCase().includes(query))
+    );
+  });
 
   // Info Box Calculations
   const totalProducts = filteredProducts.length;
@@ -219,9 +219,7 @@ const Stocks = () => {
       {/* Info Boxes */}
       <div className="mb-6 grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div className="bg-green-900 p-4 rounded-md shadow-md border-l-4 border-green-400">
-          <h3 className="text-lg font-semibold text-gray-100">
-            Total Products
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-100">Total Products</h3>
           <p className="text-3xl font-bold text-gray-100">{totalProducts}</p>
         </div>
         <div className="bg-red-900 p-4 rounded-md shadow-md border-l-4 border-red-400">
@@ -236,168 +234,96 @@ const Stocks = () => {
 
       {/* Filter Panel */}
       <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">Filters</h3>
-        <div className="grid grid-cols-5 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          <div>
-            <label
-              htmlFor="pname"
-              className="text-white block mb-1 font-semibold"
-            >
-              Product Name
-            </label>
-            <input
-              type="text"
-              id="pname"
-              name="pname"
-              value={filters.pname}
-              onChange={handleFilterChange}
-              className="p-2 w-full border border-gray-300 rounded-md"
-              placeholder="Filter by Product Name"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="categories"
-              className="text-white block mb-1 font-semibold"
-            >
-              Categories
-            </label>
-            <input
-              type="text"
-              id="categories"
-              name="categories"
-              value={filters.categories}
-              onChange={handleFilterChange}
-              className="p-2 w-full border border-gray-300 rounded-md"
-              placeholder="Filter by Categories"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="estock"
-              className="text-white block mb-1 font-semibold"
-            >
-              Existing Stock
-            </label>
-            <input
-              type="text"
-              id="estock"
-              name="estock"
-              value={filters.estock}
-              onChange={handleFilterChange}
-              className="p-2 w-full border border-gray-300 rounded-md"
-              placeholder="Filter by Existing Stock"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="cstock"
-              className="text-white block mb-1 font-semibold"
-            >
-              Current Stock
-            </label>
-            <input
-              type="text"
-              id="cstock"
-              name="cstock"
-              value={filters.cstock}
-              onChange={handleFilterChange}
-              className="p-2 w-full border border-gray-300 rounded-md"
-              placeholder="Filter by Current Stock"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="price"
-              className="text-white block mb-1 font-semibold"
-            >
-              Price
-            </label>
-            <input
-              type="text"
-              id="price"
-              name="price"
-              value={filters.price}
-              onChange={handleFilterChange}
-              className="p-2 w-full border border-gray-300 rounded-md"
-              placeholder="Filter by Price"
-            />
-          </div>
+        <h2 className="text-2xl font-semibold text-gray-100">Filters</h2>
+        <div className="flex flex-wrap gap-4">
+          <input
+            className="px-3 py-2 rounded-md"
+            type="text"
+            placeholder="Search by Product Name"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <input
+            className="px-3 py-2 rounded-md"
+            type="text"
+            name="pname"
+            placeholder="Filter by Product Name"
+            value={filters.pname}
+            onChange={handleFilterChange}
+          />
+          <input
+            className="px-3 py-2 rounded-md"
+            type="text"
+            name="categories"
+            placeholder="Filter by Categories"
+            value={filters.categories}
+            onChange={handleFilterChange}
+          />
+          <input
+            className="px-3 py-2 rounded-md"
+            type="text"
+            name="estock"
+            placeholder="Filter by Estock"
+            value={filters.estock}
+            onChange={handleFilterChange}
+          />
+          <input
+            className="px-3 py-2 rounded-md"
+            type="text"
+            name="cstock"
+            placeholder="Filter by Cstock"
+            value={filters.cstock}
+            onChange={handleFilterChange}
+          />
+          <input
+            className="px-3 py-2 rounded-md"
+            type="text"
+            name="price"
+            placeholder="Filter by Price"
+            value={filters.price}
+            onChange={handleFilterChange}
+          />
         </div>
       </div>
 
-      <button
-        onClick={() => {
-          setShowModal(true);
-          setNewStock({
-            no: "",
-            pname: "",
-            categories: "",
-            estock: "",
-            cstock: "",
-            price: "",
-          });
-        }}
-        className="bg-blue-900 text-white py-2 px-4 rounded-lg mb-4 hover:bg-blue-600"
-      >
-        Add Stock
-      </button>
-
-      {/* Product Table */}
-      <div className="overflow-x-auto bg-white shadow-xl rounded-lg">
-        <table className="min-w-full bg-white border border-gray-200 shadow-md">
-          <thead className="bg-gradient-to-r from-blue-700 to-blue-700 text-white">
+      {/* Product List */}
+      <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
+        <table className="min-w-full table-auto">
+          <thead className="bg-blue-700 text-white">
             <tr>
-              <th className="py-3 px-6 text-left text-sm sm:text-base font-semibold">
-                Product No.
-              </th>
-              <th className="py-3 px-4 text-left text-sm sm:text-base font-semibold">
-                Product Name
-              </th>
-              <th className="py-3 px-4 text-left text-sm sm:text-base font-semibold">
-                Categories
-              </th>
-              <th className="py-3 px-4 text-left text-sm sm:text-base font-semibold">
-                Existing Stock
-              </th>
-              <th className="py-3 px-4 text-left text-sm sm:text-base font-semibold">
-                Current Stock
-              </th>
-              <th className="py-3 px-4 text-left text-sm sm:text-base font-semibold">
-                Price
-              </th>
-              <th className="py-3 px-4 text-left text-sm sm:text-base font-semibold">
-                Actions
-              </th>
+              <th className="py-3 px-4 text-left ">P.No</th>
+              <th className="py-3 px-4 text-left">Product Name</th>
+              {/* <th className="py-3 px-4">Categories</th> */}
+              <th className="py-3 px-4 text-left">Existing stock</th>
+              <th className="py-3 px-4 text-left">Curreny stock</th>
+              <th className="py-3 px-4 text-left">Price</th>
+              <th className="py-3 px-4 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.map((stock) => (
-              <tr
-                key={stock.no}
-                className="hover:bg-yellow-100 text-sm sm:text-base"
-              >
-                <td className="py-3 px-4 sm:px-4">{stock.no}</td>
-                <td className="py-3 px-4 sm:px-4">{stock.pname}</td>
-                <td className="py-3 px-4 sm:px-4">{stock.categories}</td>
-                <td className="py-3 px-4 sm:px-4">{stock.estock}</td>
-                <td className="py-3 px-4 sm:px-4">{stock.cstock}</td>
-                <td className="py-3 px-4 sm:px-4">{stock.price}</td>
-                <td className="py-3 px-4 sm:px-4 flex">
+            {filteredProducts.map((product) => (
+              <tr key={product.no} className="border-b">
+                <td className="py-3 px-4">{product.no}</td>
+                <td className="py-3 px-4">{product.pname}</td>
+                {/* <td className="p-2">{product.categories}</td> */}
+                <td className="py-3 px-4">{product.estock}</td>
+                <td className="py-3 px-4">{product.cstock}</td>
+                <td className="py-3 px-4">${product.price}</td>
+                <td className="py-3 px-4">
                   <button
                     onClick={() => {
                       setShowModal(true);
-                      setNewStock(stock);
+                      setNewStock(product);
                     }}
-                    className="text-blue-500 hover:text-blue-700"
+                    className="text-yellow-600 mr-2"
                   >
-                    <AiOutlineEdit size={20} />
+                    <AiOutlineEdit size={24} />
                   </button>
                   <button
-                    onClick={() => handleRemoveProduct(stock.no)}
-                    className="ml-4 text-red-500 hover:text-red-700"
+                    onClick={() => handleRemoveProduct(product.no)}
+                    className="text-red-600"
                   >
-                    <AiOutlineDelete size={20} />
+                    <AiOutlineDelete size={24} />
                   </button>
                 </td>
               </tr>
@@ -406,71 +332,82 @@ const Stocks = () => {
         </table>
       </div>
 
-      {/* Modal for Add/Edit Product */}
+      {/* Add Product Modal */}
       {showModal && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          onClick={() => setShowModal(false)}
-        >
-          <div
-            className="bg-white p-6 rounded shadow-lg w-full max-w-md"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-2xl mb-4">
-              {newStock.no ? "Update Stock" : "Add Stock"}
-            </h2>
+        <div className="fixed inset-0 flex justify-center items-center bg-gray-800 bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-1/2">
+            <h2 className="text-2xl font-semibold mb-4">Add/Update Product</h2>
             <form onSubmit={handleFormSubmit}>
+              {/* Product No */}
               <input
+                className="w-full px-3 py-2 mb-4 rounded-md border"
+                type="text"
+                name="no"
+                placeholder="Product No"
+                value={newStock.no}
+                disabled
+              />
+              {/* Product Name */}
+              <input
+                className="w-full px-3 py-2 mb-4 rounded-md border"
                 type="text"
                 name="pname"
+                placeholder="Product Name"
                 value={newStock.pname}
                 onChange={handleInputChange}
-                placeholder="Product Name"
-                className="w-full px-4 py-2 mb-4 border rounded"
-                required
               />
+              {/* Categories */}
               <input
+                className="w-full px-3 py-2 mb-4 rounded-md border"
                 type="text"
                 name="categories"
+                placeholder="Categories"
                 value={newStock.categories}
                 onChange={handleInputChange}
-                placeholder="Categories"
-                className="w-full px-4 py-2 mb-4 border rounded"
-                required
               />
+              {/* Estock */}
               <input
+                className="w-full px-3 py-2 mb-4 rounded-md border"
                 type="number"
                 name="estock"
+                placeholder="Estock"
                 value={newStock.estock}
                 onChange={handleInputChange}
-                placeholder="Existing Stock"
-                className="w-full px-4 py-2 mb-4 border rounded"
-                required
               />
+              {/* Cstock */}
               <input
+                className="w-full px-3 py-2 mb-4 rounded-md border"
                 type="number"
                 name="cstock"
+                placeholder="Cstock"
                 value={newStock.cstock}
                 onChange={handleInputChange}
-                placeholder="Current Stock"
-                className="w-full px-4 py-2 mb-4 border rounded"
-                required
               />
+              {/* Price */}
               <input
+                className="w-full px-3 py-2 mb-4 rounded-md border"
                 type="number"
                 name="price"
+                placeholder="Price"
                 value={newStock.price}
                 onChange={handleInputChange}
-                placeholder="Price"
-                className="w-full px-4 py-2 mb-4 border rounded"
-                required
               />
-              <button
-                type="submit"
-                className="w-full bg-blue-500 text-white py-2 rounded mt-4 hover:bg-blue-600"
-              >
-                {newStock.no ? "Update Product" : "Add Product"}
-              </button>
+              {/* Submit Button */}
+              <div className="flex justify-between items-center">
+                <button
+                  type="submit"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md"
+                >
+                  {newStock.no ? "Update Product" : "Add Product"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="text-gray-600 ml-4"
+                >
+                  Cancel
+                </button>
+              </div>
             </form>
           </div>
         </div>

@@ -229,10 +229,7 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
               </Link>
             </li>
             <li className={activeLink === "training" ? "active" : ""}>
-              <Link to="/training" onClick={() => handleLinkClick("training")}>
-                <i className="bx bxs-book"></i>
-                <span className="text">Training</span>
-              </Link>
+           
             </li>
             <li
               className={activeLink === "performance-reviews" ? "active" : ""}
