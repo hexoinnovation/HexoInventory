@@ -32,11 +32,18 @@ export default {
         neon: "neon 1.5s ease-in-out infinite", // Neon text animation
         pulseSlow: "pulseSlow 3s infinite",
         wiggle: 'wiggle 1s ease-in-out infinite',
+        spinBounce: "spinBounce 3s cubic-bezier(0.25, 1, 0.5, 1) infinite", // Custom spin and bounce animation
+        pulseSpin: "pulseSpin 2s linear infinite", // Spinning with pulsing
       },
       keyframes: {
         wiggle: {
           '0%, 100%': { transform: 'rotate(-3deg)' },
           '50%': { transform: 'rotate(3deg)' },
+        },
+        pulseSpin: {
+          "0%": { transform: "rotate(0deg) scale(1)" },
+          "50%": { transform: "rotate(180deg) scale(1.2)" }, // Rotate halfway and enlarge
+          "100%": { transform: "rotate(360deg) scale(1)" }, // Complete rotation
         },
         driftEffect: {
           "0%": { transform: "translateX(0)" }, // Start position
@@ -52,6 +59,10 @@ export default {
             textShadow:
               "0 0 10px #fff, 0 0 20px #ff0080, 0 0 30px #ff0080, 0 0 40px #ff0080, 0 0 50px #ff0080, 0 0 60px #ff0080",
             transform: "scale(1.1)", // Slight size increase
+          },
+          spinBounce: {
+            "0%, 100%": { transform: "rotate(0deg) scale(1)" },
+            "50%": { transform: "rotate(180deg) scale(1.2)" }, // Spin and enlarge
           },
         },
         pulseSlow: {

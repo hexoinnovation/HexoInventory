@@ -12,6 +12,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete, AiOutlineFilePdf } from "react-icons/ai";
 import { auth, db } from "../config/firebase";
 import DownloadInvoice from '../Components/DownloadInvoice'; 
+import { FaFileInvoice } from "react-icons/fa6";
 
 const ViewAllInvoice = () => {
   const [user] = useAuthState(auth);
@@ -184,77 +185,10 @@ const ViewAllInvoice = () => {
 
   const handleDownloadInvoice = async (invoiceNumber) => {
     try {
-      const invoiceDocRef = doc(
-        db,
-        "admins",
-        user.email,
-        "Invoices",
-        invoiceNumber.toString()
-      );
-      const invoiceDocSnap = await getDoc(invoiceDocRef);
-
-      if (invoiceDocSnap.exists()) {
-        const invoiceData = invoiceDocSnap.data();
-        const pdfDoc = new jsPDF({ unit: "mm", format: "a4" });
-        const pageWidth = pdfDoc.internal.pageSize.getWidth();
-
-        pdfDoc.setFontSize(18);
-        pdfDoc.setFont("helvetica", "bold");
-        pdfDoc.text("Invoice", pageWidth / 2, 20, { align: "center" });
-
-        pdfDoc.setFontSize(10);
-        pdfDoc.setFont("helvetica", "normal");
-        pdfDoc.text(`Invoice Number: ${invoiceData.invoiceNumber}`, 10, 30);
-        pdfDoc.text(
-          `Invoice Date: ${new Date(
-            invoiceData.invoiceDate
-          ).toLocaleDateString()}`,
-          10,
-          35
-        );
-
-        // Add "Bill From" section
-        pdfDoc.text("Bill From:", 10, 50);
-        pdfDoc.text(
-          `Name: ${invoiceData.billFrom?.businessName || "N/A"}`,
-          10,
-          55
-        );
-
-        // Add "Bill To" section
-        pdfDoc.text("Bill To:", pageWidth / 2, 50);
-        pdfDoc.text(
-          `Name: ${invoiceData.billTo?.name || "N/A"}`,
-          pageWidth / 2,
-          55
-        );
-
-        let yPosition = 70;
-        pdfDoc.text("Products:", 10, yPosition);
-        yPosition += 10;
-
-        (invoiceData.products || []).forEach((product, index) => {
-          pdfDoc.text(`${index + 1}. ${product.name}`, 10, yPosition);
-          pdfDoc.text(
-            `Qty: ${product.quantity} | Rate: ₹${product.rate} | Total: ₹${product.total}`,
-            10,
-            yPosition + 5
-          );
-          yPosition += 15;
-        });
-
-        pdfDoc.text(
-          `Total Amount: ₹${totalAmount.toFixed(2)}`,
-          10,
-          yPosition + 10
-        );
-
-        pdfDoc.save(`Invoice_${invoiceNumber}.pdf`);
-      } else {
-        console.error("Invoice not found!");
-      }
+      // Call the DownloadInvoice function from the imported file
+      await DownloadInvoice(invoiceNumber);
     } catch (error) {
-      console.error("Error downloading invoice:", error);
+      console.error("Error calling DownloadInvoice:", error);
     }
   };
   
@@ -262,9 +196,10 @@ const ViewAllInvoice = () => {
 
   return (
     <div className="container mx-auto p-6 bg-white rounded-lg shadow-lg">
-      <h1 className="text-5xl font-extrabold text-blue-700 mb-6">
-        View All Invoices
-      </h1>
+     <h1 className="text-5xl font-extrabold text-blue-700 mb-6 flex items-center">
+   All Invoices
+  <FaFileInvoice className="ml-4 animate-pulseSpin" />
+</h1>
 
       {/* Info Boxes */}
       <div className="grid grid-cols-3 gap-4 mb-6">

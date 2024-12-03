@@ -263,7 +263,7 @@ const CustomerDetails = () => {
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
       <h1 className="text-5xl font-bold text-blue-900 mb-6">
         Customer Details
-        <FontAwesomeIcon icon={faUsers} className="ml-4 text-blue-900" />
+        <FontAwesomeIcon icon={faUsers} className=" animate-pulseSlow ml-4 text-blue-900" />
       </h1>
 
       <div className="grid grid-cols-3 gap-6 mb-6">
@@ -325,10 +325,10 @@ const CustomerDetails = () => {
               <th className="py-3 px-4 text-left">Name</th>
               <th className="py-3 px-4 text-left">Email</th>
               <th className="py-3 px-4 text-left">Phone</th>
-              <th className="py-3 px-4 text-left">Address</th>
-              <th className="py-3 px-4 text-left">City</th>
+              {/* <th className="py-3 px-4 text-left">Address</th> */}
+              {/* <th className="py-3 px-4 text-left">City</th>
               <th className="py-3 px-4 text-left">State</th>
-              <th className="py-3 px-4 text-left">Zip Code</th>
+              <th className="py-3 px-4 text-left">Zip Code</th> */}
               <th className="py-3 px-4 text-left">GST No</th>
               <th className="py-3 px-4 text-left">Aadhaar No</th>
               <th className="py-3 px-4 text-left">PAN No</th>
@@ -344,10 +344,10 @@ const CustomerDetails = () => {
                 <td className="py-3 px-4">{customer.name}</td>
                 <td className="py-3 px-4">{customer.email}</td>
                 <td className="py-3 px-4">{customer.phone}</td>
-                <td className="py-3 px-4">{customer.address}</td>
-                <td className="py-3 px-4">{customer.city}</td>
+                {/* <td className="py-3 px-4">{customer.address}</td> */}
+                {/* <td className="py-3 px-4">{customer.city}</td>
                 <td className="py-3 px-4">{customer.state}</td>
-                <td className="py-3 px-4">{customer.zip}</td>
+                <td className="py-3 px-4">{customer.zip}</td> */}
                 <td className="py-3 px-4">{customer.gst}</td>
                 <td className="py-3 px-4">{customer.aadhaar}</td>
                 <td className="py-3 px-4">{customer.panno}</td>

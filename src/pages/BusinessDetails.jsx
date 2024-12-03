@@ -196,7 +196,7 @@ const BusinessDetails = () => {
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
       <h1 className="text-5xl font-bold text-blue-900 mb-6">
         Business Details
-        <FontAwesomeIcon icon={faBriefcase} className="ml-4" />
+        <FontAwesomeIcon icon={faBriefcase} className=" animate-wiggle ml-4" />
       </h1>
 
       {/* Info Boxes */}
