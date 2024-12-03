@@ -11,10 +11,12 @@ import { jsPDF } from "jspdf";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete, AiOutlineFilePdf } from "react-icons/ai";
 import { auth, db } from "../config/firebase";
+import DownloadInvoice from '../Components/DownloadInvoice'; 
 
 const ViewAllInvoice = () => {
   const [user] = useAuthState(auth);
   const [invoiceData, setInvoiceData] = useState([]);
+  const [filteredInvoiceData, setFilteredInvoiceData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [paidCount, setPaidCount] = useState(0);
   const [unpaidCount, setUnpaidCount] = useState(0);
@@ -27,6 +29,7 @@ const ViewAllInvoice = () => {
     specificDate: "",
     customerName: "",
     invoiceNumber: "",
+    existingClient: "", // New filter for existing clients
   });
 
   useEffect(() => {
@@ -34,6 +37,10 @@ const ViewAllInvoice = () => {
       fetchInvoices();
     }
   }, [user]);
+
+  useEffect(() => {
+    applyFilter();
+  }, [filter, invoiceData]);
 
   const fetchInvoices = async () => {
     try {
@@ -46,6 +53,7 @@ const ViewAllInvoice = () => {
       }));
 
       setInvoiceData(invoices);
+      setFilteredInvoiceData(invoices);
 
       const paid = invoices.filter(
         (invoice) => invoice.paymentStatus === "Paid"
@@ -91,9 +99,12 @@ const ViewAllInvoice = () => {
 
     if (filter.paymentStatus) {
       filteredData = filteredData.filter(
-        (item) => item.paymentStatus === filter.paymentStatus
+        (item) =>
+          item.paymentStatus?.toLowerCase() ===
+          filter.paymentStatus.toLowerCase()
       );
     }
+
     if (filter.customerName) {
       filteredData = filteredData.filter((item) =>
         item.billTo?.name
@@ -101,16 +112,19 @@ const ViewAllInvoice = () => {
           .includes(filter.customerName.toLowerCase())
       );
     }
+
     if (filter.startDate) {
       filteredData = filteredData.filter(
         (item) => new Date(item.invoiceDate) >= new Date(filter.startDate)
       );
     }
+
     if (filter.endDate) {
       filteredData = filteredData.filter(
         (item) => new Date(item.invoiceDate) <= new Date(filter.endDate)
       );
     }
+
     if (filter.specificDate) {
       filteredData = filteredData.filter(
         (item) =>
@@ -118,6 +132,7 @@ const ViewAllInvoice = () => {
           new Date(filter.specificDate).toDateString()
       );
     }
+
     if (filter.invoiceNumber) {
       filteredData = filteredData.filter((item) =>
         item.invoiceNumber.toString().includes(filter.invoiceNumber)
@@ -242,6 +257,8 @@ const ViewAllInvoice = () => {
       console.error("Error downloading invoice:", error);
     }
   };
+  
+
 
   return (
     <div className="container mx-auto p-6 bg-white rounded-lg shadow-lg">
@@ -265,8 +282,8 @@ const ViewAllInvoice = () => {
         </div>
       </div>
 
-     {/* Filters */}
-     <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
+      {/* Filters */}
+      <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
         <h2 className="text-lg font-bold text-gray-100 mb-4">
           Filter Invoices
         </h2>
@@ -360,6 +377,8 @@ const ViewAllInvoice = () => {
             />
           </div>
 
+          {/* Existing Client */}
+
           {/* Filter Button */}
           <div className="flex items-end">
             <button
@@ -386,7 +405,7 @@ const ViewAllInvoice = () => {
           </tr>
         </thead>
         <tbody>
-          {invoiceData.map((invoice) => (
+          {filteredInvoiceData.map((invoice) => (
             <tr key={invoice.id} className="hover:bg-gray-100">
               <td className="py-3 px-4">{invoice.invoiceNumber}</td>
               <td className="py-3 px-4">{invoice.billTo?.name}</td>
