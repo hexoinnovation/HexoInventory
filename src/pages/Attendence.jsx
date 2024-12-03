@@ -1,417 +1,399 @@
-import React, { useState, useEffect } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { db, auth } from "../config/firebase"; // Assuming Firebase setup is correct
-import { collection, query, getDocs, setDoc, doc ,getDoc,updateDoc,serverTimestamp } from "firebase/firestore";
-import { format } from "date-fns"; // Install date-fns for date formatting
-import Swal from 'sweetalert2';
-const Attendance = () => {
-  const [employees, setEmployees] = useState([]);
+import React, { useState, useEffect } from 'react';
+import { db, auth } from '../config/firebase'; // Import Firebase setup
+import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCheck, faTimes, faClock } from '@fortawesome/free-solid-svg-icons';
 
-  const [employee, setEmployee] = useState([]);
-  const [filterStatus, setFilterStatus] = useState("All");
-  const [filterDate, setFilterDate] = useState("");
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [monthlyFilter, setMonthlyFilter] = useState(false);
+const AttendanceTable = () => {
+  const [employees, setEmployees] = useState([]);
+  const [attendance, setAttendance] = useState({});
   const [filteredEmployees, setFilteredEmployees] = useState([]);
+  const [filterDate, setFilterDate] = useState('');
+  const [monthlyFilter, setMonthlyFilter] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [attendanceStatus, setAttendanceStatus] = useState('all'); // <-- Add this line
+
+  const currentUser = auth.currentUser;
+  const currentDate = new Date();
+  const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}.${(currentDate.getMonth() + 1).toString().padStart(2, '0')}.${currentDate.getFullYear()}`;
+  // const currentDate = new Date();
+  // const formattedDate = `${currentDate.getUTCDate()}.${currentDate.getUTCMonth() + 1}.${currentDate.getUTCFullYear()}`;
+  //const formattedDate = `${currentDate.getUTCDate()}.${currentDate.getUTCMonth() + 1}.${currentDate.getUTCFullYear()}`;
+  const attendanceRef = doc(db, 'admins', currentUser.email, 'attendance', formattedDate);
+  //const docSnap = await getDoc(attendanceRef);
+  
   useEffect(() => {
     const fetchEmployees = async () => {
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        const userDocRef = collection(db, "admins", currentUser.email, "Empdetails");
-        const q = query(userDocRef);
-        const querySnapshot = await getDocs(q);
+      console.log('Fetching employees...');
+      try {
+        const userDocRef = collection(db, 'admins', currentUser.email, 'Empdetails');
+        const querySnapshot = await getDocs(userDocRef);
+  
+        if (querySnapshot.empty) {
+          console.log('No employees found');
+        }
+  
         const fetchedEmployees = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
+  
+        console.log('Fetched Employees:', fetchedEmployees);
+  
         setEmployees(fetchedEmployees);
-        setFilteredEmployees(fetchedEmployees); // Ensure this state is defined and used properly
+        setFilteredEmployees(fetchedEmployees);
+  
+        // Fetching attendance data for today (formattedDate)
+        const attendanceRef = doc(db, 'admins', currentUser.email, 'attendance', formattedDate);
+        const docSnap = await getDoc(attendanceRef);
+  
+        if (docSnap.exists()) {
+          console.log('Attendance for today:', docSnap.data());
+          const attendanceData = docSnap.data();
+  
+          // Merge employee data with their attendance status
+          const updatedEmployees = fetchedEmployees.map((employee) => {
+            return {
+              ...employee,
+              attendance: attendanceData.employees.find((att) => att.id === employee.id)?.status || 'Absent',
+            };
+          });
+  
+          setEmployees(updatedEmployees); // Set the updated employees with attendance status
+          setFilteredEmployees(updatedEmployees); // Update filtered employees as well
+        } else {
+          console.log('No attendance data for today. Setting default to "Absent"');
+          const initialAttendance = fetchedEmployees.map((employee) => ({
+            ...employee,
+            attendance: 'Absent', // Default to 'Absent'
+          }));
+  
+          setEmployees(initialAttendance);
+          setFilteredEmployees(initialAttendance);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
       }
     };
-    fetchEmployees();
-  }, []);
-  // Set the current date
-  useEffect(() => {
-    const today = new Date();
-    const formattedDate = format(today, "dd.MM.yyyy");
-    setCurrentDate(formattedDate);
-
-    // Fetch data for the current date
-    fetchAttendanceData(formattedDate);
-  }, []);
-
-  const handleStatusToggle = async (employeeId, currentStatus) => {
-    const updatedEmployees = employees.map((employee) =>
-      employee.id === employeeId
-        ? { ...employee, status: currentStatus === "Present" ? "Absent" : "Present" }
-        : employee
-    );
   
-    setEmployees(updatedEmployees);
-    setFilteredEmployees(updatedEmployees);
+    if (currentUser && currentUser.email) {
+      fetchEmployees();
+    } else {
+      console.log('No current user found');
+    }
+  }, [currentUser, formattedDate]);
   
-    // Update Firestore with updated data
-    try {
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        const attendanceRef = doc(db, "admins", currentUser.email, "attendance", currentDate);
-        
-        // Fetch existing attendance data first
-        const docSnapshot = await getDoc(attendanceRef);
-        if (docSnapshot.exists()) {
-          const data = docSnapshot.data();
+  const handleStatusToggle = (employeeId, currentStatus) => {
+    const newStatus = currentStatus === "Present" ? "Absent" : "Present";
   
-          // If data exists, only update the status of the specific employee
-          if (data && data.employees) {
-            const updatedData = { ...data.employees };
-  
-            // Update the status of the specific employee
-            updatedData[employeeId] = updatedEmployees.find(emp => emp.id === employeeId);
-  
-            // Save the updated employee status back to Firestore
-            await setDoc(attendanceRef, { employees: updatedData }, { merge: true });
-          }
-        } else {
-          console.log("No attendance data found for this date");
-        }
+    // Update the specific employee's status in filteredEmployees
+    const updatedEmployees = filteredEmployees.map((employee) => {
+      if (employee.id === employeeId) {
+        return {
+          ...employee,
+          attendance: newStatus, // Update the attendance
+        };
       }
+      return employee;
+    });
+  
+    setFilteredEmployees(updatedEmployees); // Update the filtered employees array
+  
+    // Also track changes explicitly in the attendance object
+    setAttendance((prev) => ({
+      ...prev,
+      [employeeId]: newStatus,
+    }));
+  };
+  const saveAttendance = async () => {
+    try {
+      const attendanceData = filteredEmployees.map((employee) => ({
+        id: employee.id,
+        name: employee.name,
+        contact: employee.contact,
+        email: employee.email,
+        dob: employee.dob,
+        photo: employee.photo,
+        // Use the updated status if it exists in `attendance`; otherwise, keep the current employee.attendance
+        status: attendance[employee.id] || employee.attendance || "Absent", 
+        date: formattedDate,
+      }));
+  
+      const attendanceRef = doc(db, "admins", currentUser.email, "attendance", formattedDate);
+      await setDoc(attendanceRef, { employees: attendanceData });
+  
+      alert("Attendance saved successfully!");
     } catch (error) {
-      console.error("Error updating attendance:", error);
+      console.error("Error saving attendance:", error);
     }
   };
-  const fetchAttendanceData = async (date) => {
-    try {
-        const currentUser = auth.currentUser;
-        if (!currentUser) return;
-
-        const attendanceRef = collection(db, "admins", currentUser.email, "attendance");
-        const docRef = doc(attendanceRef, date);
-
-        console.log("Querying Firestore path:", `admins/${currentUser.email}/attendance/${date}`);
-
-        const docSnapshot = await getDoc(docRef);
-
-        if (docSnapshot.exists()) {
-            const data = docSnapshot.data();
-            console.log("Attendance data fetched: ", data);
-
-            setFilteredEmployees(data.employees || []);
-        } else {
-            console.log("No attendance data found for this date.");
-            setFilteredEmployees([]);
-        }
-    } catch (error) {
-        console.error("Error fetching attendance data: ", error);
-    }
-};
-
-
-const saveAttendanceData = async () => {
-  const currentUser = auth.currentUser;
-  const currentDate = new Date();
-  const formattedDate = `${currentDate.getUTCDate()}.${currentDate.getUTCMonth() + 1}.${currentDate.getUTCFullYear()}`;  // Use UTC
-
-  try {
-      // Prepare the data to be saved
-      const attendanceData = employees.map(employee => {
-          // Check for missing fields and handle them
-          if (!employee.id || !employee.name || !employee.dob || !employee.contact || !employee.email) {
-              console.error('Invalid employee data:', employee);
-              return null;  // Skip invalid employees
-          }
-
-          return {
-              employeeId: employee.id,
-              employeeName: employee.name,
-              dob: employee.dob,
-              contact: employee.contact,
-              email: employee.email,
-              status: employee.status || "Absent",  // Default to "Absent" if undefined
-              photo: employee.photo || "",  // Default to an empty string if undefined
-          };
-      }).filter(Boolean);  // Remove any invalid entries
-
-      // If there's invalid data, don't proceed
-      if (attendanceData.some(data => data === null)) {
-          console.error('Some employees have invalid data.');
-          return;
-      }
-
-      // Create a reference to the 'attendance' subcollection under the user's email in 'admins' collection
-      const attendanceRef = collection(db, "admins", currentUser.email, "attendance");
-
-      // Save the attendance data for the current date
-      await setDoc(doc(attendanceRef, formattedDate), {
-          employees: attendanceData,
-      });
-
-      // Success message
-      Swal.fire({
-          icon: 'success',
-          title: 'Attendance Saved!',
-          text: 'Your attendance data has been saved successfully.',
-          confirmButtonText: 'OK',
-      });
-
-      console.log("Attendance data saved successfully!");
-  } catch (error) {
-      // Error handling
-      Swal.fire({
-          icon: 'error',
-          title: 'Oops...',
-          text: `Error saving attendance data: ${error.message}`,
-          confirmButtonText: 'Try Again',
-      });
-      console.error("Error saving attendance data: ", error);
-  }
-};
-
-  const [currentDate, setCurrentDate] = useState("");
   
   const [statusFilter, setStatusFilter] = useState("All");
   const handleMonthlyFilter = (e) => {
-    const isChecked = e.target.checked;
-    setMonthlyFilter(isChecked);
-    if (!isChecked) {
-      setFilterDate(''); // Reset the date filter when monthly filter is unchecked
-      applyFilter('', false); // Apply filter with no date for all records
-    } else {
-      applyFilter(filterDate, true); // Apply filter by month
-    }
+    setMonthlyFilter(e.target.checked);
+    setFilterDate(""); // Reset date filter when toggling monthly filter
   };
-
-  // Handle date input field change
+  
   const handleFilterChange = (e) => {
-    setFilterDate(e.target.value);
-    applyFilter(e.target.value, monthlyFilter); // Apply the filter whenever date changes
+    const { name, value } = e.target;
+  
+    if (name === "status") {
+      setStatusFilter(value);
+    } else if (name === "date") {
+      const formattedDate = formatDateToDDMMYYYY(value); // Specific date (DD.MM.YYYY)
+      setFilterDate(formattedDate);
+    } else if (name === "month") {
+      const formattedMonth = formatMonthToDDMMYYYY(value); // Format the month correctly (DD.MM.YYYY)
+      setFilterDate(formattedMonth);
+    }
   };
-  const applyFilter = (date, isMonthly) => {
-    if (!date) {
-        setFilteredEmployees([]);
-        return;
+  useEffect(() => {
+    let filtered = employees;
+  
+    // Apply status filter
+    if (statusFilter !== "All") {
+      filtered = filtered.filter((employee) => employee.attendance === statusFilter);
     }
-
-    const selectedDate = new Date(date);
-    const selectedMonth = selectedDate.getUTCMonth(); // Use UTC to avoid timezone offsets
-    const selectedYear = selectedDate.getUTCFullYear();
-    const selectedDay = selectedDate.getUTCDate(); // Get UTC day
-
-    const formattedDate = `${selectedDay}.${selectedMonth + 1}.${selectedYear}`;  // Format as DD.MM.YYYY
-
-    console.log("Formatted Date for query:", formattedDate);
-
-    if (!isMonthly) {
-        fetchAttendanceData(formattedDate);
-    } else {
-        // Monthly filter logic
+  
+    // Apply date filter (for specific date)
+    if (filterDate) {
+      filtered = filtered.filter((employee) => {
+        if (employee.date) {  // Check if employee.date is defined
+          const employeeDate = employee.date.split('.').reverse().join('-'); // Convert DD.MM.YYYY to YYYY-MM-DD
+          return employeeDate === filterDate;
+        }
+        return false; // If employee.date is not defined, don't include the employee
+      });
     }
+  
+    // Apply monthly filter (for the whole month)
+    if (monthlyFilter && filterDate) {
+      const selectedMonth = filterDate.split(".")[1]; // Extract month from filterDate
+      filtered = filtered.filter((employee) => {
+        if (employee.date) {  // Check if employee.date is defined
+          const employeeMonth = employee.date.split(".")[1]; // Extract month from employee's date
+          return employeeMonth === selectedMonth;
+        }
+        return false; // If employee.date is not defined, don't include the employee
+      });
+    }
+  
+    setFilteredEmployees(filtered);
+  }, [statusFilter, filterDate, monthlyFilter, employees]);
+  
+const formatDateToDDMMYYYY = (date) => {
+  const currentDate = new Date(date);
+  const day = currentDate.getDate().toString().padStart(2, "0");
+  const month = (currentDate.getMonth() + 1).toString().padStart(2, "0");
+  const year = currentDate.getFullYear();
+  return `${day}.${month}.${year}`;  // This will give you DD.MM.YYYY format
 };
-
-  // Show Employee Details Popup
+const formatMonthToDDMMYYYY = (month) => {
+  const [year, monthNumber] = month.split('-');
+  const formattedDate = `01.${monthNumber.padStart(2, '0')}.${year}`;
+  return formattedDate;
+};
+  const formatDate = (date) => {
+    const [day, month, year] = date.split('.'); // Split the string by dot
+    const formattedDate = new Date(year, month - 1, day); // Create a new Date object
+    return formattedDate.toLocaleDateString(); // Format and return the date
+  };
+  const [attendanceData, setAttendanceData] = useState([]);
+  // Helper function to format DOB
+  const convertToDateFormat = (dateString) => {
+    const [day, month, year] = dateString.split('.');
+    return new Date(`${year}-${month}-${day}`); // Format the date for JavaScript
+  };
+  
+  // Open employee details modal
   const handleEmployeeClick = (employee) => {
     setSelectedEmployee(employee);
     setModalVisible(true);
   };
 
-  // Close Modal
+  // const [ setCurrentDate] = useState(new Date());
+
+  // useEffect(() => {
+  //   // Function to update time
+  //   const interval = setInterval(() => {
+  //     setCurrentDate(new Date()); // Update the current time every second
+  //   }, 1000);
+
+  //   // Cleanup the interval on component unmount
+  //   return () => clearInterval(interval);
+  // }, []);
+  const handleOpenModal = (employee) => {
+    setSelectedEmployee(employee);
+    setModalVisible(true); // Show the modal
+  };
+
   const handleCloseModal = () => {
-    setModalVisible(false);
-    setSelectedEmployee(null);
+    setModalVisible(false); // Hide the modal
+    setSelectedEmployee(null); // Reset selected employee
   };
-  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
- 
- // Running clock
- useEffect(() => {
-  const timeInterval = setInterval(() => {
-    setCurrentTime(new Date().toLocaleTimeString());
-  }, 1000);
-
-  const dateInterval = setInterval(() => {
-    setCurrentDate(new Date().toLocaleDateString());
-  }, 1000);
-
-  return () => {
-    clearInterval(timeInterval);
-    clearInterval(dateInterval);
-  };
-}, []);
+  
+  
   return (
-    <div>
-    <div className="w-full flex flex-col items-start mb-4">
-        <h2 className="text-2xl font-semibold text-indigo-600 mb-4 ml-10 mt-5">Attendance for {currentDate}</h2>
-        <div className="text-sm font-semibold text-gray-600 ml-10">Current Time: {currentTime}</div>
-      </div>
-    <div className="container mx-auto p-6 flex gap-6 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
-       
-      {/* Employee Table */}
+    <div className="w-full flex">
       <div className="w-3/4 bg-white p-4 rounded-lg shadow-lg overflow-x-auto">
-        <h2 className="text-xl font-semibold text-indigo-600 mb-4">Employee Attendance</h2>
-        <table className="min-w-full border-collapse">
-          <thead>
-            <tr className="bg-indigo-100">
-              <th className="px-4 py-2 text-left text-sm font-semibold">Employee</th>
-              <th className="px-4 py-2 text-left text-sm font-semibold">DOB</th>
-              <th className="px-4 py-2 text-left text-sm font-semibold">Contact</th>
-              <th className="px-4 py-2 text-left text-sm font-semibold">Email</th>
-              <th className="px-4 py-2 text-left text-sm font-semibold">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredEmployees.length === 0 ? (
-              <tr>
-                <td colSpan="5" className="text-center py-4 text-red-500 font-semibold">
-                  No Employee Found
-                </td>
+        <div className="w-full flex flex-col items-start mb-4">
+          <h2 className="text-2xl font-semibold text-indigo-600 mb-4 ml-0 mt-5 animate__animated animate__fadeIn">
+            Attendance for {formattedDate}
+          </h2>
+          <div className="flex items-center text-sm font-semibold text-gray-600 ml-0 animate__animated animate__fadeIn animate__delay-1s">
+      <FontAwesomeIcon icon={faClock} className="text-indigo-600 ml-0 mr-2 animate__animated animate__bounceIn" />
+      <span>Current Time: {currentDate.toLocaleTimeString()}</span> {/* Display time */}
+    </div>
+          <h2 className="text-xl font-semibold text-indigo-600 mt-8">Employee Attendance</h2>
+          <table className="min-w-full border-collapse">
+            <thead>
+              <tr className="bg-indigo-100">
+                <th className="px-4 py-2 text-left text-sm font-semibold">Employee</th>
+                <th className="px-4 py-2 text-left text-sm font-semibold">DOB</th>
+                <th className="px-4 py-2 text-left text-sm font-semibold">Contact</th>
+                <th className="px-4 py-2 text-left text-sm font-semibold">Email</th>
+                <th className="px-4 py-2 text-left text-sm font-semibold">Status</th>
               </tr>
-            ) : (
-              filteredEmployees.map((employee) => (
-                <tr
-                  key={employee.id}
-                  className="border-b hover:bg-indigo-50 cursor-pointer"
-                  onClick={() => handleEmployeeClick(employee)}
-                >
-                  <td className="px-4 py-2 flex items-center gap-3">
-                    <img
-                      src={employee.photo}
-                      alt="Employee"
-                      className="rounded-full w-12 h-12 object-cover"
-                    />
-                    <span>{employee.name}</span>
-                  </td>
-                  <td className="px-4 py-2">{employee.dob}</td>
-                  <td className="px-4 py-2">{employee.contact}</td>
-                  <td className="px-4 py-2">{employee.email}</td>
-                  <td className="px-4 py-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStatusToggle(employee.id, employee.status);
-                      }}
-                      className={`px-4 py-2 rounded-full ${
-                        employee.status === "Present" ? "bg-green-500" : "bg-red-500"
-                      } text-white`}
-                    >
-                      {employee.status === "Present" ? (
-                        <FontAwesomeIcon icon={faCheck} />
-                      ) : (
-                        <FontAwesomeIcon icon={faTimes} />
-                      )}
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+            {filteredEmployees.length === 0 ? (
+  <tr>
+    <td colSpan="5" className="text-center py-4 text-red-500 font-semibold">
+      No Employee Found
+    </td>
+  </tr>
+) : (
+  filteredEmployees.map((employee) => (
+    <tr key={employee.id} className="border-b hover:bg-indigo-50 cursor-pointer">
+     <td
+                className="px-4 py-2 flex items-center gap-3"
+                onClick={() => handleOpenModal(employee)} // Open modal on click
+              >
+        <img
+          src={employee.photo}
+          alt="Employee"
+          className="rounded-full w-12 h-12 object-cover"
+        />
+        <span>{employee.name}</span>
+      </td>
+      <td className="px-4 py-2">{employee.dob}</td>
+      <td className="px-4 py-2">{employee.contact}</td>
+      <td className="px-4 py-2">{employee.email}</td>
+      <td className="px-4 py-2">
+      <button
+  onClick={(e) => {
+    e.stopPropagation();
+    handleStatusToggle(employee.id, employee.attendance); // Pass employee's current attendance
+  }}
+  className={`py-1 px-4 bg-${employee.attendance === 'Present' ? 'green' : 'red'}-500 text-white rounded-md`}
+>
+  {employee.attendance === 'Present' ? (
+    <FontAwesomeIcon icon={faCheck} />
+  ) : (
+    <FontAwesomeIcon icon={faTimes} />
+  )}
+</button>
+
+      </td>
+    </tr>
+  ))
+)}            </tbody>
+          </table>
+          <div className="mt-4">
+            <button onClick={saveAttendance} className="px-6 py-2 bg-blue-500 text-white rounded-md">
+              Save All
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Filter Panel (Right Side) */}
       <div className="w-1/4 bg-white p-4 rounded-lg shadow-lg">
-        <h2 className="text-xl font-semibold text-indigo-600 mb-4">Filters</h2>
-        <div className="mb-4">
-          <label htmlFor="status" className="text-sm font-semibold">Status</label>
-          <select
-            name="status"
-            value={filterStatus}
-            onChange={handleFilterChange}
-            className="w-full px-4 py-2 mt-2 border rounded-lg"
-          >
-            <option value="All">All Statuses</option>
-            <option value="Present">Present</option>
-            <option value="Absent">Absent</option>
-          </select>
-        </div>
+      <h2 className="text-xl font-semibold text-indigo-600 mb-4">Filters</h2>
+      
+      {/* Status Filter */}
+      <div className="mb-4">
+        <label htmlFor="status" className="text-sm font-semibold">Status</label>
+        <select
+          name="status"
+          value={statusFilter}
+          onChange={handleFilterChange}
+          className="w-full px-4 py-2 mt-2 border rounded-lg"
+        >
+          <option value="All">All Status</option>
+          <option value="Present">Present</option>
+          <option value="Absent">Absent</option>
+        </select>
+      </div>
 
-        <div className="mb-4">
-          <label htmlFor="date" className="text-sm font-semibold">Date</label>
-          <input
+      {/* Date Filter */}
+      <div className="mb-4">
+        <label htmlFor="date" className="text-sm font-semibold">Date</label>
+        <input
           type="date"
           name="date"
-          value={filterDate}
+          value={filterDate}  
           onChange={handleFilterChange}
           className="w-full px-4 py-2 mt-2 border rounded-lg"
         />
-        </div>
-
-        <div className="mb-4 flex items-center gap-3">
-        <input
-          type="checkbox"
-          checked={monthlyFilter}
-          onChange={handleMonthlyFilter}
-          id="monthlyFilter"
-          className="h-5 w-5"
-        />
-        <label htmlFor="monthlyFilter" className="text-sm font-semibold">Monthly Filter</label>
-        </div>
       </div>
-  {/* Show date input only when monthly filter is checked */}
-  {monthlyFilter && (
+
+      {/* Monthly Filter */}
+      <div className="mb-4 flex items-center gap-3">
+  <input
+    type="checkbox"
+    checked={monthlyFilter}
+    onChange={handleMonthlyFilter}
+    id="monthlyFilter"
+    className="h-5 w-5"
+  />
+  <label htmlFor="monthlyFilter" className="text-sm font-semibold">Monthly Filter</label>
+</div>
+
+
+      {/* Show month selector only if monthly filter is checked */}
+      {monthlyFilter && (
         <div className="mb-4">
-          <label htmlFor="date" className="text-sm font-semibold">Select Month</label>
+          <label htmlFor="month" className="text-sm font-semibold">Select Month</label>
           <input
             type="month"
-            name="date"
+            name="month"
             value={filterDate}
             onChange={handleFilterChange}
             className="w-full px-4 py-2 mt-2 border rounded-lg"
           />
         </div>
       )}
+    </div>
 
-      {/* Employee Detail Modal */}
+      {/* Modal for Employee Details */}
       {modalVisible && selectedEmployee && (
-        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold">Employee Details</h3>
-              <button onClick={handleCloseModal} className="text-red-500 text-lg">
-                <FontAwesomeIcon icon={faTimes} />
-              </button>
-            </div>
-
-            <div className="mb-4">
+        <div className="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg w-96">
+            <h2 className="text-xl font-semibold mb-4">{selectedEmployee.name}</h2>
+            <div className="flex justify-center mb-4">
               <img
                 src={selectedEmployee.photo}
-                alt="Employee"
-                className="rounded-full w-24 h-24 mx-auto mb-4"
+                alt={selectedEmployee.name}
+                className="rounded-full w-37 h-32 object-cover"
               />
-              <div><strong>Name: </strong>{selectedEmployee.name}</div>
-              <div><strong>Email: </strong>{selectedEmployee.email}</div>
-              <div><strong>Contact: </strong>{selectedEmployee.contact}</div>
-              <div><strong>Address: </strong>{selectedEmployee.address}</div>
-              <div><strong>Date of Birth: </strong>{selectedEmployee.dob}</div>
-              <div><strong>Status: </strong>{selectedEmployee.status}</div>
-              <div><strong>Date: </strong>{currentDate}</div>
             </div>
-            <div className="flex justify-center">
-            {/* <button
-                    onClick={() =>
-                      handleStatusToggle(employee.id, employee.status)
-                    }
-                    className={`px-2 py-1 rounded ${
-                      employee.status === "Present"
-                        ? "bg-green-500 text-white"
-                        : "bg-red-500 text-white"
-                    }`}
-                  >
-                    {employee.status}
-                  </button> */}
-            </div>
+            <p><strong>Date of Birth:</strong> {selectedEmployee.dob}</p>
+            <p><strong>Contact:</strong> {selectedEmployee.contact}</p>
+            <p><strong>Address:</strong> {selectedEmployee.address}</p>
+            <p><strong>State:</strong> {selectedEmployee.state}</p>
+            <p><strong>Country:</strong> {selectedEmployee.country}</p>
+            
+            <p><strong>Email:</strong> {selectedEmployee.email}</p>
+            <button onClick={handleCloseModal} className="mt-4 px-4 py-2 bg-gray-500 text-white rounded-md">
+              Close
+            </button>
           </div>
         </div>
       )}
-      
-    </div>
-    <button
-          onClick={saveAttendanceData}
-          className="mt-2 px-4 py-2 bg-blue-500 text-white rounded"
-        >
-          Save Attendance
-        </button>
     </div>
   );
 };
 
-export default Attendance;
+export default AttendanceTable;
