@@ -11,6 +11,7 @@ import { jsPDF } from "jspdf";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete, AiOutlineFilePdf } from "react-icons/ai";
 import { auth, db } from "../config/firebase";
+import DownloadInvoice from '../Components/DownloadInvoice'; 
 
 const ViewAllInvoice = () => {
   const [user] = useAuthState(auth);
@@ -167,81 +168,92 @@ const ViewAllInvoice = () => {
     }
   };
 
+  // const handleDownloadInvoice = async (invoiceNumber) => {
+  //   try {
+  //     const invoiceDocRef = doc(
+  //       db,
+  //       "admins",
+  //       user.email,
+  //       "Invoices",
+  //       invoiceNumber.toString()
+  //     );
+  //     const invoiceDocSnap = await getDoc(invoiceDocRef);
+
+  //     if (invoiceDocSnap.exists()) {
+  //       const invoiceData = invoiceDocSnap.data();
+  //       const pdfDoc = new jsPDF({ unit: "mm", format: "a4" });
+  //       const pageWidth = pdfDoc.internal.pageSize.getWidth();
+
+  //       pdfDoc.setFontSize(18);
+  //       pdfDoc.setFont("helvetica", "bold");
+  //       pdfDoc.text("Invoice", pageWidth / 2, 20, { align: "center" });
+
+  //       pdfDoc.setFontSize(10);
+  //       pdfDoc.setFont("helvetica", "normal");
+  //       pdfDoc.text(`Invoice Number: ${invoiceData.invoiceNumber}`, 10, 30);
+  //       pdfDoc.text(
+  //         `Invoice Date: ${new Date(
+  //           invoiceData.invoiceDate
+  //         ).toLocaleDateString()}`,
+  //         10,
+  //         35
+  //       );
+
+  //       // Add "Bill From" section
+  //       pdfDoc.text("Bill From:", 10, 50);
+  //       pdfDoc.text(
+  //         `Name: ${invoiceData.billFrom?.businessName || "N/A"}`,
+  //         10,
+  //         55
+  //       );
+
+  //       // Add "Bill To" section
+  //       pdfDoc.text("Bill To:", pageWidth / 2, 50);
+  //       pdfDoc.text(
+  //         `Name: ${invoiceData.billTo?.name || "N/A"}`,
+  //         pageWidth / 2,
+  //         55
+  //       );
+
+  //       let yPosition = 70;
+  //       pdfDoc.text("Products:", 10, yPosition);
+  //       yPosition += 10;
+
+  //       (invoiceData.products || []).forEach((product, index) => {
+  //         pdfDoc.text(`${index + 1}. ${product.name}`, 10, yPosition);
+  //         pdfDoc.text(
+  //           `Qty: ${product.quantity} | Rate: ₹${product.rate} | Total: ₹${product.total}`,
+  //           10,
+  //           yPosition + 5
+  //         );
+  //         yPosition += 15;
+  //       });
+
+  //       pdfDoc.text(
+  //         `Total Amount: ₹${totalAmount.toFixed(2)}`,
+  //         10,
+  //         yPosition + 10
+  //       );
+
+  //       pdfDoc.save(`Invoice_${invoiceNumber}.pdf`);
+  //     } else {
+  //       console.error("Invoice not found!");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error downloading invoice:", error);
+  //   }
+  // };
+
   const handleDownloadInvoice = async (invoiceNumber) => {
     try {
-      const invoiceDocRef = doc(
-        db,
-        "admins",
-        user.email,
-        "Invoices",
-        invoiceNumber.toString()
-      );
-      const invoiceDocSnap = await getDoc(invoiceDocRef);
-
-      if (invoiceDocSnap.exists()) {
-        const invoiceData = invoiceDocSnap.data();
-        const pdfDoc = new jsPDF({ unit: "mm", format: "a4" });
-        const pageWidth = pdfDoc.internal.pageSize.getWidth();
-
-        pdfDoc.setFontSize(18);
-        pdfDoc.setFont("helvetica", "bold");
-        pdfDoc.text("Invoice", pageWidth / 2, 20, { align: "center" });
-
-        pdfDoc.setFontSize(10);
-        pdfDoc.setFont("helvetica", "normal");
-        pdfDoc.text(`Invoice Number: ${invoiceData.invoiceNumber}`, 10, 30);
-        pdfDoc.text(
-          `Invoice Date: ${new Date(
-            invoiceData.invoiceDate
-          ).toLocaleDateString()}`,
-          10,
-          35
-        );
-
-        // Add "Bill From" section
-        pdfDoc.text("Bill From:", 10, 50);
-        pdfDoc.text(
-          `Name: ${invoiceData.billFrom?.businessName || "N/A"}`,
-          10,
-          55
-        );
-
-        // Add "Bill To" section
-        pdfDoc.text("Bill To:", pageWidth / 2, 50);
-        pdfDoc.text(
-          `Name: ${invoiceData.billTo?.name || "N/A"}`,
-          pageWidth / 2,
-          55
-        );
-
-        let yPosition = 70;
-        pdfDoc.text("Products:", 10, yPosition);
-        yPosition += 10;
-
-        (invoiceData.products || []).forEach((product, index) => {
-          pdfDoc.text(`${index + 1}. ${product.name}`, 10, yPosition);
-          pdfDoc.text(
-            `Qty: ${product.quantity} | Rate: ₹${product.rate} | Total: ₹${product.total}`,
-            10,
-            yPosition + 5
-          );
-          yPosition += 15;
-        });
-
-        pdfDoc.text(
-          `Total Amount: ₹${totalAmount.toFixed(2)}`,
-          10,
-          yPosition + 10
-        );
-
-        pdfDoc.save(`Invoice_${invoiceNumber}.pdf`);
-      } else {
-        console.error("Invoice not found!");
-      }
+      // Call the DownloadInvoice function from the imported file
+      await DownloadInvoice(invoiceNumber);
     } catch (error) {
-      console.error("Error downloading invoice:", error);
+      console.error("Error calling DownloadInvoice:", error);
     }
   };
+  
+
 
   return (
     <div className="container mx-auto p-6 bg-white rounded-lg shadow-lg">
@@ -399,12 +411,12 @@ const ViewAllInvoice = () => {
               </td>
               <td className="py-3 px-4">{invoice.paymentStatus}</td>
               <td className="py-3 px-4 flex gap-2">
-                <button
-                  onClick={() => handleDownloadInvoice(invoice.invoiceNumber)}
-                  className="text-blue-500 hover:text-blue-700"
-                >
-                  <AiOutlineFilePdf size={20} />
-                </button>
+              <button
+      onClick={() => handleDownloadInvoice(invoice.invoiceNumber)}  // Pass the invoice number
+      className="text-blue-500 hover:text-blue-700"
+    >
+      <AiOutlineFilePdf size={20} />
+    </button>
                 <button
                   onClick={() => handleDeleteInvoice(invoice.invoiceNumber)}
                   className="text-red-500 hover:text-red-700"
