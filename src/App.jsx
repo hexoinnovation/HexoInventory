@@ -212,13 +212,13 @@ const App = () => {
                   {/* Email Field */}
                   <div className="mb-6">
                     <div className="relative">
-                      <FaUser className="absolute left-3 top-4 text-indigo-400" />
+                      <FaUser className="absolute left-3 top-4 text-blue-900" />
                       <input
                         type="email"
                         placeholder="Email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full p-3 pl-12 bg-gradient-to-r from-gray-900 to-gray-900 border border-gray-300 rounded-lg focus:ring-4 focus:ring-indigo-300 focus:shadow-md transition-all duration-200"
+                        className="w-full p-3 pl-12 bg-gradient-to-r from-gray-100 to-gray-200 border border-gray-300 rounded-lg focus:ring-4 focus:ring-indigo-300 focus:shadow-md transition-all duration-200"
                         required
                       />
                     </div>
@@ -227,7 +227,7 @@ const App = () => {
                   {/* Password Field */}
                   <div className="mb-6">
                     <div className="relative">
-                      <FaLock className="absolute left-3 top-4 text-indigo-400" />
+                      <FaLock className="absolute left-3 top-4 text-blue-900" />
                       <input
                         type="password"
                         placeholder="Password"
