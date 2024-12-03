@@ -196,9 +196,9 @@ const App = () => {
           <ToastContainer position="top-center" autoClose={3000} />
           {/* Modal for Login/Signup */}
           {!isAuthenticated && showModal && (
-            <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50">
-              <div className="bg-white p-10 rounded-lg w-96 shadow-lg">
-                <h2 className="text-3xl mb-6 text-center text-gray-800">
+            <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-blue-900 via-gray-200 to-blue-900 bg-opacity-90 z-50 animate-fadeIn">
+              <div className="bg-blue-900 p-10 rounded-2xl w-96 shadow-lg transform transition-all duration-300 hover:shadow-2xl">
+                <h2 className="text-3xl font-bold mb-6 text-center bg-clip-text text-transparent bg-gradient-to-r from-gray-100 via-gray-100 to-gray-100">
                   {isSignup ? "Admin Sign Up" : "Admin Login"}
                 </h2>
 
@@ -212,13 +212,13 @@ const App = () => {
                   {/* Email Field */}
                   <div className="mb-6">
                     <div className="relative">
-                      <FaUser className="absolute left-3 top-4 text-gray-400" />
+                      <FaUser className="absolute left-3 top-4 text-indigo-400" />
                       <input
                         type="email"
                         placeholder="Email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full p-3 pl-10 bg-gray-100 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-3 pl-12 bg-gradient-to-r from-gray-900 to-gray-900 border border-gray-300 rounded-lg focus:ring-4 focus:ring-indigo-300 focus:shadow-md transition-all duration-200"
                         required
                       />
                     </div>
@@ -227,13 +227,13 @@ const App = () => {
                   {/* Password Field */}
                   <div className="mb-6">
                     <div className="relative">
-                      <FaLock className="absolute left-3 top-4 text-gray-400" />
+                      <FaLock className="absolute left-3 top-4 text-indigo-400" />
                       <input
                         type="password"
                         placeholder="Password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full p-3 pl-10 bg-gray-100 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-3 pl-12 bg-gradient-to-r from-gray-100 to-gray-200 border border-gray-300 rounded-lg focus:ring-4 focus:ring-indigo-300 focus:shadow-md transition-all duration-200"
                         required
                       />
                     </div>
@@ -242,7 +242,7 @@ const App = () => {
                   {/* Submit Button */}
                   <button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-blue-500 to-teal-400 text-white p-3 rounded-lg flex items-center justify-center space-x-2"
+                    className="w-full bg-gradient-to-r from-gray-100 to-gray-100 text-blue font-semibold p-3 rounded-lg flex items-center justify-center space-x-2 transition-transform transform hover:scale-105 hover:shadow-xl active:scale-95"
                   >
                     <FaSignInAlt />
                     <span>{isSignup ? "Sign Up" : "Login"}</span>
@@ -250,15 +250,16 @@ const App = () => {
                 </form>
 
                 {/* Switch to Sign Up / Login */}
-                <p className="text-sm mt-4 text-center text-gray-600">
+                <p className="text-sm mt-6 text-center text-gray-100">
                   {isSignup ? (
                     <>
                       Already have an account?{" "}
                       <button
                         onClick={() => setIsSignup(false)}
-                        className="text-blue-500 hover:underline"
+                        className="text-yellow-500 font-semibold relative group"
                       >
                         Login
+                        <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-indigo-500 transition-all duration-300 group-hover:w-full"></span>
                       </button>
                     </>
                   ) : (
@@ -266,9 +267,10 @@ const App = () => {
                       Don't have an account?{" "}
                       <button
                         onClick={() => setIsSignup(true)}
-                        className="text-blue-500 hover:underline"
+                        className="text-gray-100 font-semibold relative group"
                       >
                         Sign Up
+                        <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-indigo-500 transition-all duration-300 group-hover:w-full"></span>
                       </button>
                     </>
                   )}
