@@ -19,146 +19,222 @@ const DownloadInvoice = async (invoiceNumber) => {
     if (invoiceSnap.exists()) {
       const invoiceData = invoiceSnap.data();
 
-      // Create a new jsPDF instance
-      const pdf = new jsPDF();
+      // Create a new jsPDF instance with A4 size
+      const pdf = new jsPDF("p", "mm", "a4");
 
-      // Get the page width and height
-      const pageWidth = pdf.internal.pageSize.width;
-      const pageHeight = pdf.internal.pageSize.height;
+      // Get the page width and height for A4 size
+      const pageWidth = pdf.internal.pageSize.width; // 210mm
+      const pageHeight = pdf.internal.pageSize.height; // 297mm
 
-      // Draw a border around the page (x, y, width, height)
-      pdf.setDrawColor(0, 0, 0); // Set border color (black)
-      pdf.setLineWidth(0.5); // Set border thickness
-      pdf.rect(10, 10, pageWidth - 20, pageHeight - 20); // Create border with some padding from edges
+      // Define Tailwind-inspired colors
+      const headerColor = "#2c2d7d"; // Blue 800
+      const sectionHeaderColor = "#0EA5E9"; // Sky 500
+      const footerColor = "#2c2d7d"; // Gray 900
+      const bodyColor = "#2c2d7d"; // Blue 800 // Blue 800 // Gray 200
+      const tableHeaderColor = "#1E3A8A"; // Indigo 800
+      const tableRowColor = "#E5E7EB"; // Gray 300 for table rows
+      const textColor = "#ffffff"; // Gray 900 for text
+      const tableTextColor = "#1F2937"; // Dark gray for table text
+      const highlightColor = "#F59E0B"; // Amber 500 for important text
+      const borderColor = "#E5E7EB"; // Light gray for borders
 
-      // Add Invoice Title (Centered)
-      pdf.setFontSize(18);
-      pdf.text("Invoice", pageWidth / 2, 20, { align: "center" });
+      // Set the font for the invoice
+      pdf.setFont("helvetica");
 
-      // Add Invoice Number and Date
-      let yPosition = 30; // Start below the title
-      pdf.setFontSize(9);
-      pdf.text(`Invoice: ${invoiceData.invoiceNumber}`, 20, yPosition);
-      yPosition += 10;
-      pdf.text(`Date: ${invoiceData.invoiceDate}`, 20, yPosition);
-      yPosition += 10;
+      // Background color for the entire page
+      pdf.setFillColor(bodyColor);
+      pdf.rect(0, 0, pageWidth, pageHeight, "F");
 
-      // Add Bill From Section - Left side
+      // Full-page background color
+      pdf.setFillColor(bodyColor);
+      pdf.rect(0, 0, pageWidth, pageHeight, "F");
+
+      // Header Section with vibrant background
+      pdf.setFillColor(headerColor);
+      pdf.rect(10, 10, pageWidth - 20, 30, "F"); // Header background with bold color
+      pdf.setTextColor(255, 255, 255); // White text for the header
+      pdf.setFontSize(24);
+      pdf.text("INVOICE", pageWidth / 2, 25, { align: "center" });
+
+      // Reuse yPosition declared earlier in the code for Invoice Number and Date
+      const sectionWidth = (pageWidth - 40) / 2; // Equal width for both sections
+      let yPosition = 50;
+
+      // Invoice Number Section
       pdf.setFontSize(12);
-      pdf.text("Bill From", 20, yPosition); // Left-aligned header
-      yPosition += 10;
+      pdf.setTextColor(textColor); // Set text color to dark gray
+      pdf.text(`Invoice #: ${invoiceData.invoiceNumber}`, 25, yPosition + 10);
 
-      pdf.setFontSize(10);
-      const businessName = invoiceData.billFrom?.businessName || "N/A";
-      pdf.text(`Company: ${businessName}`, 20, yPosition);
-      yPosition += 10;
-
-      const registrationNumber = invoiceData.billFrom?.registrationNumber || "N/A";
-      pdf.text(`Registration Number: ${registrationNumber}`, 20, yPosition);
-      yPosition += 10;
-
-      const address = invoiceData.billFrom?.address || "N/A";
-      pdf.text(`Address: ${address}`, 20, yPosition);
-      yPosition += 10;
-
-      const contactNumber = invoiceData.billFrom?.contactNumber || "N/A";
-      pdf.text(`Contact: ${contactNumber}`, 20, yPosition);
-      yPosition += 10;
-
-      const email = invoiceData.billFrom?.email || "N/A";
-      pdf.text(`Email: ${email}`, 20, yPosition);
-      yPosition += 10;
-
-      const gstNumber = invoiceData.billFrom?.gstNumber || "N/A";
-      pdf.text(`GST Number: ${gstNumber}`, 20, yPosition);
-      yPosition += 10;
-
-      const aadhaar = invoiceData.billFrom?.aadhaar || "N/A";
-      pdf.text(`Aadhar: ${aadhaar}`, 20, yPosition);
-      yPosition += 10;
-
-      const panno = invoiceData.billFrom?.panno || "N/A";
-      pdf.text(`PAN Number: ${panno}`, 20, yPosition);
-      yPosition += 10;
-
+      // Date Section
       pdf.setFontSize(12);
-      // Bill To Section - Right side, aligned to top
-      pdf.text("Bill To", pageWidth - 80, 30); // Right-aligned header for Bill To
-      let billToYPosition = 40; // Start the "Bill To" details below the header
+      pdf.setTextColor(textColor); // Set text color to dark gray
+      pdf.text(
+        `Date: ${invoiceData.invoiceDate}`,
+        25 + sectionWidth + 20,
+        yPosition + 10
+      );
 
-      const rightXPosition = pageWidth - 80; // Fixed X position for right-aligned text
-      const billTo = invoiceData.billTo || {}; // Ensure billTo exists before accessing its properties
-      pdf.setFontSize(10);
-      // Set the Bill To data
-      pdf.text(`Name: ${billTo.name || "N/A"}`, rightXPosition, billToYPosition);
-      billToYPosition += 10;  // Increment Y position after each data field
-      pdf.text(`Email: ${billTo.email || "N/A"}`, rightXPosition, billToYPosition);
-      billToYPosition += 10;
-      pdf.text(`Phone: ${billTo.phone || "N/A"}`, rightXPosition, billToYPosition);
-      billToYPosition += 10;
-      pdf.text(`Address: ${billTo.Address || "N/A"}`, rightXPosition, billToYPosition);
-      billToYPosition += 10;
-      pdf.text(`City: ${billTo.City || "N/A"}`, rightXPosition, billToYPosition);
-      billToYPosition += 10;
-      pdf.text(`State: ${billTo.state || "N/A"}`, rightXPosition, billToYPosition);
-      billToYPosition += 10;
-      pdf.text(`ZipCode: ${billTo.zipCode || "N/A"}`, rightXPosition, billToYPosition);
-      billToYPosition += 10;
-      pdf.text(`Aadhaar: ${billTo.aadhaar || "N/A"}`, rightXPosition, billToYPosition);
-      billToYPosition += 10;
-      pdf.text(`GstNumber: ${billTo.gstNumber || "N/A"}`, rightXPosition, billToYPosition);
-      billToYPosition += 10;
-      pdf.text(`Panno: ${billTo.panno || "N/A"}`, rightXPosition, billToYPosition);
-      billToYPosition += 10;
-      pdf.text(`Website: ${billTo.website || "N/A"}`, rightXPosition, billToYPosition);
-      billToYPosition += 10;
+      // Add some space before the "Bill From" and "Bill To" sections
+      yPosition += 25; // Adjust spacing for less space
 
+      // "Bill From" and "Bill To" sections (without boxes, but clearly separated)
+      const sectionWidthForBill = (pageWidth - 40) / 2; // Equal width for both sections
+      const sectionYPosition = yPosition; // Starting Y position for the sections
 
-      // Add Products Table
-      const tableColumn = ["Product", "Quantity", "Price", "Total"];
+      // "Bill From" Section
+      const billFrom = invoiceData.billFrom || {};
+      pdf.setFontSize(14);
+      pdf.setTextColor(sectionHeaderColor); // Set font color to sky for "Bill From"
+      pdf.text("Bill From", 25, sectionYPosition + 10);
+      let billFromYPosition = sectionYPosition + 14;
+      pdf.setFontSize(12);
+      pdf.setTextColor(textColor); // Set font color back to gray for text
+      pdf.text(
+        `Company: ${billFrom.businessName || "N/A"}`,
+        25,
+        billFromYPosition
+      );
+      billFromYPosition += 6; // Reduce space between lines
+      pdf.text(`Address: ${billFrom.address || "N/A"}`, 25, billFromYPosition);
+      billFromYPosition += 6;
+      pdf.text(
+        `Contact: ${billFrom.contactNumber || "N/A"}`,
+        25,
+        billFromYPosition
+      );
+      billFromYPosition += 6;
+      pdf.text(`Email: ${billFrom.email || "N/A"}`, 25, billFromYPosition);
+
+      // "Bill To" Section
+      const billTo = invoiceData.billTo || {};
+      pdf.setFontSize(14);
+      pdf.setTextColor(sectionHeaderColor); // Set font color to sky for "Bill To"
+      pdf.text("Bill To", 25 + sectionWidthForBill + 20, sectionYPosition + 10);
+      let billToYPosition = sectionYPosition + 14;
+      pdf.setFontSize(12);
+      pdf.setTextColor(textColor); // Set font color back to gray for text
+      pdf.text(
+        `Name: ${billTo.name || "N/A"}`,
+        25 + sectionWidthForBill + 20,
+        billToYPosition
+      );
+      billToYPosition += 6; // Reduce space between lines
+      pdf.text(
+        `Email: ${billTo.email || "N/A"}`,
+        25 + sectionWidthForBill + 20,
+        billToYPosition
+      );
+      billToYPosition += 6;
+      pdf.text(
+        `Phone: ${billTo.phone || "N/A"}`,
+        25 + sectionWidthForBill + 20,
+        billToYPosition
+      );
+      billToYPosition += 6;
+      pdf.text(
+        `Address: ${billTo.address || "N/A"}`,
+        25 + sectionWidthForBill + 20,
+        billToYPosition
+      );
+
+      // Add some space before the products table
+      yPosition = Math.max(billFromYPosition, billToYPosition) + 10;
+
+      // Products Table with Enhanced Design
+      const tableColumns = ["Product", "Quantity", "Price", "Total"];
       const tableRows = [];
       (invoiceData.products || []).forEach((product) => {
-        const productData = [
-          product.name,
+        const row = [
+          product.pname,
           product.quantity,
           `₹${product.price}`,
           `₹${product.total}`,
         ];
-        tableRows.push(productData);
-      });
-      yPosition += 10; // Add some space before the table
-      pdf.autoTable(tableColumn, tableRows, {
-        startY: yPosition,
-        margin: { top: 20 },
-        bodyStyles: { valign: 'top' },
+        tableRows.push(row);
       });
 
-      // Add Total Amount
+      pdf.autoTable({
+        startY: yPosition,
+        head: [tableColumns],
+        body: tableRows,
+        margin: { left: 15, right: 15 },
+        headStyles: {
+          fillColor: tableHeaderColor,
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          lineWidth: 0.5,
+          lineColor: "#E5E7EB", // Table border lines
+        },
+        bodyStyles: {
+          fillColor: tableRowColor,
+          textColor: tableTextColor,
+          valign: "middle",
+          lineWidth: 0.5,
+          lineColor: "#E5E7EB", // Table border lines
+        },
+        alternateRowStyles: {
+          fillColor: "#FFFFFF", // Alternating rows with white color
+        },
+        styles: { fontSize: 10, halign: "center" },
+        theme: "grid", // Full grid theme with borders
+      });
+
+      // Add Grand Total and GST details aligned to the right below the table
       const totalAmount = (invoiceData.products || []).reduce(
         (acc, product) => acc + (product.total || 0),
         0
       );
-      yPosition = pdf.lastAutoTable.finalY + 10;
-    yPosition += 10;
-      // Add Payment and Shipping Details
-      pdf.setFontSize(10);
-      pdf.text(`Payment Status: ${invoiceData.paymentStatus}`, 20, yPosition);
-      yPosition += 10;
-      pdf.text(`Shipping Method: ${invoiceData.shippingMethod}`, 20, yPosition);
-      yPosition += 10;
-      pdf.text(`Payment Method: ${invoiceData.paymentMethod}`, 20, yPosition);
-      yPosition += 10;
 
+      const totalBoxYPosition = pdf.lastAutoTable.finalY + 10;
 
-// Add Tax Details (Right Aligned)
+      // Set text color and font for the totals
+      pdf.setTextColor(highlightColor); // Amber color for grand total
+      pdf.setFontSize(14);
+      pdf.text(
+        `Grand Total: ₹${totalAmount.toFixed(2)}`,
+        pageWidth - 90,
+        totalBoxYPosition,
+        { align: "left" }
+      );
 
-pdf.text(`CGST: ₹${invoiceData.taxDetails?.CGST || 0}`, 140, 180);
-pdf.text(`SGST: ₹${invoiceData.taxDetails?.SGST || 0}`, 140, 180 + 10); // Add 10px space between each line
-pdf.text(`IGST: ₹${invoiceData.taxDetails?.IGST || 0}`, 140, 180 + 20); // Add space for the third line
-// Add Total Amount (Right Aligned)
+      // Add GST Details (CGST, SGST, IGST)
+      const paymentDetailsYPosition = totalBoxYPosition + 8;
+      pdf.setTextColor(textColor); // Dark gray text
+      pdf.setFontSize(12);
+      pdf.text(
+        `CGST: ₹${invoiceData.taxDetails?.CGST || 0}`,
+        pageWidth - 90,
+        paymentDetailsYPosition,
+        { align: "left" }
+      );
+      pdf.text(
+        `SGST: ₹${invoiceData.taxDetails?.SGST || 0}`,
+        pageWidth - 90,
+        paymentDetailsYPosition + 6,
+        { align: "left" }
+      );
+      pdf.text(
+        `IGST: ₹${invoiceData.taxDetails?.IGST || 0}`,
+        pageWidth - 90,
+        paymentDetailsYPosition + 12,
+        { align: "left" }
+      );
 
-const totalAmountXPosition = pageWidth - 90; // Position it towards the right side
-pdf.text(`Total Amount: ₹${totalAmount.toFixed(2)}`, totalAmountXPosition, yPosition);
+      // Footer Section
+      pdf.setFillColor(footerColor);
+      pdf.rect(15, pageHeight - 40, pageWidth - 30, 30, "F");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(12);
+      pdf.text("Thank you for your business!", pageWidth / 2, pageHeight - 25, {
+        align: "center",
+      });
+      pdf.text(
+        "For more information, visit www.companywebsite.com",
+        pageWidth / 2,
+        pageHeight - 15,
+        { align: "center" }
+      );
+
       // Save the PDF
       pdf.save(`Invoice_${invoiceData.invoiceNumber}.pdf`);
     } else {
