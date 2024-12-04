@@ -249,7 +249,7 @@ const Sales = () => {
                 </h3>
                 <div className="flex justify-between">
                   <span className="font-bold">Company:</span>
-                  <span>{selectedInvoice.billFrom?.businessName}</span>
+                  {selectedInvoice.billFrom?.businessName}
                 </div>
                 <div className="flex justify-between">
                   <span className="font-bold">Reg Number:</span>
