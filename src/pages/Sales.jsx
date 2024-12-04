@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import { collection, getDocs, getDoc, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { FaShoppingCart } from "react-icons/fa";
+import { IoIosCloseCircle, IoIosArrowUp } from "react-icons/io";
 import { auth, db } from "../config/firebase";
 import Swal from "sweetalert2";
-import { IoIosCloseCircle } from "react-icons/io";
 
 const Sales = () => {
   const [invoiceData, setInvoiceData] = useState([]);
@@ -13,7 +13,10 @@ const Sales = () => {
     cname: "",
     pname: "",
   });
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [user] = useAuthState(auth);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   // Fetch data from Firestore
   useEffect(() => {
@@ -39,7 +42,6 @@ const Sales = () => {
     fetchData();
   }, [user]);
 
-  // Filter the data based on user input
   const filteredInvoiceData = invoiceData.filter(
     (invoice) =>
       invoice.invoiceNumber &&
@@ -48,12 +50,8 @@ const Sales = () => {
       invoice.billTo.name.toLowerCase().includes(filters.cname.toLowerCase())
   );
 
-  const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState(null);
-
   const handleViewInvoice = async (invoiceNumber) => {
     try {
-      // Fetch the specific invoice from Firestore
       const invoiceRef = doc(
         db,
         "admins",
@@ -66,7 +64,7 @@ const Sales = () => {
       if (invoiceSnap.exists()) {
         const invoiceData = invoiceSnap.data();
         setSelectedInvoice(invoiceData);
-        setIsPopupOpen(true); // Open the popup when invoice is fetched
+        setIsPopupOpen(true);
       } else {
         throw new Error("Invoice does not exist.");
       }
@@ -78,6 +76,20 @@ const Sales = () => {
 
   const handleClosePopup = () => {
     setIsPopupOpen(false);
+  };
+
+  const handleScroll = () => {
+    if (document.getElementById("popup-modal").scrollTop > 200) {
+      setShowScrollButton(true);
+    } else {
+      setShowScrollButton(false);
+    }
+  };
+
+  const scrollToTop = () => {
+    document
+      .getElementById("popup-modal")
+      .scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Function to calculate GST for each product and total GST
@@ -219,144 +231,115 @@ const Sales = () => {
         </table>
       </div>
 
-      {/* Popup for Viewing Invoice Details */}
       {isPopupOpen && selectedInvoice && (
-        <div className="fixed top-0 left-0 w-full h-full bg-gray-800 bg-opacity-50 flex justify-center items-center">
+        <div className="fixed top-0 left-0 w-full h-full bg-blue-800 bg-opacity-50 flex justify-center items-center">
           <div
-            className="bg-white p-8 rounded-lg shadow-lg w-2/4 md:w-1/2 lg:w-1/2 xl:w-1/2 relative"
-            id="invoice-content"
+            id="popup-modal"
+            className="bg-white p-6 md:p-5 lg:p-6 rounded-lg shadow-lg w-2/4 md:w-1/3 lg:w-1/2 relative overflow-y-auto max-h-[80vh]"
+            onScroll={handleScroll}
           >
-            <h2 className="text-2xl font-bold text-blue-800 mb-4">
+            <h2 className="text-2xl font-bold text-blue-800 mb-4 text-right">
               Invoice #{selectedInvoice.invoiceNumber}
             </h2>
-            <span className="text-sm text-gray-900">
-              {new Date(selectedInvoice.invoiceDate).toLocaleDateString()}
-            </span>
+            <p className="text-1xl font-bold text-blue-800 mb-5 text-right">
+              Date: {new Date(selectedInvoice.invoiceDate).toLocaleDateString()}
+            </p>
+
             {/* Close Button */}
             <button
               onClick={handleClosePopup}
-              className="absolute top-5 right-7 text-red-600 hover:text-red-900"
+              className="absolute top-5 left-7 text-red-600 hover:text-red-900"
             >
               <IoIosCloseCircle size={30} />
             </button>
 
-            {/* Bill From and Bill To - Same Row */}
-            <div className="mb-6 flex justify-between">
+            {/* Scroll Up Button */}
+            {showScrollButton && (
+              <button
+                onClick={scrollToTop}
+                className="absolute bottom-6 right-6 bg-blue-900 text-white p-3 rounded-full hover:bg-blue-700"
+              >
+                <IoIosArrowUp size={20} />
+              </button>
+            )}
+
+            {/* Bill From and Bill To Section */}
+            <div className="grid grid-cols-2 md:grid-cols-2 gap-6 mb-6">
               {/* Bill From */}
-              <div className="flex-1 mr-4 text-sm space-y-1">
-                <h3 className="text-lg font-semibold text-blue-900">
-                  Bill From:
+              <div className="bg-blue-100 p-4 rounded-lg shadow">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                  Bill From
                 </h3>
-                <div className="flex justify-between">
-                  <span className="font-bold">Company:</span>
-                  {selectedInvoice.billFrom?.businessName}
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Reg Number:</span>
-                  <span>{selectedInvoice.billFrom?.regNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Address:</span>
-                  <span>{selectedInvoice.billFrom?.address}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Contact:</span>
-                  <span>{selectedInvoice.billFrom?.contact}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Email:</span>
-                  <span>{selectedInvoice.billFrom?.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Website:</span>
-                  <span>{selectedInvoice.billFrom?.website}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">GST Number:</span>
-                  <span>{selectedInvoice.billFrom?.gstNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Aadhar:</span>
-                  <span>{selectedInvoice.billFrom?.aadhar}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">PAN Number:</span>
-                  <span>{selectedInvoice.billFrom?.panNumber}</span>
-                </div>
+                {[
+                  { label: "Company Name", key: "businessName" },
+                  { label: "Address", key: "address" },
+                  { label: "Contact", key: "contact" },
+                  { label: "GST Number", key: "gstNumber" },
+                ].map((field) => (
+                  <div key={field.key} className="flex justify-between mb-1">
+                    <span className="font-bold text-gray-700">
+                      {field.label}:
+                    </span>
+                    <span className="text-gray-900">
+                      {selectedInvoice.billFrom?.[field.key] || "N/A"}
+                    </span>
+                  </div>
+                ))}
               </div>
 
               {/* Bill To */}
-              <div className="flex-1 ml-4 text-sm space-y-2">
-                <h3 className="text-lg font-semibold text-blue-900">
-                  Bill To:
+              <div className="bg-blue-100 p-4 rounded-lg shadow">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                  Bill To
                 </h3>
-                <div className="flex justify-between">
-                  <span className="font-bold">Name:</span>
-                  <span>{selectedInvoice.billTo?.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Email:</span>
-                  <span>{selectedInvoice.billTo?.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Phone:</span>
-                  <span>{selectedInvoice.billTo?.phone}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Address:</span>
-                  <span>{selectedInvoice.billTo?.address}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">City:</span>
-                  <span>{selectedInvoice.billTo?.city}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">State:</span>
-                  <span>{selectedInvoice.billTo?.state}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Zip Code:</span>
-                  <span>{selectedInvoice.billTo?.zipCode}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">GST No:</span>
-                  <span>{selectedInvoice.billTo?.gstNo}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Aadhaar No:</span>
-                  <span>{selectedInvoice.billTo?.aadhaarNo}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">PAN No:</span>
-                  <span>{selectedInvoice.billTo?.panNo}</span>
-                </div>
+                {[
+                  { label: "Name", key: "name" },
+                  { label: "Address", key: "address" },
+                  { label: "City", key: "city" },
+                  { label: "GST Number", key: "gstNo" },
+                ].map((field) => (
+                  <div key={field.key} className="flex justify-between mb-1">
+                    <span className="font-bold text-gray-700">
+                      {field.label}:
+                    </span>
+                    <span className="text-gray-900">
+                      {selectedInvoice.billTo?.[field.key] || "N/A"}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Products */}
+            {/* Products Table */}
             <div className="mb-6">
-              <h3 className="text-xl font-semibold text-blue-700">Products:</h3>
+              <h3 className="text-xl font-semibold text-blue-700 mb-3">
+                Products
+              </h3>
               <table className="min-w-full table-auto border-collapse border border-gray-300">
                 <thead>
-                  <tr>
-                    <th className="border px-4 py-2">Product Name</th>
-                    <th className="border px-4 py-2">Quantity</th>
-                    <th className="border px-4 py-2">Unit Price</th>
-                    <th className="border px-4 py-2">Total Price</th>
-                    <th className="border px-4 py-2">GST</th>
-                    <th className="border px-4 py-2">Price + GST</th>
+                  <tr className="bg-blue-200">
+                    <th className="border px-4 py-2 text-left">Product Name</th>
+                    <th className="border px-4 py-2 text-left">Quantity</th>
+                    <th className="border px-4 py-2 text-left">Unit Price</th>
+                    <th className="border px-4 py-2 text-left">Total Price</th>
+                    <th className="border px-4 py-2 text-left">GST</th>
+                    <th className="border px-4 py-2 text-left">Price + GST</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(selectedInvoice.products || []).map((product, index) => (
-                    <tr key={index}>
+                    <tr key={index} className="hover:bg-gray-100">
                       <td className="border px-4 py-2">
-                        {product.description}
+                        {product.description || "N/A"}
                       </td>
-                      <td className="border px-4 py-2">{product.quantity}</td>
-                      <td className="border px-4 py-2">₹{product.price}</td>
                       <td className="border px-4 py-2">
-                        ₹{(product.price * product.quantity).toFixed(2)}
+                        {product.quantity || 0}
+                      </td>
+                      <td className="border px-4 py-2">
+                        ₹{product.price || 0}
+                      </td>
+                      <td className="border px-4 py-2">
+                        ₹{(product.price * product.quantity).toFixed(2) || 0}
                       </td>
                       <td className="border px-4 py-2">
                         ₹{calculateGST(product.price, product.quantity)}
@@ -376,53 +359,84 @@ const Sales = () => {
               </table>
             </div>
 
-            {/* Total Amount & GST */}
-            <div className="mt-4 text-right">
-              <h3 className="text-xl font-semibold text-blue-700">
-                Total GST:
+            {/* Total Section */}
+            <div className="mb-6 bg-blue-100 p-4 rounded-lg shadow">
+              <h3 className="text-xl font-semibold text-blue-700 mb-4">
+                Invoice Totals
               </h3>
-              <p>₹{calculateTotalAmount().totalGST.toFixed(2)}</p>
-              <h3 className="text-xl font-semibold text-blue-700">
-                Total Amount (Including GST):
-              </h3>
-              <p>₹{calculateTotalAmount().finalAmount.toFixed(2)}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-700">Total GST:</span>
+                  <span className="text-gray-900">
+                    ₹{calculateTotalAmount().totalGST.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-700">Subtotal:</span>
+                  <span className="text-gray-900">
+                    ₹{calculateTotalAmount().totalAmount.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-700">Discount:</span>
+                  <span className="text-gray-900">
+                    ₹{selectedInvoice.discount || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-700">
+                    Final Amount (Incl. GST):
+                  </span>
+                  <span className="text-gray-900">
+                    ₹{calculateTotalAmount().finalAmount.toFixed(2)}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Shipping Method, Payment Method, Notes, and Signature */}
-            <div className="mt-6 grid grid-cols-2 gap-6">
-              {/* Shipping Method */}
-              <div>
-                <h3 className="text-xl font-semibold text-blue-700">
-                  Shipping Method:
-                </h3>
-                <p>{selectedInvoice.shippingMethod || "N/A"}</p>
-              </div>
-
-              {/* Payment Method */}
-              <div>
-                <h3 className="text-xl font-semibold text-blue-700">
-                  Payment Method:
-                </h3>
-                <p>{selectedInvoice.paymentMethod || "N/A"}</p>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <h3 className="text-xl font-semibold text-blue-700">Notes:</h3>
-                <p>{selectedInvoice.notes || "No additional notes"}</p>
-              </div>
-
-              {/* Signature */}
-              <div>
-                <h3 className="text-xl font-semibold text-blue-700">
-                  Signature:
-                </h3>
-                <p>{selectedInvoice.signature || "N/A"}</p>
+            <div className="mb-6 bg-blue-100 p-4 rounded-lg shadow">
+              <h3 className="text-xl font-semibold text-blue-700 mb-4">
+                Additional Information
+              </h3>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-lg font-semibold text-blue-900">
+                    Shipping Method:
+                  </h4>
+                  <p className="text-gray-700">
+                    {selectedInvoice.shippingMethod || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-blue-900">
+                    Payment Method:
+                  </h4>
+                  <p className="text-gray-700">
+                    {selectedInvoice.paymentMethod || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-blue-900">
+                    Notes:
+                  </h4>
+                  <p className="text-gray-700">
+                    {selectedInvoice.notes || "No additional notes"}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-blue-900">
+                    Signature:
+                  </h4>
+                  <p className="text-gray-700">
+                    {selectedInvoice.signature || "N/A"}
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Print Button */}
-            <div className="mt-4 text-right">
+            <div className="mt-6 text-right">
               <button
                 onClick={handlePrint}
                 className="bg-blue-900 text-white py-2 px-4 rounded-md"
