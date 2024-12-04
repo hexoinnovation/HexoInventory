@@ -469,7 +469,7 @@ const AttendanceTable = () => {
 
 
 {/* Monthly Filter */}
-<div className="mb-6 flex items-center gap-3">
+{/* <div className="mb-6 flex items-center gap-3">
   <input
     type="checkbox"
     checked={monthlyFilter}
@@ -478,10 +478,10 @@ const AttendanceTable = () => {
     className="h-5 w-5 rounded-lg border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 transition duration-200 ease-in-out"
   />
   <label htmlFor="monthlyFilter" className="text-lg font-semibold text-gray-700">Monthly Filter</label>
-</div>
+</div> */}
 
 {/* Show month selector only if monthly filter is checked */}
-{monthlyFilter && (
+{/* {monthlyFilter && (
   <div className="mb-6">
     <label htmlFor="month" className="text-lg font-semibold text-gray-700">Select Month</label>
     <input
@@ -494,7 +494,7 @@ const AttendanceTable = () => {
         transition duration-300 ease-in-out"
     />
   </div>
-)}
+)} */}
 </div>
       {/* Modal for Employee Details */}
       {modalVisible && selectedEmployee && (
