@@ -183,6 +183,7 @@ const Stocks = () => {
     }
   };
 
+  const [filteredInvoiceData, setFilteredInvoiceData] = useState([]);
   const filteredProducts = products.filter((product) => {
     const { pname, categories, estock, cstock, price } = product;
     const query = searchQuery.toLowerCase();
@@ -288,47 +289,68 @@ const Stocks = () => {
 
       {/* Product List */}
       <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
-        <table className="min-w-full table-auto">
-          <thead className="bg-blue-700 text-white">
-            <tr>
-              <th className="py-3 px-4 text-left ">P.No</th>
-              <th className="py-3 px-4 text-left">Product Name</th>
-              {/* <th className="py-3 px-4">Categories</th> */}
-              <th className="py-3 px-4 text-left">Existing stock</th>
-              <th className="py-3 px-4 text-left">Curreny stock</th>
-              <th className="py-3 px-4 text-left">Price</th>
-              <th className="py-3 px-4 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredProducts.map((product) => (
-              <tr key={product.no} className="border-b">
-                <td className="py-3 px-4">{product.no}</td>
-                <td className="py-3 px-4">{product.pname}</td>
-                {/* <td className="p-2">{product.categories}</td> */}
-                <td className="py-3 px-4">{product.estock}</td>
-                <td className="py-3 px-4">{product.cstock}</td>
-                <td className="py-3 px-4">${product.price}</td>
-                <td className="py-3 px-4">
-                  <button
-                    onClick={() => {
-                      setShowModal(true);
-                      setNewStock(product);
-                    }}
-                    className="text-yellow-600 mr-2"
-                  >
-                    <AiOutlineEdit size={24} />
-                  </button>
-                  <button
-                    onClick={() => handleRemoveProduct(product.no)}
-                    className="text-red-600"
-                  >
-                    <AiOutlineDelete size={24} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+      <table className="min-w-full table-auto">
+  <thead className="bg-blue-700 text-white">
+    <tr>
+      <th className="py-3 px-4 text-left">P.No</th>
+      <th className="py-3 px-4 text-left">Product Name</th>
+      <th className="py-3 px-4 text-left">Existing stock</th>
+      <th className="py-3 px-4 text-left">Current stock</th>
+      <th className="py-3 px-4 text-left">Price</th>
+      <th className="py-3 px-4 text-left">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+  {filteredProducts.map((product) => {
+    // Filter sales data related to this product
+    const productSales = filteredInvoiceData
+  .map((invoice) =>
+    (invoice.products || []).filter(
+      (productInInvoice) => productInInvoice.description === product.pname
+    )
+  )
+  .flat();
+
+console.log('Product Sales:', productSales); // Log the filtered sales data
+
+const totalSold = productSales.reduce(
+  (acc, productInInvoice) => acc + (productInInvoice.quantity || 0),
+  0
+);
+
+console.log('Total Sold:', totalSold); // Log the total quantity sold
+
+const currentStock = product.estock - totalSold;
+console.log('Current Stock:', currentStock); // Log the calculated current stock
+
+    return (
+      <tr key={product.no} className="border-b">
+        <td className="py-3 px-4">{product.no}</td>
+        <td className="py-3 px-4">{product.pname}</td>
+        <td className="py-3 px-4">{product.estock}</td>
+        <td className="py-3 px-4">{currentStock}</td>
+        <td className="py-3 px-4">${product.price}</td>
+        <td className="py-3 px-4">
+          <button
+            onClick={() => {
+              setShowModal(true);
+              setNewStock(product);
+            }}
+            className="text-yellow-600 mr-2"
+          >
+            <AiOutlineEdit size={24} />
+          </button>
+          <button
+            onClick={() => handleRemoveProduct(product.no)}
+            className="text-red-600"
+          >
+            <AiOutlineDelete size={24} />
+          </button>
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
         </table>
       </div>
 

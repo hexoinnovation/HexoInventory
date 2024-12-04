@@ -16,30 +16,42 @@ const Sales = () => {
     pname: "",
   });
   const [user] = useAuthState(auth);
-
+  const [stockData, setStockData] = useState([]);
   // Fetch data from Firestore
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
+useEffect(() => {
+  const fetchData = async () => {
+    if (!user) return;
 
-      try {
-        const userDocRef = doc(db, "admins", user.email);
-        const invoiceRef = collection(userDocRef, "Invoices");
-        const invoiceSnapshot = await getDocs(invoiceRef);
+    try {
+      // Fetch invoices
+      const userDocRef = doc(db, "admins", user.email);
+      
+      // Fetch invoices
+      const invoiceRef = collection(userDocRef, "Invoices");
+      const invoiceSnapshot = await getDocs(invoiceRef);
+      const invoices = invoiceSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-        const invoices = invoiceSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+      // Fetch stock data
+      const stockRef = collection(userDocRef, "Stock");
+      const stockSnapshot = await getDocs(stockRef);
+      const stock = stockSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-        setInvoiceData(invoices);
-      } catch (error) {
-        console.error("Error fetching invoices: ", error);
-      }
-    };
+      // Set the data in state
+      setInvoiceData(invoices);
+      setStockData(stock);
+    } catch (error) {
+      console.error("Error fetching data: ", error);
+    }
+  };
 
-    fetchData();
-  }, [user]);
+  fetchData();
+}, [user]);
 
   // Filter the data based on user input
   const filteredInvoiceData = invoiceData.filter(
@@ -206,7 +218,7 @@ const Sales = () => {
               <th className="py-3 px-4 text-left">Date</th>
               <th className="py-3 px-4 text-left">Client</th>
               <th className="py-3 px-4 text-left">Product Name</th>
-              <th className="py-3 px-4 text-left">Sales</th>
+              <th className="py-3 px-4 text-left">quantity</th>
               <th className="py-3 px-4 text-left">Total Amount</th>
               <th className="py-3 px-4 text-left">Actions</th>
             </tr>
@@ -253,7 +265,7 @@ const Sales = () => {
           <h2 className="text-2xl font-bold mb-4">Invoice Details</h2>
           <button
             onClick={handleClosePopup}
-            className="absolute top-5 right-7 text-red-600 hover:text-red-900"
+            className="absolute top-5 right-7 text-white hover:text-gray-300"
           >
             <IoIosCloseCircle size={30} />
           </button>
