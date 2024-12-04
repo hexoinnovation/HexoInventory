@@ -1,444 +1,319 @@
 import React, { useEffect, useState } from "react";
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  setDoc,
-  query, orderBy 
-} from "firebase/firestore";
-import Swal from "sweetalert2";
+import { collection, getDocs, getDoc, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { AiOutlineDelete } from "react-icons/ai";
 import { FaShoppingCart } from "react-icons/fa";
-import { auth, db } from "../config/firebase"; // Replace with your Firebase configuration path
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css"; // Import the styles
-import { getAuth } from "firebase/auth";
+import { IoIosCloseCircle, IoIosArrowUp } from "react-icons/io";
+import { auth, db } from "../config/firebase";
+import Swal from "sweetalert2";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 const Sales = () => {
-  const [showModal, setShowModal] = useState(false);
-  const [newProduct, setNewProduct] = useState({
-    no: "",
-    date: "",
+  const [invoiceData, setInvoiceData] = useState([]);
+  const [filters, setFilters] = useState({
     Bno: "",
     cname: "",
     pname: "",
-    categories: "",
-    quantity: "",
-    // cstock: "",
-    sales: "",
-    price: "",
+    fromDate: "",
+    toDate: "",
+    status: "",
   });
-  const [products, setProducts] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [user] = useAuthState(auth);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
+  // Fetch data from Firestore
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       if (!user) return;
-  
+
       try {
         const userDocRef = doc(db, "admins", user.email);
-  
-        // Fetch Sales collection
-        const salesRef = collection(userDocRef, "Sales");
-        const salesSnapshot = await getDocs(salesRef);
-        const salesList = salesSnapshot.docs.map((doc) => ({
+        const invoiceRef = collection(userDocRef, "Invoices");
+        const invoiceSnapshot = await getDocs(invoiceRef);
+
+        const invoices = invoiceSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-  
-        // Fetch Purchase collection (for estock)
-        const purchaseRef = collection(userDocRef, "Purchase");
-        const purchaseSnapshot = await getDocs(purchaseRef);
-        const purchaseData = purchaseSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-  
-        // Match and merge `estock` into `salesList` based on your criteria
-        const combinedProducts = salesList.map((sale) => {
-          const matchingPurchase = purchaseData.find(
-            (purchase) => purchase.id === sale.id // Adjust this matching condition if necessary
-          );
-  
-          return {
-            ...sale,
-            estock: matchingPurchase ? matchingPurchase.estock : 0, // Default to 0 if no match
-          };
-        });
-  
-        setProducts(combinedProducts);
+
+        setInvoiceData(invoices);
       } catch (error) {
-        console.error("Error fetching products: ", error);
+        console.error("Error fetching invoices: ", error);
       }
     };
-  
-    fetchProducts();
+
+    fetchData();
   }, [user]);
 
-  // useEffect(() => {
-  //   const fetchProducts = async () => {
-  //     if (!user) return;
+  const filteredInvoiceData = invoiceData.filter((invoice) => {
+    const invoiceDate = new Date(invoice.invoiceDate);
+    const fromDate = filters.fromDate ? new Date(filters.fromDate) : null;
+    const toDate = filters.toDate ? new Date(filters.toDate) : null;
 
-  //     try {
-  //       const userDocRef = doc(db, "admins", user.email);
-  //       const productsRef = collection(userDocRef, "Sales");
-  //       const productSnapshot = await getDocs(productsRef);
-  //       const productList = productSnapshot.docs.map((doc) => doc.data());
-  //       setProducts(productList);
-  //     } catch (error) {
-  //       console.error("Error fetching products: ", error);
-  //     }
-  //   };
+    const isDateInRange =
+      (!fromDate || invoiceDate >= fromDate) &&
+      (!toDate || invoiceDate <= toDate);
 
-  //   fetchProducts();
-  // }, [user]);
+    const matchesInvoiceNumber = invoice.invoiceNumber
+      .toString()
+      .includes(filters.Bno);
+    const matchesCustomerName = invoice.billTo?.name
+      .toLowerCase()
+      .includes(filters.cname.toLowerCase());
+    const matchesProductName = invoice.products
+      .map((product) => product.description)
+      .join(", ")
+      .toLowerCase()
+      .includes(filters.pname.toLowerCase());
+    const matchesStatus =
+      !filters.status ||
+      invoice.status.toLowerCase() === filters.status.toLowerCase();
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewProduct((prev) => ({ ...prev, [name]: value }));
-  };
+    return (
+      isDateInRange &&
+      matchesInvoiceNumber &&
+      matchesCustomerName &&
+      matchesProductName &&
+      matchesStatus
+    );
+  });
 
-  const handleAddProduct = async (e) => {
-    e.preventDefault();
-    const {
-      date,
-      Bno,
-      cname,
-      pname,
-      categories,
-      quantity,
-      // cstock,
-      sales,
-      price,
-    } = newProduct;
-
-    if (
-      !date ||
-      !Bno ||
-      !cname ||
-      !pname ||
-      !categories ||
-      !quantity ||
-      // !cstock ||
-      !sales ||
-      !price
-    ) {
-      return alert("Please fill all the fields.");
-    }
-
+  const handleViewInvoice = async (invoiceNumber) => {
     try {
-      const userDocRef = doc(db, "admins", user.email);
-      const productRef = collection(userDocRef, "Sales");
-      await setDoc(doc(productRef, Bno), {
-        ...newProduct, // Store the entire object
-      });
-
-      setProducts((prev) => [...prev, { ...newProduct }]);
-      alert("Product added successfully!");
-      setNewProduct({
-        date: "",
-        Bno: "",
-        cname: "",
-        pname: "",
-        categories: "",
-        quantity: "",
-        // cstock: "",
-        sales: "",
-        price: "",
-      });
-      setShowModal(false);
-    } catch (error) {
-      console.error("Error adding product: ", error);
-    }
-  };
-
-  const handleRemoveProduct = async (Bno) => {
-    if (!user) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'User Not Authenticated',
-        text: 'Please log in to delete a product.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#3085d6',
-      });
-      return;
-    }
-  
-    // Confirm deletion with SweetAlert2
-    const result = await Swal.fire({
-      title: 'Are you sure?',
-      text: 'You won’t be able to undo this action!',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-    });
-  
-    if (!result.isConfirmed) return; // Exit if the user cancels
-  
-    try {
-      const productDoc = doc(db, "admins", user.email, "Sales", Bno);
-  
-      // Delete product from Firestore
-      await deleteDoc(productDoc);
-  
-      // Update the products state
-      setProducts((prevProducts) =>
-        prevProducts.filter((product) => product.Bno !== Bno)
+      const invoiceRef = doc(
+        db,
+        "admins",
+        auth.currentUser.email,
+        "Invoices",
+        invoiceNumber.toString()
       );
-  
-      // Success SweetAlert
-      Swal.fire({
-        icon: 'success',
-        title: 'Deleted!',
-        text: 'Product has been deleted successfully.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#3085d6',
-      });
-    } catch (error) {
-      console.error("Error deleting product: ", error.message);
-  
-      // Error SweetAlert
-      Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: 'Failed to delete product. Please try again.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#d33',
-      });
-    }
-  };
-  
+      const invoiceSnap = await getDoc(invoiceRef);
 
-  
-  const RemoveProduct = async (invoiceId, invoiceNumber) => {
-    if (!user) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'User Not Authenticated',
-        text: 'Please log in to delete an invoice.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#3085d6',
-      });
-      return;
-    }
-  
-    // Confirm deletion with SweetAlert2
-    const result = await Swal.fire({
-      title: 'Are you sure?',
-      text: 'You won’t be able to undo this action!',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-    });
-  
-    if (!result.isConfirmed) return; // Exit if the user cancels
-  
-    // Debugging log to check invoiceId
-    console.log("Deleting invoice with invoiceId: ", invoiceId);
-  
-    try {
-      if (!invoiceId) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error!',
-          text: 'Invoice ID is missing. Please try again.',
-          confirmButtonText: 'Okay',
-          confirmButtonColor: '#d33',
-        });
-        return;
+      if (invoiceSnap.exists()) {
+        const invoiceData = invoiceSnap.data();
+        setSelectedInvoice(invoiceData);
+        setIsPopupOpen(true);
+      } else {
+        throw new Error("Invoice does not exist.");
       }
-  
-      // Reference to the specific invoice document
-      const userDocRef = doc(db, "admins", user.email);
-      const invoiceRef = doc(collection(userDocRef, "Invoices"), invoiceId);
-  
-      // Ensure that the invoiceRef path is valid
-      console.log("Invoice reference path:", invoiceRef.path);
-  
-      // Delete the invoice document
-      await deleteDoc(invoiceRef);
-  
-      // Update the products state or handle UI update
-      setProducts((prevProducts) =>
-        prevProducts.filter((product) => product.invoiceNumber !== invoiceNumber)
-      );
-  
-      // Success SweetAlert
-      Swal.fire({
-        icon: 'success',
-        title: 'Deleted!',
-        text: 'Invoice has been deleted successfully.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#3085d6',
-      });
     } catch (error) {
-      console.error("Error deleting invoice: ", error.message);
-  
-      // Error SweetAlert
-      Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: 'Failed to delete invoice. Please try again.',
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#d33',
-      });
+      console.error("Error fetching invoice:", error);
+      Swal.fire("Error!", "Failed to fetch the invoice data.", "error");
     }
   };
-  
-  
-  const placeholderNames = {
-    no: "Serial No.",
-    date: "Select Date",
-    Bno: "Bill No.",
-    cname: "Customer Name",
-    pname: "Product Name",
-    categories: "Categories",
-    quantity: "Quantity",
-    // cstock: "Current Stock",
-    sales: "Sales Count",
-    price: "Price",
+
+  const handlePrint = () => {
+    if (!selectedInvoice) {
+      console.error("No invoice selected for printing.");
+      return;
+    }
+
+    const content = document.getElementById("popup-modal");
+
+    html2canvas(content, {
+      scale: 2,
+      useCORS: true,
+    }).then((canvas) => {
+      const doc = new jsPDF();
+      doc.addImage(canvas.toDataURL("image/png"), "PNG", 10, 10, 180, 0);
+      doc.save(`invoice-${selectedInvoice.invoiceNumber}.pdf`);
+    });
   };
 
-  const filteredProducts = products.filter(
-    (product) =>
-      product.pname && 
-      product.pname.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleClosePopup = () => {
+    setIsPopupOpen(false);
+  };
 
-  const totalProducts = filteredProducts.length;
-  const totalSalesPrice = filteredProducts
-    .reduce((total, product) => total + product.quantity * product.price, 0)
-    .toFixed(2);
-    const [invoiceData, setInvoiceData] = useState([]); // Store invoices data
-    const [loading, setLoading] = useState(true);
-  
-    useEffect(() => {
-      const fetchInvoiceData = async () => {
-        const auth = getAuth();
-        const user = auth.currentUser;
-  
-        if (user) {
-          try {
-            // Reference to the user's document in Firestore
-            const userDocRef = doc(db, "admins", user.email);
-  
-            // Query the 'Invoices' collection to fetch all invoice data
-            const invoiceQuery = query(
-              collection(userDocRef, "Invoices"),
-              orderBy("createdAt", "desc") // Order by the latest createdAt field
-            );
-  
-            const querySnapshot = await getDocs(invoiceQuery);
-  
-            // Map through the query results and set the invoice data
-            const fetchedData = [];
-            querySnapshot.forEach((doc) => {
-              fetchedData.push(doc.data());
-            });
-  
-            setInvoiceData(fetchedData); // Set the invoice data
-          } catch (error) {
-            console.error("Error fetching invoice data:", error);
-          }
-        } else {
-          console.log("No user is signed in.");
-        }
-        setLoading(false);
-      };
-  
-      fetchInvoiceData();
-    }, []);
-  
-    // Calculate the remaining stock based on sales
-    const calculateRemainingStock = (stock, sales) => {
-      return stock - sales;
-    };
+  const handleScroll = () => {
+    if (document.getElementById("popup-modal").scrollTop > 200) {
+      setShowScrollButton(true);
+    } else {
+      setShowScrollButton(false);
+    }
+  };
+
+  const scrollToTop = () => {
+    document
+      .getElementById("popup-modal")
+      .scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const calculateGST = (price, quantity) => {
+    const gstRate = 0.18; // Assuming 18% GST
+    return (price * quantity * gstRate).toFixed(2);
+  };
+
+  const calculateTotalAmount = () => {
+    let totalAmount = 0;
+    let totalGST = 0;
+
+    selectedInvoice?.products.forEach((product) => {
+      const productTotal = product.price * product.quantity;
+      const gstAmount = calculateGST(product.price, product.quantity);
+
+      totalAmount += productTotal;
+      totalGST += parseFloat(gstAmount);
+    });
+
+    return { totalAmount, totalGST, finalAmount: totalAmount + totalGST };
+  };
+
   return (
-    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-purple-50 via-pink-100 to-yellow-100 rounded-lg shadow-xl">
-      <h1 className="text-5xl font-extrabold text-pink-700 mb-6 flex items-center">
+    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
+      <h1 className="text-5xl font-extrabold text-blue-900 mb-6 flex items-center">
         Sales Management
         <FaShoppingCart className="animate-drift ml-4" />
       </h1>
 
-      <button
-        onClick={() => setShowModal(true)}
-        className="bg-blue-500 text-white py-2 px-4 rounded-lg mb-4 transition hover:bg-blue-600"
-      >
-        Offline Billing
-      </button>
-
-      <div className="grid grid-cols-3 gap-6 mb-6">
-        <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center">
-          <h3 className="text-xl font-semibold text-indigo-600">Total Products</h3>
-          <p className="text-4xl font-bold text-yellow-500">{totalProducts}</p>
+      {/* Info Box - Sales Summary */}
+      <div className="mb-6 grid grid-cols-4 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {/* Total GST */}
+        <div className="bg-blue-900 p-4 rounded-md shadow-lg">
+          <p className="font-semibold text-lg">Total GST:</p>
+          <p className="text-xl">{`₹${(
+            calculateTotalAmount().totalGST || 0
+          ).toFixed(2)}`}</p>
         </div>
-        <div className="bg-pink-100 p-6 rounded-lg shadow-lg text-center">
-          <h3 className="text-xl font-semibold text-pink-600">Total Sales Price</h3>
-          <p className="text-4xl font-bold text-yellow-500">${totalSalesPrice}</p>
+
+        {/* Total Amount */}
+        <div className="bg-green-700 p-4 rounded-md shadow-lg">
+          <p className="font-semibold text-lg">Total Amount:</p>
+          <p className="text-xl">{`₹${(
+            calculateTotalAmount().totalAmount || 0
+          ).toFixed(2)}`}</p>
+        </div>
+
+        {/* Final Amount */}
+        <div className="bg-yellow-700 p-4 rounded-md shadow-lg">
+          <p className="font-semibold text-lg">Final Amount:</p>
+          <p className="text-xl">{`₹${(
+            calculateTotalAmount().finalAmount || 0
+          ).toFixed(2)}`}</p>
+        </div>
+
+        {/* Discount Amount */}
+        <div className="bg-red-700 p-4 rounded-md shadow-lg">
+          <p className="font-semibold text-lg">Discount Amount:</p>
+          <p className="text-xl">{`₹${(selectedInvoice?.discount || 0).toFixed(
+            2
+          )}`}</p>
         </div>
       </div>
 
+      {/* Filter Section */}
+      <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
+        <h3 className="text-lg font-semibold mb-4 text-gray-100">Filters</h3>
+        <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-4 gap-6">
+          <div>
+            <label
+              htmlFor="Bno"
+              className="text-white block mb-1 font-semibold"
+            >
+              Bill Number
+            </label>
+            <input
+              type="text"
+              id="Bno"
+              value={filters.Bno}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, Bno: e.target.value }))
+              }
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Bill No."
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="cname"
+              className="text-white block mb-1 font-semibold"
+            >
+              Customer Name
+            </label>
+            <input
+              type="text"
+              id="cname"
+              value={filters.cname}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, cname: e.target.value }))
+              }
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Customer Name"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="pname"
+              className="text-white block mb-1 font-semibold"
+            >
+              Product Name
+            </label>
+            <input
+              type="text"
+              id="pname"
+              value={filters.pname}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, pname: e.target.value }))
+              }
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Product Name"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Invoice Table */}
       <div className="w-full mt-5">
         <table className="min-w-full bg-white shadow-md rounded-lg">
-          <thead className= "bg-gradient-to-r from-pink-500 to-yellow-500 text-white" >
+          <thead className="bg-gradient-to-r from-blue-700 to-blue-700 text-white">
             <tr>
-              <th className="py-3 px-4 text-left">Bill No.</th>
-              <th className="py-3 px-4 text-left">Product</th>
-              <th className="py-3 px-4 text-left">Categories</th>
-              <th className="py-3 px-4 text-left">Price</th>
-              {/* <th className="py-3 px-4 text-left">Current Stock</th> */}
+              <th className="py-3 px-4 text-left">UID</th>
+              <th className="py-3 px-4 text-left">Date</th>
+              <th className="py-3 px-4 text-left">Client</th>
+              <th className="py-3 px-4 text-left">Product Name</th>
               <th className="py-3 px-4 text-left">Sales</th>
+              <th className="py-3 px-4 text-left">Total Amount</th>
               <th className="py-3 px-4 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {invoiceData.map((invoice, index) => (
-              invoice.products.map((product, productIndex) => (
-                <tr key={`${index}-${productIndex}`}>
-                  <td className="py-3 px-4">{invoice.invoiceNumber}</td>
-                  <td className="py-3 px-4">{product.description}</td>
-                  <td className="py-3 px-4">{product.Category}</td>
-                  <td className="py-3 px-4">{product.rate}</td>
-                  {/* <td className="py-3 px-4">{product.cstock}</td> */}
-                  
-                  <td className="py-3 px-4">{product.quantity}</td>
-                  <td className="py-3 px-4">
-                  <button
-  onClick={() => RemoveProduct(invoice.invoiceNumber)} // Pass invoiceId to the function
-  className="ml-4 text-red-500 hover:text-red-700"
->
-  <AiOutlineDelete size={20} />
-</button>
-
+            {filteredInvoiceData.map((invoice) => (
+              <tr key={invoice.id} className="hover:bg-gray-100">
+                <td className="py-3 px-4">{invoice.invoiceNumber}</td>
+                <td className="py-3 px-4">
+                  {new Date(invoice.invoiceDate).toLocaleDateString()}
                 </td>
-                </tr>
-              ))
-            ))}
-          </tbody>
-          <tbody>
-            {filteredProducts.map((product) => (
-              <tr key={product.Bno} className="hover:bg-yellow-100 text-sm sm:text-base">
-                <td className="py-3 px-4">{product.Bno}</td>
-                <td className="py-3 px-4">{product.pname}</td>
-                <td className="py-3 px-4">{product.categories}</td>
-                <td className="py-3 px-4">${product.price}</td>
-               
-                <td className="py-3 px-4">{product.sales}</td>
+                <td className="py-3 px-4">{invoice.billTo?.name || "N/A"}</td>
+                <td className="py-3 px-4">
+                  {(invoice.products || [])
+                    .map((product) => product.description || "N/A")
+                    .join(", ")}
+                </td>
+                <td className="py-3 px-4">
+                  {(invoice.products || []).reduce(
+                    (acc, product) => acc + (product.quantity || 0),
+                    0
+                  )}
+                </td>
+                <td className="py-3 px-4">
+                  ₹
+                  {(
+                    (invoice.products || []).reduce(
+                      (acc, product) =>
+                        acc + (product.price || 0) * (product.quantity || 0),
+                      0
+                    ) || 0
+                  ).toFixed(2)}
+                </td>
                 <td className="py-3 px-4">
                   <button
-                    onClick={() => handleRemoveProduct(product.Bno)}
-                    className="ml-4 text-red-500 hover:text-red-700"
+                    onClick={() => handleViewInvoice(invoice.invoiceNumber)}
+                    className="bg-blue-900 text-white py-1 px-3 rounded-md"
                   >
-                    <AiOutlineDelete size={20} />
+                    View
                   </button>
                 </td>
               </tr>
@@ -447,54 +322,222 @@ const Sales = () => {
         </table>
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-semibold mb-4">Offline Billing</h2>
-            <form onSubmit={handleAddProduct}>
-            <div className="grid grid-cols-2 gap-4">
-  {Object.keys(placeholderNames).map((key) => (
-    <div key={key} className="flex flex-col">
-      <label htmlFor={key}>
-        {placeholderNames[key]}
-      </label>
+      {/* Popup Modal for Invoice Details */}
+      {isPopupOpen && selectedInvoice && (
+        <div className="fixed top-0 left-0 w-full h-full bg-blue-800 bg-opacity-50 flex justify-center items-center">
+          <div
+            id="popup-modal"
+            className="bg-white p-2 md:p-2 lg:p-2 rounded-lg shadow-lg w-2/4 md:w-2/3 lg:w-1/4 relative overflow-y-auto max-h-[100vh]"
+            onScroll={handleScroll}
+          >
+            <h2 className="text-2xl font-bold text-blue-800 mb-2 text-right">
+              Invoice #{selectedInvoice.invoiceNumber}
+            </h2>
+            <p className="text-1xl font-bold text-blue-800 mb-5 text-right">
+              Date: {new Date(selectedInvoice.invoiceDate).toLocaleDateString()}
+            </p>
 
-      {/* Use DatePicker for the date field */}
-      {key === "date" ? (
-        <DatePicker
-          selected={newProduct.date ? new Date(newProduct.date) : null}
-          onChange={(date) => handleInputChange({ target: { name: key, value: date.toISOString() } })}
-          className="border px-3 py-2 rounded-lg"
-          dateFormat="yyyy/MM/dd"
-          placeholderText="Select Date"
-        />
-      ) : (
-        <input
-          type="text"
-          id={key}
-          name={key}
-          value={newProduct[key]}
-          onChange={handleInputChange}
-          className="border px-3 py-2 rounded-lg"
-        />
-      )}
-    </div>
-  ))}
-</div>
+            {/* Close Button */}
+            <button
+              onClick={handleClosePopup}
+              className="absolute top-5 left-7 text-red-600 hover:text-red-900"
+            >
+              <IoIosCloseCircle size={30} />
+            </button>
+
+            {/* Scroll Up Button */}
+            {showScrollButton && (
               <button
-                type="submit"
-                className="mt-4 bg-green-500 text-white py-2 px-6 rounded-lg"
+                onClick={scrollToTop}
+                className="absolute bottom-6 right-6 bg-blue-900 text-white p-3 rounded-full hover:bg-blue-700"
               >
-                Offline Billing
+                <IoIosArrowUp size={20} />
               </button>
+            )}
+
+            {/* Bill From and Bill To Section */}
+            <div className="grid grid-cols-2 md:grid-cols-2 gap-6 mb-4">
+              {/* Bill From */}
+              <div className="bg-blue-100 p-4 rounded-lg shadow">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                  Bill From
+                </h3>
+                {[
+                  { label: "Company Name", key: "businessName" },
+                  { label: "Address", key: "address" },
+                  { label: "Contact", key: "contact" },
+                  { label: "GST Number", key: "gstNumber" },
+                ].map((field) => (
+                  <div key={field.key} className="flex justify-between mb-1">
+                    <span className="font-bold text-gray-700">
+                      {field.label}:
+                    </span>
+                    <span className="text-gray-900">
+                      {selectedInvoice.billFrom?.[field.key] || "N/A"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bill To */}
+              <div className="bg-blue-100 p-4 rounded-lg shadow">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                  Bill To
+                </h3>
+                {[
+                  { label: "Name", key: "name" },
+                  { label: "Address", key: "address" },
+                  { label: "City", key: "city" },
+                  { label: "GST Number", key: "gstNo" },
+                ].map((field) => (
+                  <div key={field.key} className="flex justify-between mb-1">
+                    <span className="font-bold text-gray-700">
+                      {field.label}:
+                    </span>
+                    <span className="text-gray-900">
+                      {selectedInvoice.billTo?.[field.key] || "N/A"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Products Table */}
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold text-blue-700 mb-2">
+                Products
+              </h3>
+              <table className="min-w-full table-auto border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-blue-200">
+                    <th className="border px-4 py-2 text-left">Product Name</th>
+                    <th className="border px-4 py-2 text-left">Quantity</th>
+                    <th className="border px-4 py-2 text-left">Unit Price</th>
+                    <th className="border px-4 py-2 text-left">Total Price</th>
+                    <th className="border px-4 py-2 text-left">GST</th>
+                    <th className="border px-4 py-2 text-left">Price + GST</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(selectedInvoice.products || []).map((product, index) => (
+                    <tr key={index} className="hover:bg-gray-100">
+                      <td className="border px-4 py-2">
+                        {product.description || "N/A"}
+                      </td>
+                      <td className="border px-4 py-2">
+                        {product.quantity || 0}
+                      </td>
+                      <td className="border px-4 py-2">
+                        ₹{product.price || 0}
+                      </td>
+                      <td className="border px-4 py-2">
+                        ₹{(product.price * product.quantity).toFixed(2) || 0}
+                      </td>
+                      <td className="border px-4 py-2">
+                        ₹{calculateGST(product.price, product.quantity)}
+                      </td>
+                      <td className="border px-4 py-2">
+                        ₹
+                        {(
+                          product.price * product.quantity +
+                          parseFloat(
+                            calculateGST(product.price, product.quantity)
+                          )
+                        ).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Total Section */}
+            <div className="mb-2 bg-blue-100 p-2 rounded-lg shadow">
+              <h3 className="text-xl font-semibold text-blue-700 mb-2">
+                Invoice Totals
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-700">Total GST:</span>
+                  <span className="text-gray-900">
+                    ₹{calculateTotalAmount().totalGST.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-700">Subtotal:</span>
+                  <span className="text-gray-900">
+                    ₹{calculateTotalAmount().totalAmount.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-700">Discount:</span>
+                  <span className="text-gray-900">
+                    ₹{selectedInvoice.discount || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-700">
+                    Final Amount (Incl. GST):
+                  </span>
+                  <span className="text-gray-900">
+                    ₹{calculateTotalAmount().finalAmount.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Shipping Method, Payment Method, Notes, and Signature */}
+            <div className="mb-2 bg-blue-100 p-2 rounded-lg shadow">
+              <h3 className="text-xl font-semibold text-blue-700 mb-2">
+                Additional Information
+              </h3>
+              <div className="grid grid-cols-4 gap-6">
+                <div>
+                  <h4 className="text-lg font-semibold text-blue-900">
+                    Shipping Method:
+                  </h4>
+                  <p className="text-gray-700">
+                    {selectedInvoice.shippingMethod || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-blue-900">
+                    Payment Method:
+                  </h4>
+                  <p className="text-gray-700">
+                    {selectedInvoice.paymentMethod || "N/A"}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold text-blue-900">
+                    Notes:
+                  </h4>
+                  <p className="text-gray-700">
+                    {selectedInvoice.notes || "No additional notes"}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold text-blue-900">
+                    Signature:
+                  </h4>
+                  <p className="text-gray-700">
+                    {selectedInvoice.signature || "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Print Button */}
+            <div className="mt-6 text-right">
               <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="mt-4 ml-2 bg-gray-500 text-white py-2 px-6 rounded-lg"
+                onClick={handlePrint}
+                className="bg-blue-900 text-white py-2 px-2 rounded-md"
               >
-                Cancel
+                Print Invoice
               </button>
-            </form>
+            </div>
           </div>
         </div>
       )}
