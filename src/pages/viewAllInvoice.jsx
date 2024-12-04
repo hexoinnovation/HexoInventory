@@ -395,13 +395,13 @@ const ViewAllInvoice = () => {
       <table className="min-w-full bg-white rounded-lg shadow-md">
         <thead className="bg-blue-600 text-white">
           <tr>
-            <th className="py-2 px-4">UID</th>
-            <th className="py-2 px-4">Client</th>
-            <th className="py-2 px-4">Email</th>
-            <th className="py-2 px-4">Amount</th>
-            <th className="py-2 px-4">Date</th>
-            <th className="py-2 px-4">Status</th>
-            <th className="py-2 px-4">Actions</th>
+            <th className="py-3 px-4 text-left ">UID</th>
+            <th className="py-3 px-4 text-left ">Client</th>
+            <th className="py-3 px-4 text-left ">Email</th>
+            <th className="py-3 px-4 text-left ">Amount</th>
+            <th className="py-3 px-4 text-left ">Date</th>
+            <th className="py-3 px-4 text-left ">Status</th>
+            <th className="py-3 px-4 text-left ">Actions</th>
           </tr>
         </thead>
         <tbody>

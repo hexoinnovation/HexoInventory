@@ -326,15 +326,15 @@ const Purchase = () => {
         <table className="min-w-full bg-white border border-gray-200 shadow-md">
           <thead className="bg-gradient-to-r from-blue-700 to-blue-700 text-white">
             <tr>
-              <th className="py-3 px-4">P.No</th>
-              <th className="py-3 px-4">Supplier</th>
-              <th className="py-3 px-4">Phone</th>
-              <th className="py-3 px-4">Address</th>
-              <th className="py-3 px-4">Categories</th>
-              <th className="py-3 px-4">Product Name</th>
-              <th className="py-3 px-4">Existing Stock</th>
-              <th className="py-3 px-4">Unit Price</th>
-              <th className="py-3 px-4">Actions</th>
+              <th className="py-3 px-4 text-left">P.No</th>
+              <th className="py-3 px-4 text-left">Supplier</th>
+              <th className="py-3 px-4 text-left">Phone</th>
+              <th className="py-3 px-4 text-left">Address</th>
+              {/* <th className="py-3 px-4">Categories</th> */}
+              <th className="py-3 px-4 text-left">Product Name</th>
+              <th className="py-3 px-4 text-left">Existing Stock</th>
+              <th className="py-3 px-4 text-left">Unit Price</th>
+              <th className="py-3 px-4 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -347,7 +347,7 @@ const Purchase = () => {
                 <td className="py-3 px-4">{product.sname}</td>
                 <td className="py-3 px-4">{product.phone}</td>
                 <td className="py-3 px-4">{product.add}</td>
-                <td className="py-3 px-4">{product.categories}</td>
+                {/* <td className="py-3 px-4">{product.categories}</td> */}
                 <td className="py-3 px-4">{product.pname}</td>
                 <td className="py-3 px-4 text-left">{product.estock}</td>
                 <td className="py-3 px-4">{product.price}</td>
@@ -428,7 +428,7 @@ const Purchase = () => {
                 className="w-full mb-4 p-2 border rounded"
                 required
               />
-              <input
+              {/* <input
                 type="text"
                 name="categories"
                 value={newProduct.categories}
@@ -436,7 +436,7 @@ const Purchase = () => {
                 placeholder="Categories"
                 className="w-full mb-4 p-2 border rounded"
                 required
-              />
+              /> */}
               <input
                 type="number"
                 name="estock"
