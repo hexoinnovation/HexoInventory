@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { collection, getDocs, doc } from "firebase/firestore";
+import { collection, getDocs,getDoc , doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { FaShoppingCart } from "react-icons/fa";
 import { auth, db } from "../config/firebase";
+import Swal from "sweetalert2";
 import DownloadInvoice from "../Components/DownloadInvoice";
+import { jsPDF } from "jspdf";
+import { IoIosCloseCircle } from 'react-icons/io';
 
 const Sales = () => {
   const [invoiceData, setInvoiceData] = useState([]);
@@ -47,11 +50,46 @@ const Sales = () => {
       invoice.billTo.name.toLowerCase().includes(filters.cname.toLowerCase())
   );
 
-  const handleDownloadInvoice = async (invoiceNumber) => {
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const handleViewInvoice = async (invoiceNumber) => {
     try {
-      await DownloadInvoice(invoiceNumber);
+      // Fetch the specific invoice from Firestore
+      const invoiceRef = doc(
+        db,
+        "admins",
+        auth.currentUser.email, // Ensure that the user is authenticated
+        "Invoices",
+        invoiceNumber.toString()
+      );
+      const invoiceSnap = await getDoc(invoiceRef);
+
+      if (invoiceSnap.exists()) {
+        const invoiceData = invoiceSnap.data();
+        setSelectedInvoice(invoiceData);
+        setIsPopupOpen(true); // Open the popup when invoice is fetched
+      } else {
+        throw new Error("Invoice does not exist.");
+      }
+    } catch (error) {
+      console.error("Error fetching invoice:", error);
+      Swal.fire("Error!", "Failed to fetch the invoice data.", "error");
+    }
+  };
+
+  const handleClosePopup = () => {
+  setIsPopupOpen(false);
+};
+
+  const handleDownloadInvoice = async () => {
+    try {
+      if (selectedInvoice) {
+        const pdf = await DownloadInvoice(selectedInvoice);
+        setIsPopupOpen(false); // Close popup after download
+      }
     } catch (error) {
       console.error("Error calling DownloadInvoice:", error);
+      Swal.fire("Error!", "Failed to download the invoice.", "error");
     }
   };
 
@@ -203,12 +241,35 @@ const Sales = () => {
                   ).toFixed(2)}
                 </td>
                 <td className="py-3 px-4">
-                  <button
-                    onClick={() => handleDownloadInvoice(invoice.invoiceNumber)}
-                    className="bg-blue-900 text-white py-1 px-3 rounded-md"
-                  >
-                    View
-                  </button>
+                <button
+        onClick={() => handleViewInvoice(invoice.invoiceNumber)}
+        className="bg-blue-900 text-white py-1 px-3 rounded-md"
+      >
+        View
+      </button>
+      {isPopupOpen && selectedInvoice && (
+      <div className="fixed top-0 left-0 w-full h-full bg-gray-800 bg-opacity-50 flex justify-center items-center">
+        <div className="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
+          <h2 className="text-2xl font-bold mb-4">Invoice Details</h2>
+          <button
+            onClick={handleClosePopup}
+            className="absolute top-5 right-7 text-red-600 hover:text-red-900"
+          >
+            <IoIosCloseCircle size={30} />
+          </button>
+
+          {/* Render Invoice Data in Popup */}
+          <div>
+            <p><strong>Invoice Number:</strong> {selectedInvoice.invoiceNumber}</p>
+            <p><strong>Date:</strong> {selectedInvoice.invoiceDate}</p>
+            <p><strong>Bill From:</strong> {selectedInvoice.billFrom?.businessName}</p>
+            <p><strong>Bill To:</strong> {selectedInvoice.billTo?.name}</p>
+            <p><strong>Total Amount:</strong> ₹{selectedInvoice.totalAmount || 0}</p>
+          </div>
+        </div>
+      </div>
+    )}
+ 
                 </td>
               </tr>
             ))}
