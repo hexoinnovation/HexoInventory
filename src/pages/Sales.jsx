@@ -128,6 +128,40 @@ const Sales = () => {
         Sales Management
         <FaShoppingCart className="animate-drift ml-4" />
       </h1>
+      {/* Info Box - Sales Summary */}
+      <div className="mb-6 grid grid-cols-4 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {/* Total GST */}
+        <div className="bg-blue-700 p-4 rounded-md shadow-lg">
+          <p className="font-semibold text-lg">Total GST:</p>
+          <p className="text-xl">{`₹${(
+            calculateTotalAmount().totalGST || 0
+          ).toFixed(2)}`}</p>
+        </div>
+
+        {/* Total Amount */}
+        <div className="bg-green-700 p-4 rounded-md shadow-lg">
+          <p className="font-semibold text-lg">Total Amount:</p>
+          <p className="text-xl">{`₹${(
+            calculateTotalAmount().totalAmount || 0
+          ).toFixed(2)}`}</p>
+        </div>
+
+        {/* Final Amount */}
+        <div className="bg-yellow-700 p-4 rounded-md shadow-lg">
+          <p className="font-semibold text-lg">Final Amount:</p>
+          <p className="text-xl">{`₹${(
+            calculateTotalAmount().finalAmount || 0
+          ).toFixed(2)}`}</p>
+        </div>
+
+        {/* Discount Amount */}
+        <div className="bg-red-700 p-4 rounded-md shadow-lg">
+          <p className="font-semibold text-lg">Discount Amount:</p>
+          <p className="text-xl">{`₹${(selectedInvoice?.discount || 0).toFixed(
+            2
+          )}`}</p>
+        </div>
+      </div>
 
       {/* Filter Section */}
       <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
@@ -231,6 +265,7 @@ const Sales = () => {
         </table>
       </div>
 
+      {/* Popup Modal for Invoice Details */}
       {isPopupOpen && selectedInvoice && (
         <div className="fixed top-0 left-0 w-full h-full bg-blue-800 bg-opacity-50 flex justify-center items-center">
           <div
