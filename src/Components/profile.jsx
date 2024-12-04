@@ -14,7 +14,9 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import HomeIcon from "@mui/icons-material/Home";
 import WcIcon from "@mui/icons-material/Wc";
 import EditIcon from "@mui/icons-material/Edit";
+import LockIcon from "@mui/icons-material/Lock";
 import { useAuth } from "../Authcontext";
+
 const MyProfile = () => {
   const [user, loading] = useAuthState(auth);
   const [profile, setProfile] = useState({
@@ -25,10 +27,13 @@ const MyProfile = () => {
     gender: "",
     role: "User",
     profilePicture: "",
+    status: "Active", // New field for status
   });
   const [isEditing, setIsEditing] = useState(false);
   const [emailEdit, setEmailEdit] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [passwordReset, setPasswordReset] = useState(false);
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -57,6 +62,7 @@ const MyProfile = () => {
     const { name, value } = e.target;
     setProfile((prev) => ({ ...prev, [name]: value }));
   };
+
   const handleEmailChange = async () => {
     try {
       if (!emailEdit || emailEdit === user.email) {
@@ -66,7 +72,6 @@ const MyProfile = () => {
         return;
       }
 
-      // Prompt the user for re-authentication
       const currentPassword = prompt(
         "Please enter your current password to confirm:"
       );
@@ -80,20 +85,16 @@ const MyProfile = () => {
         currentPassword
       );
 
-      // Reauthenticate the user
       await reauthenticateWithCredential(user, credential);
 
-      // Update the email in Firebase Authentication
       await updateEmail(user, emailEdit);
 
-      // Update the email in Firestore
-      const userDocRef = doc(db, "user_profiles", user.uid); // Adjust the collection name if needed
+      const userDocRef = doc(db, "user_profiles", user.uid);
       await updateDoc(userDocRef, { user: emailEdit });
 
       alert("Email updated successfully in Authentication and Database!");
     } catch (error) {
       console.error("Error updating email:", error);
-
       let errorMessage = "Error updating email. Please try again.";
       if (error.code === "auth/requires-recent-login") {
         errorMessage =
@@ -108,6 +109,7 @@ const MyProfile = () => {
       alert(errorMessage);
     }
   };
+
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) {
@@ -121,18 +123,33 @@ const MyProfile = () => {
     try {
       setUploading(true);
       const storageRef = ref(storage, `profileImages/${user.uid}/${file.name}`);
-      const snapshot = await uploadBytesResumable(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      const uploadTask = uploadBytesResumable(storageRef, file);
 
-      const docRef = doc(db, "user_profiles", user.uid);
-      await updateDoc(docRef, { profilePicture: downloadURL });
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          const progress = Math.round(
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+          );
+          setUploadProgress(progress); // Track upload progress
+        },
+        (error) => {
+          console.error("Error uploading profile image:", error);
+          alert("An error occurred during the upload. Please try again.");
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          const docRef = doc(db, "user_profiles", user.uid);
+          await updateDoc(docRef, { profilePicture: downloadURL });
 
-      setProfile((prev) => ({ ...prev, profilePicture: downloadURL }));
-      alert("Profile image uploaded successfully!");
+          setProfile((prev) => ({ ...prev, profilePicture: downloadURL }));
+          alert("Profile image uploaded successfully!");
+          setUploading(false);
+        }
+      );
     } catch (error) {
       console.error("Error uploading profile image:", error);
       alert("An error occurred during the upload. Please try again.");
-    } finally {
       setUploading(false);
     }
   };
@@ -144,16 +161,58 @@ const MyProfile = () => {
       setIsEditing(false);
       alert("Profile updated successfully!");
     } catch (error) {
-      console.error("Error updating profile:", error);
-      alert("Failed to update profile. Please try again.");
+      console.error("Error updating profile:", error.message);
+      alert(`Error: ${error.message}`); // Display error message
     }
+  };
+
+  const generateRandomPassword = () => {
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$!";
+    let password = "";
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
+  const handlePasswordReset = async () => {
+    const randomPassword = generateRandomPassword();
+    Swal.fire({
+      title: "Reset Password",
+      text: `Are you sure you want to reset the password for ${user.email}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, reset it!",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Simulating backend password reset logic
+        resetPasswordForUser(randomPassword);
+
+        Swal.fire(
+          "Password Reset",
+          `The new password for ${user.email} is: ${randomPassword}`,
+          "success"
+        );
+
+        setPasswordReset(false); // Close the reset UI
+      }
+    });
+  };
+
+  const resetPasswordForUser = (newPassword) => {
+    // Logic to update the user's password in the backend/database
+    console.log(`Password for ${user.email} has been reset to: ${newPassword}`);
+    // You can call a backend API here to update the password
   };
 
   if (loading) return <div className="text-center">Loading...</div>;
 
   return (
-    <div className="max-w-7xl mx-auto p-9 bg-gradient-to-r from-gray-200 via-gray-200 to-gray-200 shadow-lg rounded-lg">
-      <h2 className="text-4xl font-bold text-gray-700 mb-6 text-center">
+    <div className="container mx-auto p-9 mt-3 bg-gradient-to-r from-blue-300 via-white to-blue-200 rounded-lg shadow-xl">
+      <h2 className="text-4xl font-bold text-blue-700 mb-6 text-center">
         My Profile
       </h2>
 
@@ -163,10 +222,10 @@ const MyProfile = () => {
             <img
               src={profile.profilePicture || "https://via.placeholder.com/150"}
               alt="Profile"
-              className="w-40 h-40 rounded-full border-4 border-gray-600 shadow-lg"
+              className="w-40 h-40 rounded-full border-4 border-blue-500 shadow-lg transform transition-transform hover:scale-105"
             />
             {isEditing && (
-              <label className="absolute bottom-0 right-0 bg-gray-600 text-white rounded-full p-2 cursor-pointer hover:bg-gray-500">
+              <label className="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full p-2 cursor-pointer hover:bg-blue-500">
                 <input
                   type="file"
                   accept="image/*"
@@ -177,13 +236,23 @@ const MyProfile = () => {
               </label>
             )}
           </div>
-          {uploading && <p className="text-gray-500">Uploading...</p>}
+          {uploading && (
+            <div className="w-full mt-2">
+              <p className="text-blue-300">Uploading... {uploadProgress}%</p>
+              <div className="w-full h-2 bg-blue-200 rounded-full">
+                <div
+                  className="h-2 bg-blue-600 rounded-full"
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <div className="grid grid-cols-2 md:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+          <div className="grid grid-cols-4 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+              <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
                 <PersonIcon /> Name
               </label>
               <input
@@ -198,7 +267,7 @@ const MyProfile = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+              <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
                 <EmailIcon /> Email
               </label>
               <input
@@ -213,14 +282,14 @@ const MyProfile = () => {
               {isEditing && (
                 <button
                   onClick={handleEmailChange}
-                  className="mt-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500"
+                  className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500"
                 >
                   Update Email
                 </button>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+              <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
                 <PhoneIcon /> Phone
               </label>
               <input
@@ -235,7 +304,7 @@ const MyProfile = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+              <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
                 <CalendarTodayIcon /> Date of Birth
               </label>
               <input
@@ -250,7 +319,7 @@ const MyProfile = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+              <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
                 <HomeIcon /> Address
               </label>
               <textarea
@@ -264,7 +333,7 @@ const MyProfile = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+              <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
                 <WcIcon /> Gender
               </label>
               <select
@@ -279,10 +348,27 @@ const MyProfile = () => {
                 <option value="">Select</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
-                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
+                <LockIcon /> Status
+              </label>
+              <select
+                name="status"
+                value={profile.status}
+                onChange={handleInputChange}
+                disabled={!isEditing}
+                className={`mt-1 block w-full px-4 py-2 border rounded-lg ${
+                  isEditing ? "bg-white" : "bg-gray-100"
+                }`}
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
               </select>
             </div>
           </div>
+
           <div className="mt-6 flex justify-end gap-4">
             {isEditing ? (
               <>
@@ -294,7 +380,7 @@ const MyProfile = () => {
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500"
                 >
                   Save Changes
                 </button>
@@ -302,12 +388,41 @@ const MyProfile = () => {
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500"
               >
                 Edit Profile
               </button>
             )}
           </div>
+
+          {/* Password Reset */}
+          <div className="mt-4">
+            <button
+              onClick={() => setPasswordReset(true)}
+              className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-500"
+            >
+              Reset Password
+            </button>
+          </div>
+
+          {passwordReset && (
+            <div className="mt-4">
+              <p>Are you sure you want to reset your password?</p>
+              <button
+                onClick={handlePasswordReset}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500"
+              >
+                Reset Password
+              </button>
+            </div>
+          )}
+          {/* Example trigger for showing the reset password UI */}
+          <button
+            onClick={() => setPasswordReset(true)}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 mt-4"
+          >
+            Initiate Password Reset
+          </button>
         </div>
       </div>
     </div>
