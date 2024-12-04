@@ -3,7 +3,7 @@ import { collection, getDocs, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { FaShoppingCart } from "react-icons/fa";
 import { auth, db } from "../config/firebase";
-import DownloadInvoice from '../Components/DownloadInvoice'; 
+import DownloadInvoice from "../Components/DownloadInvoice";
 
 const Sales = () => {
   const [invoiceData, setInvoiceData] = useState([]);
@@ -47,17 +47,26 @@ const Sales = () => {
       invoice.billTo.name.toLowerCase().includes(filters.cname.toLowerCase())
   );
 
-
-
   const handleDownloadInvoice = async (invoiceNumber) => {
     try {
-      // Call the DownloadInvoice function from the imported file
       await DownloadInvoice(invoiceNumber);
     } catch (error) {
       console.error("Error calling DownloadInvoice:", error);
     }
   };
-  
+
+  // Compute summary information for the infobox
+  const totalSales = invoiceData.reduce(
+    (acc, invoice) =>
+      acc +
+      (invoice.products || []).reduce(
+        (prodAcc, product) =>
+          prodAcc + (product.price || 0) * (product.quantity || 0),
+        0
+      ),
+    0
+  );
+  const totalInvoices = invoiceData.length;
 
   return (
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
@@ -66,12 +75,54 @@ const Sales = () => {
         <FaShoppingCart className="animate-drift ml-4" />
       </h1>
 
+      {/* Infobox Section */}
+      <div className="grid grid-cols-4 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Total Sales Card */}
+        <div className="p-6 bg-gradient-to-br from-blue-900 to-blue-900 text-white rounded-lg shadow-md">
+          <h3 className="text-xl font-semibold">Total Sales</h3>
+          <p className="text-3xl font-bold mt-2">₹{totalSales.toFixed(2)}</p>
+        </div>
+
+        {/* Total Invoices Card */}
+        <div className="p-6 bg-gradient-to-br from-green-700 to-green-700 text-white rounded-lg shadow-md">
+          <h3 className="text-xl font-semibold">Total Invoices</h3>
+          <p className="text-3xl font-bold mt-2">{totalInvoices}</p>
+        </div>
+
+        {/* Total Products Sold Card */}
+        <div className="p-6 bg-gradient-to-br from-purple-700 to-purple-700 text-white rounded-lg shadow-md">
+          <h3 className="text-xl font-semibold">Total Products Sold</h3>
+          <p className="text-3xl font-bold mt-2">
+            {invoiceData.reduce(
+              (total, invoice) =>
+                total +
+                (invoice.products || []).reduce(
+                  (sum, product) => sum + (product.quantity || 0),
+                  0
+                ),
+              0
+            )}
+          </p>
+        </div>
+
+        {/* Average Sales Card (Example) */}
+        <div className="p-6 bg-gradient-to-br from-orange-700 to-orange-700 text-white rounded-lg shadow-md">
+          <h3 className="text-xl font-semibold">Average Sales per Invoice</h3>
+          <p className="text-3xl font-bold mt-2">
+            ₹{(totalInvoices > 0 ? totalSales / totalInvoices : 0).toFixed(2)}
+          </p>
+        </div>
+      </div>
+
       {/* Filter Section */}
       <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
         <h3 className="text-lg font-semibold mb-4 text-gray-100">Filters</h3>
-        <div className="grid grid-cols-4 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-6">
           <div>
-            <label htmlFor="Bno" className="text-white block mb-1 font-semibold">
+            <label
+              htmlFor="Bno"
+              className="text-white block mb-1 font-semibold"
+            >
               Bill Number
             </label>
             <input
@@ -87,7 +138,10 @@ const Sales = () => {
             />
           </div>
           <div>
-            <label htmlFor="cname" className="text-white block mb-1 font-semibold">
+            <label
+              htmlFor="cname"
+              className="text-white block mb-1 font-semibold"
+            >
               Customer Name
             </label>
             <input
@@ -133,8 +187,10 @@ const Sales = () => {
                     .join(", ")}
                 </td>
                 <td className="py-3 px-4">
-                  {(invoice.products || [])
-                    .reduce((acc, product) => acc + (product.quantity || 0), 0)}
+                  {(invoice.products || []).reduce(
+                    (acc, product) => acc + (product.quantity || 0),
+                    0
+                  )}
                 </td>
                 <td className="py-3 px-4">
                   ₹
@@ -148,9 +204,9 @@ const Sales = () => {
                 </td>
                 <td className="py-3 px-4">
                   <button
-                  onClick={() => handleDownloadInvoice(invoice.invoiceNumber)}
-                   className="bg-blue-500 text-white py-1 px-3 rounded-md">
-                    
+                    onClick={() => handleDownloadInvoice(invoice.invoiceNumber)}
+                    className="bg-blue-900 text-white py-1 px-3 rounded-md"
+                  >
                     View
                   </button>
                 </td>
