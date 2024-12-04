@@ -5,6 +5,8 @@ import { FaShoppingCart } from "react-icons/fa";
 import { IoIosCloseCircle, IoIosArrowUp } from "react-icons/io";
 import { auth, db } from "../config/firebase";
 import Swal from "sweetalert2";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 const Sales = () => {
   const [invoiceData, setInvoiceData] = useState([]);
@@ -12,6 +14,9 @@ const Sales = () => {
     Bno: "",
     cname: "",
     pname: "",
+    fromDate: "",
+    toDate: "",
+    status: "",
   });
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -42,13 +47,38 @@ const Sales = () => {
     fetchData();
   }, [user]);
 
-  const filteredInvoiceData = invoiceData.filter(
-    (invoice) =>
-      invoice.invoiceNumber &&
-      invoice.invoiceNumber.toString().includes(filters.Bno) &&
-      invoice.billTo?.name &&
-      invoice.billTo.name.toLowerCase().includes(filters.cname.toLowerCase())
-  );
+  const filteredInvoiceData = invoiceData.filter((invoice) => {
+    const invoiceDate = new Date(invoice.invoiceDate);
+    const fromDate = filters.fromDate ? new Date(filters.fromDate) : null;
+    const toDate = filters.toDate ? new Date(filters.toDate) : null;
+
+    const isDateInRange =
+      (!fromDate || invoiceDate >= fromDate) &&
+      (!toDate || invoiceDate <= toDate);
+
+    const matchesInvoiceNumber = invoice.invoiceNumber
+      .toString()
+      .includes(filters.Bno);
+    const matchesCustomerName = invoice.billTo?.name
+      .toLowerCase()
+      .includes(filters.cname.toLowerCase());
+    const matchesProductName = invoice.products
+      .map((product) => product.description)
+      .join(", ")
+      .toLowerCase()
+      .includes(filters.pname.toLowerCase());
+    const matchesStatus =
+      !filters.status ||
+      invoice.status.toLowerCase() === filters.status.toLowerCase();
+
+    return (
+      isDateInRange &&
+      matchesInvoiceNumber &&
+      matchesCustomerName &&
+      matchesProductName &&
+      matchesStatus
+    );
+  });
 
   const handleViewInvoice = async (invoiceNumber) => {
     try {
@@ -74,6 +104,24 @@ const Sales = () => {
     }
   };
 
+  const handlePrint = () => {
+    if (!selectedInvoice) {
+      console.error("No invoice selected for printing.");
+      return;
+    }
+
+    const content = document.getElementById("popup-modal");
+
+    html2canvas(content, {
+      scale: 2,
+      useCORS: true,
+    }).then((canvas) => {
+      const doc = new jsPDF();
+      doc.addImage(canvas.toDataURL("image/png"), "PNG", 10, 10, 180, 0);
+      doc.save(`invoice-${selectedInvoice.invoiceNumber}.pdf`);
+    });
+  };
+
   const handleClosePopup = () => {
     setIsPopupOpen(false);
   };
@@ -92,13 +140,11 @@ const Sales = () => {
       .scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Function to calculate GST for each product and total GST
   const calculateGST = (price, quantity) => {
     const gstRate = 0.18; // Assuming 18% GST
     return (price * quantity * gstRate).toFixed(2);
   };
 
-  // Function to calculate the total amount including GST
   const calculateTotalAmount = () => {
     let totalAmount = 0;
     let totalGST = 0;
@@ -114,24 +160,17 @@ const Sales = () => {
     return { totalAmount, totalGST, finalAmount: totalAmount + totalGST };
   };
 
-  const handlePrint = () => {
-    const content = document.getElementById("invoice-content");
-    const newWindow = window.open("", "", "width=800,height=600");
-    newWindow.document.write(content.innerHTML);
-    newWindow.document.close();
-    newWindow.print();
-  };
-
   return (
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
       <h1 className="text-5xl font-extrabold text-blue-900 mb-6 flex items-center">
         Sales Management
         <FaShoppingCart className="animate-drift ml-4" />
       </h1>
+
       {/* Info Box - Sales Summary */}
       <div className="mb-6 grid grid-cols-4 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {/* Total GST */}
-        <div className="bg-blue-700 p-4 rounded-md shadow-lg">
+        <div className="bg-blue-900 p-4 rounded-md shadow-lg">
           <p className="font-semibold text-lg">Total GST:</p>
           <p className="text-xl">{`₹${(
             calculateTotalAmount().totalGST || 0
@@ -166,7 +205,7 @@ const Sales = () => {
       {/* Filter Section */}
       <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
         <h3 className="text-lg font-semibold mb-4 text-gray-100">Filters</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <div>
             <label
               htmlFor="Bno"
@@ -177,7 +216,6 @@ const Sales = () => {
             <input
               type="text"
               id="Bno"
-              name="Bno"
               value={filters.Bno}
               onChange={(e) =>
                 setFilters((prev) => ({ ...prev, Bno: e.target.value }))
@@ -186,6 +224,7 @@ const Sales = () => {
               placeholder="Filter by Bill No."
             />
           </div>
+
           <div>
             <label
               htmlFor="cname"
@@ -196,13 +235,31 @@ const Sales = () => {
             <input
               type="text"
               id="cname"
-              name="cname"
               value={filters.cname}
               onChange={(e) =>
                 setFilters((prev) => ({ ...prev, cname: e.target.value }))
               }
               className="p-2 w-full border border-gray-300 rounded-md"
               placeholder="Filter by Customer Name"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="pname"
+              className="text-white block mb-1 font-semibold"
+            >
+              Product Name
+            </label>
+            <input
+              type="text"
+              id="pname"
+              value={filters.pname}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, pname: e.target.value }))
+              }
+              className="p-2 w-full border border-gray-300 rounded-md"
+              placeholder="Filter by Product Name"
             />
           </div>
         </div>
@@ -270,10 +327,10 @@ const Sales = () => {
         <div className="fixed top-0 left-0 w-full h-full bg-blue-800 bg-opacity-50 flex justify-center items-center">
           <div
             id="popup-modal"
-            className="bg-white p-6 md:p-5 lg:p-6 rounded-lg shadow-lg w-2/4 md:w-1/3 lg:w-1/2 relative overflow-y-auto max-h-[80vh]"
+            className="bg-white p-2 md:p-2 lg:p-2 rounded-lg shadow-lg w-2/4 md:w-2/3 lg:w-1/4 relative overflow-y-auto max-h-[100vh]"
             onScroll={handleScroll}
           >
-            <h2 className="text-2xl font-bold text-blue-800 mb-4 text-right">
+            <h2 className="text-2xl font-bold text-blue-800 mb-2 text-right">
               Invoice #{selectedInvoice.invoiceNumber}
             </h2>
             <p className="text-1xl font-bold text-blue-800 mb-5 text-right">
@@ -299,7 +356,7 @@ const Sales = () => {
             )}
 
             {/* Bill From and Bill To Section */}
-            <div className="grid grid-cols-2 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-2 gap-6 mb-4">
               {/* Bill From */}
               <div className="bg-blue-100 p-4 rounded-lg shadow">
                 <h3 className="text-lg font-semibold text-blue-900 mb-2">
@@ -347,7 +404,7 @@ const Sales = () => {
 
             {/* Products Table */}
             <div className="mb-6">
-              <h3 className="text-xl font-semibold text-blue-700 mb-3">
+              <h3 className="text-xl font-semibold text-blue-700 mb-2">
                 Products
               </h3>
               <table className="min-w-full table-auto border-collapse border border-gray-300">
@@ -395,8 +452,8 @@ const Sales = () => {
             </div>
 
             {/* Total Section */}
-            <div className="mb-6 bg-blue-100 p-4 rounded-lg shadow">
-              <h3 className="text-xl font-semibold text-blue-700 mb-4">
+            <div className="mb-2 bg-blue-100 p-2 rounded-lg shadow">
+              <h3 className="text-xl font-semibold text-blue-700 mb-2">
                 Invoice Totals
               </h3>
               <div className="grid grid-cols-2 gap-4">
@@ -430,11 +487,11 @@ const Sales = () => {
             </div>
 
             {/* Shipping Method, Payment Method, Notes, and Signature */}
-            <div className="mb-6 bg-blue-100 p-4 rounded-lg shadow">
-              <h3 className="text-xl font-semibold text-blue-700 mb-4">
+            <div className="mb-2 bg-blue-100 p-2 rounded-lg shadow">
+              <h3 className="text-xl font-semibold text-blue-700 mb-2">
                 Additional Information
               </h3>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-4 gap-6">
                 <div>
                   <h4 className="text-lg font-semibold text-blue-900">
                     Shipping Method:
@@ -451,6 +508,7 @@ const Sales = () => {
                     {selectedInvoice.paymentMethod || "N/A"}
                   </p>
                 </div>
+
                 <div>
                   <h4 className="text-lg font-semibold text-blue-900">
                     Notes:
@@ -459,6 +517,7 @@ const Sales = () => {
                     {selectedInvoice.notes || "No additional notes"}
                   </p>
                 </div>
+
                 <div>
                   <h4 className="text-lg font-semibold text-blue-900">
                     Signature:
@@ -474,7 +533,7 @@ const Sales = () => {
             <div className="mt-6 text-right">
               <button
                 onClick={handlePrint}
-                className="bg-blue-900 text-white py-2 px-4 rounded-md"
+                className="bg-blue-900 text-white py-2 px-2 rounded-md"
               >
                 Print Invoice
               </button>
