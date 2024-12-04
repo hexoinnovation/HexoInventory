@@ -161,15 +161,51 @@ const MyProfile = () => {
       setIsEditing(false);
       alert("Profile updated successfully!");
     } catch (error) {
-      console.error("Error updating profile:", error);
-      alert("Failed to update profile. Please try again.");
+      console.error("Error updating profile:", error.message);
+      alert(`Error: ${error.message}`); // Display error message
     }
   };
 
-  const handlePasswordReset = () => {
-    // Logic for resetting password (e.g., send password reset email)
-    alert("Password reset email sent. Please check your inbox.");
-    setPasswordReset(false);
+  const generateRandomPassword = () => {
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$!";
+    let password = "";
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
+  const handlePasswordReset = async () => {
+    const randomPassword = generateRandomPassword();
+    Swal.fire({
+      title: "Reset Password",
+      text: `Are you sure you want to reset the password for ${user.email}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, reset it!",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Simulating backend password reset logic
+        resetPasswordForUser(randomPassword);
+
+        Swal.fire(
+          "Password Reset",
+          `The new password for ${user.email} is: ${randomPassword}`,
+          "success"
+        );
+
+        setPasswordReset(false); // Close the reset UI
+      }
+    });
+  };
+
+  const resetPasswordForUser = (newPassword) => {
+    // Logic to update the user's password in the backend/database
+    console.log(`Password for ${user.email} has been reset to: ${newPassword}`);
+    // You can call a backend API here to update the password
   };
 
   if (loading) return <div className="text-center">Loading...</div>;
@@ -312,7 +348,6 @@ const MyProfile = () => {
                 <option value="">Select</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
-                <option value="other">Other</option>
               </select>
             </div>
             <div>
@@ -381,6 +416,13 @@ const MyProfile = () => {
               </button>
             </div>
           )}
+          {/* Example trigger for showing the reset password UI */}
+          <button
+            onClick={() => setPasswordReset(true)}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 mt-4"
+          >
+            Initiate Password Reset
+          </button>
         </div>
       </div>
     </div>
