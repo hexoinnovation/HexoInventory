@@ -20,7 +20,11 @@
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.1.5",
     "@mui/icons-material": "^6.1.9",
+
+    "@mui/material": "^6.1.7",
+
     "@mui/material": "^6.1.9",
+
     "antd": "^5.22.2",
     "axios": "^1.7.7",
     "chart.js": "^4.4.6",

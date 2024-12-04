@@ -13,7 +13,9 @@ const AttendanceTable = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [attendanceStatus, setAttendanceStatus] = useState('all'); // <-- Add this line
-
+  const [filteredData, setFilteredData] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("All");
+ 
   const currentUser = auth.currentUser;
   const currentDate = new Date();
   const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}.${(currentDate.getMonth() + 1).toString().padStart(2, '0')}.${currentDate.getFullYear()}`;
@@ -25,87 +27,113 @@ const AttendanceTable = () => {
   
   useEffect(() => {
     const fetchEmployees = async () => {
-      console.log('Fetching employees...');
       try {
-        const userDocRef = collection(db, 'admins', currentUser.email, 'Empdetails');
+        const userDocRef = collection(db, "admins", currentUser.email, "Empdetails");
         const querySnapshot = await getDocs(userDocRef);
-  
-        if (querySnapshot.empty) {
-          console.log('No employees found');
-        }
-  
+    
         const fetchedEmployees = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-  
-        console.log('Fetched Employees:', fetchedEmployees);
-  
-        setEmployees(fetchedEmployees);
-        setFilteredEmployees(fetchedEmployees);
-  
-        // Fetching attendance data for today (formattedDate)
-        const attendanceRef = doc(db, 'admins', currentUser.email, 'attendance', formattedDate);
+    
+        // Fetch attendance data for the specific date
+        const attendanceRef = doc(db, "admins", currentUser.email, "attendance", formattedDate);
         const docSnap = await getDoc(attendanceRef);
-  
+    
         if (docSnap.exists()) {
-          console.log('Attendance for today:', docSnap.data());
           const attendanceData = docSnap.data();
-  
-          // Merge employee data with their attendance status
+          console.log("Fetched Attendance Data:", attendanceData);
+    
           const updatedEmployees = fetchedEmployees.map((employee) => {
+            const attendanceRecord = attendanceData.employees.find((att) => att.id === employee.id);
+            
+            // Log to check if attendance data is being matched correctly
+            console.log(`Attendance for ${employee.name}:`, attendanceRecord);
+    
             return {
               ...employee,
-              attendance: attendanceData.employees.find((att) => att.id === employee.id)?.status || 'Absent',
+              attendance: attendanceRecord ? attendanceRecord.status : 'Absent', // Default to 'Absent' if not found
             };
           });
-  
-          setEmployees(updatedEmployees); // Set the updated employees with attendance status
-          setFilteredEmployees(updatedEmployees); // Update filtered employees as well
+    
+          setEmployees(updatedEmployees);
+          setFilteredEmployees(updatedEmployees); // Update filtered employees state
         } else {
-          console.log('No attendance data for today. Setting default to "Absent"');
-          const initialAttendance = fetchedEmployees.map((employee) => ({
+          console.log("No attendance data for the selected date.");
+          const defaultAttendance = fetchedEmployees.map((employee) => ({
             ...employee,
-            attendance: 'Absent', // Default to 'Absent'
+            attendance: "Absent", // Default all employees to 'Absent' if no data is found
           }));
-  
-          setEmployees(initialAttendance);
-          setFilteredEmployees(initialAttendance);
+          setEmployees(defaultAttendance);
+          setFilteredEmployees(defaultAttendance); // Set filtered employees to default attendance
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error("Error fetching data:", error);
       }
     };
+    
   
     if (currentUser && currentUser.email) {
       fetchEmployees();
-    } else {
-      console.log('No current user found');
     }
   }, [currentUser, formattedDate]);
   
+  const filterAttendance = async (value, isMonth) => {
+    console.log("Filtering data for:", value, "Is Month Filter?", isMonth);
+  
+    try {
+      let queryDate = value;
+  
+      // If it's a month filter (yyyy-MM), we need to transform it into MM.yyyy format
+      if (isMonth) {
+        // Ensure value is in 'yyyy-MM' format, like '2024-12'
+        const [year, month] = value.split('-'); // Split the value to extract year and month
+        queryDate = `${month}.${year}`; // Format to 'MM.yyyy' (e.g., '12.2024')
+      }
+  
+      console.log("Querying attendance for:", queryDate);
+  
+      // Query the attendance for the selected date
+      const attendanceRef = doc(db, "admins", currentUser.email, "attendance", queryDate);
+      const docSnapshot = await getDoc(attendanceRef);
+  
+      if (docSnapshot.exists()) {
+        const data = docSnapshot.data().employees;
+        console.log("Fetched Data:", data);
+  
+        // Update the employee status based on the attendance data
+        const updatedData = data.map((employee) => {
+          return {
+            ...employee,
+            attendance: employee.status,  
+          };
+        });
+  
+        setFilteredEmployees(updatedData); // Update the filtered employees
+      } else {
+        console.log("No data found for the selected date.");
+        setFilteredEmployees([]); // Clear the filtered data if no attendance found
+      }
+    } catch (error) {
+      console.error("Error fetching attendance:", error);
+    }
+  };
+  
   const handleStatusToggle = (employeeId, currentStatus) => {
     const newStatus = currentStatus === "Present" ? "Absent" : "Present";
+    console.log("Toggling status for:", employeeId, "Current Status:", currentStatus, "New Status:", newStatus);
   
-    // Update the specific employee's status in filteredEmployees
     const updatedEmployees = filteredEmployees.map((employee) => {
       if (employee.id === employeeId) {
-        return {
-          ...employee,
-          attendance: newStatus, // Update the attendance
-        };
+        return { ...employee, attendance: newStatus }; // Update attendance status for the selected employee
       }
       return employee;
     });
   
-    setFilteredEmployees(updatedEmployees); // Update the filtered employees array
-  
-    // Also track changes explicitly in the attendance object
-    setAttendance((prev) => ({
-      ...prev,
-      [employeeId]: newStatus,
-    }));
+    setFilteredEmployees(updatedEmployees); // Update the state with the new employee list
   };
+  
+  
   const saveAttendance = async () => {
     try {
       const attendanceData = filteredEmployees.map((employee) => ({
@@ -115,12 +143,15 @@ const AttendanceTable = () => {
         email: employee.email,
         dob: employee.dob,
         photo: employee.photo,
-        // Use the updated status if it exists in `attendance`; otherwise, keep the current employee.attendance
-        status: attendance[employee.id] || employee.attendance || "Absent", 
-        date: formattedDate,
+        status: attendance[employee.id] || employee.attendance || "Absent",
+        date: formattedDate, // Keep the original dd.mm.yyyy format here
       }));
   
-      const attendanceRef = doc(db, "admins", currentUser.email, "attendance", formattedDate);
+      // Use only the month and year for Firestore
+      const [month, year] = formattedDate.split('.');
+      const formattedMonthYear = `${month}.${year}`; // Save in mm.yyyy format
+  
+      const attendanceRef = doc(db, "admins", currentUser.email, "attendance", formattedMonthYear);
       await setDoc(attendanceRef, { employees: attendanceData });
   
       alert("Attendance saved successfully!");
@@ -128,72 +159,53 @@ const AttendanceTable = () => {
       console.error("Error saving attendance:", error);
     }
   };
+ const handleFilterChange = (e) => {
+  const selectedValue = e.target.value;
+  console.log("Selected Value:", selectedValue); // Log the selected value for debugging
   
-  const [statusFilter, setStatusFilter] = useState("All");
-  const handleMonthlyFilter = (e) => {
-    setMonthlyFilter(e.target.checked);
-    setFilterDate(""); // Reset date filter when toggling monthly filter
+  if (selectedValue === "All") {
+    // If "All" is selected, display all employees (ignore status filtering)
+    setStatusFilter('All');
+    setFilteredEmployees(employees); // Reset to show all employees
+  } else if (selectedValue === "Present" || selectedValue === "Absent") {
+    // If "Present" or "Absent" is selected, filter based on attendance
+    setStatusFilter(selectedValue);
+    const filteredByStatus = employees.filter(employee => employee.attendance === selectedValue);
+    setFilteredEmployees(filteredByStatus);
+  } else if (e.target.type === 'date') {
+    // If it's a date input, the value will be in 'yyyy-mm-dd' format
+    const formattedDate = convertToDDMMYYYY(selectedValue); // Convert to 'dd.mm.yyyy'
+    filterAttendance(formattedDate, false); // Use 'false' for exact date filter
+  } else if (e.target.type === 'month') {
+    // If it's a month input, format it to 'MM.yyyy'
+    const formattedMonth = selectedValue.replace('-', '.'); // Convert 'yyyy-mm' to 'mm.yyyy'
+    filterAttendance(formattedMonth, true); // Use 'true' for month filter
+  }
+};
+
+const handleMonthlyFilter = (e) => {
+  const isChecked = e.target.checked;
+  setMonthlyFilter(isChecked); // Toggle the monthly filter visibility
+  if (isChecked && filterDate) {
+    // If the filter is checked and a month is selected, filter by that month
+    filterAttendance(filterDate, true);
+  } else {
+    // If unchecked, you can either reset the filtered data or show all employees
+    setFilteredEmployees(employees);
+  }
+};
+
+  const convertToDDMMYYYY = (date) => {
+    // Check if the date is in 'yyyy-mm-dd' format and convert it to 'dd.mm.yyyy'
+    const [year, month, day] = date.split('-');
+    return `${day}.${month}.${year}`; // Convert to 'dd.mm.yyyy' format
   };
   
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-  
-    if (name === "status") {
-      setStatusFilter(value);
-    } else if (name === "date") {
-      const formattedDate = formatDateToDDMMYYYY(value); // Specific date (DD.MM.YYYY)
-      setFilterDate(formattedDate);
-    } else if (name === "month") {
-      const formattedMonth = formatMonthToDDMMYYYY(value); // Format the month correctly (DD.MM.YYYY)
-      setFilterDate(formattedMonth);
-    }
+  const formatMonthToDDMMYYYY = (month) => {
+    const [year, monthNumber] = month.split("-");
+    return `01.${monthNumber.padStart(2, "0")}.${year}`;
   };
-  useEffect(() => {
-    let filtered = employees;
-  
-    // Apply status filter
-    if (statusFilter !== "All") {
-      filtered = filtered.filter((employee) => employee.attendance === statusFilter);
-    }
-  
-    // Apply date filter (for specific date)
-    if (filterDate) {
-      filtered = filtered.filter((employee) => {
-        if (employee.date) {  // Check if employee.date is defined
-          const employeeDate = employee.date.split('.').reverse().join('-'); // Convert DD.MM.YYYY to YYYY-MM-DD
-          return employeeDate === filterDate;
-        }
-        return false; // If employee.date is not defined, don't include the employee
-      });
-    }
-  
-    // Apply monthly filter (for the whole month)
-    if (monthlyFilter && filterDate) {
-      const selectedMonth = filterDate.split(".")[1]; // Extract month from filterDate
-      filtered = filtered.filter((employee) => {
-        if (employee.date) {  // Check if employee.date is defined
-          const employeeMonth = employee.date.split(".")[1]; // Extract month from employee's date
-          return employeeMonth === selectedMonth;
-        }
-        return false; // If employee.date is not defined, don't include the employee
-      });
-    }
-  
-    setFilteredEmployees(filtered);
-  }, [statusFilter, filterDate, monthlyFilter, employees]);
-  
-const formatDateToDDMMYYYY = (date) => {
-  const currentDate = new Date(date);
-  const day = currentDate.getDate().toString().padStart(2, "0");
-  const month = (currentDate.getMonth() + 1).toString().padStart(2, "0");
-  const year = currentDate.getFullYear();
-  return `${day}.${month}.${year}`;  // This will give you DD.MM.YYYY format
-};
-const formatMonthToDDMMYYYY = (month) => {
-  const [year, monthNumber] = month.split('-');
-  const formattedDate = `01.${monthNumber.padStart(2, '0')}.${year}`;
-  return formattedDate;
-};
+
   const formatDate = (date) => {
     const [day, month, year] = date.split('.'); // Split the string by dot
     const formattedDate = new Date(year, month - 1, day); // Create a new Date object
@@ -211,18 +223,6 @@ const formatMonthToDDMMYYYY = (month) => {
     setSelectedEmployee(employee);
     setModalVisible(true);
   };
-
-  // const [ setCurrentDate] = useState(new Date());
-
-  // useEffect(() => {
-  //   // Function to update time
-  //   const interval = setInterval(() => {
-  //     setCurrentDate(new Date()); // Update the current time every second
-  //   }, 1000);
-
-  //   // Cleanup the interval on component unmount
-  //   return () => clearInterval(interval);
-  // }, []);
   const handleOpenModal = (employee) => {
     setSelectedEmployee(employee);
     setModalVisible(true); // Show the modal
@@ -257,48 +257,46 @@ const formatMonthToDDMMYYYY = (month) => {
               </tr>
             </thead>
             <tbody>
-            {filteredEmployees.length === 0 ? (
-  <tr>
-    <td colSpan="5" className="text-center py-4 text-red-500 font-semibold">
-      No Employee Found
-    </td>
-  </tr>
-) : (
-  filteredEmployees.map((employee) => (
-    <tr key={employee.id} className="border-b hover:bg-indigo-50 cursor-pointer">
-     <td
-                className="px-4 py-2 flex items-center gap-3"
-                onClick={() => handleOpenModal(employee)} // Open modal on click
-              >
-        <img
-          src={employee.photo}
-          alt="Employee"
-          className="rounded-full w-12 h-12 object-cover"
-        />
-        <span>{employee.name}</span>
-      </td>
-      <td className="px-4 py-2">{employee.dob}</td>
-      <td className="px-4 py-2">{employee.contact}</td>
-      <td className="px-4 py-2">{employee.email}</td>
-      <td className="px-4 py-2">
-      <button
-  onClick={(e) => {
-    e.stopPropagation();
-    handleStatusToggle(employee.id, employee.attendance); // Pass employee's current attendance
-  }}
-  className={`py-1 px-4 bg-${employee.attendance === 'Present' ? 'green' : 'red'}-500 text-white rounded-md`}
->
-  {employee.attendance === 'Present' ? (
-    <FontAwesomeIcon icon={faCheck} />
-  ) : (
-    <FontAwesomeIcon icon={faTimes} />
-  )}
-</button>
-
+  {filteredEmployees.length === 0 ? (
+    <tr>
+      <td colSpan="5" className="text-center py-4 text-red-500 font-semibold">
+        No Employee Found
       </td>
     </tr>
-  ))
-)}            </tbody>
+  ) : (
+    filteredEmployees.map((employee) => (
+      <tr key={employee.id} className="border-b hover:bg-indigo-50 cursor-pointer">
+        <td className="px-4 py-2 flex items-center gap-3">
+          <img
+            src={employee.photo}
+            alt="Employee"
+            className="rounded-full w-12 h-12 object-cover"
+          />
+          <span>{employee.name}</span>
+        </td>
+        <td className="px-4 py-2">{employee.dob}</td>
+        <td className="px-4 py-2">{employee.contact}</td>
+        <td className="px-4 py-2">{employee.email}</td>
+        <td className="px-4 py-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleStatusToggle(employee.id, employee.attendance);
+            }}
+            className={`py-1 px-4 bg-${employee.attendance === 'Present' ? 'green' : 'red'}-500 text-white rounded-md`}
+          >
+            {employee.attendance === 'Present' ? (
+              <FontAwesomeIcon icon={faCheck} />
+            ) : (
+              <FontAwesomeIcon icon={faTimes} />
+            )}
+          </button>
+        </td>
+      </tr>
+    ))
+  )}
+</tbody>
+
           </table>
           <div className="mt-4">
             <button onClick={saveAttendance} className="px-6 py-2 bg-blue-500 text-white rounded-md">
@@ -326,21 +324,21 @@ const formatMonthToDDMMYYYY = (month) => {
           <option value="Absent">Absent</option>
         </select>
       </div>
+{/* Date Filter */}
+<div className="mb-4">
+  <label htmlFor="date" className="text-sm font-semibold">Date</label>
+  <input
+    type="date"
+    name="date"
+    value={filterDate}
+    onChange={handleFilterChange}
+    className="w-full px-4 py-2 mt-2 border rounded-lg"
+    disabled={monthlyFilter} // Disable date picker if monthly filter is active
+  />
+</div>
 
-      {/* Date Filter */}
-      <div className="mb-4">
-        <label htmlFor="date" className="text-sm font-semibold">Date</label>
-        <input
-          type="date"
-          name="date"
-          value={filterDate}  
-          onChange={handleFilterChange}
-          className="w-full px-4 py-2 mt-2 border rounded-lg"
-        />
-      </div>
-
-      {/* Monthly Filter */}
-      <div className="mb-4 flex items-center gap-3">
+{/* Monthly Filter */}
+<div className="mb-4 flex items-center gap-3">
   <input
     type="checkbox"
     checked={monthlyFilter}
@@ -351,21 +349,20 @@ const formatMonthToDDMMYYYY = (month) => {
   <label htmlFor="monthlyFilter" className="text-sm font-semibold">Monthly Filter</label>
 </div>
 
-
-      {/* Show month selector only if monthly filter is checked */}
-      {monthlyFilter && (
-        <div className="mb-4">
-          <label htmlFor="month" className="text-sm font-semibold">Select Month</label>
-          <input
-            type="month"
-            name="month"
-            value={filterDate}
-            onChange={handleFilterChange}
-            className="w-full px-4 py-2 mt-2 border rounded-lg"
-          />
-        </div>
-      )}
-    </div>
+{/* Show month selector only if monthly filter is checked */}
+{monthlyFilter && (
+  <div className="mb-4">
+    <label htmlFor="month" className="text-sm font-semibold">Select Month</label>
+    <input
+      type="month"
+      name="month"
+      value={filterDate}
+      onChange={handleFilterChange} // Use the same function for both date and month handling
+      className="w-full px-4 py-2 mt-2 border rounded-lg"
+    />
+  </div>
+)}
+</div>
 
       {/* Modal for Employee Details */}
       {modalVisible && selectedEmployee && (
