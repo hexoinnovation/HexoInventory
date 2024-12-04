@@ -315,6 +315,7 @@ const MyProfile = () => {
                 <option value="other">Other</option>
               </select>
             </div>
+            
             <div>
               <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
                 <LockIcon /> Status
