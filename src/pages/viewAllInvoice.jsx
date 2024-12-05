@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { getAuth } from "firebase/auth";
 import {
   collection,
   deleteDoc,
@@ -11,24 +10,40 @@ import Swal from "sweetalert2";
 import { jsPDF } from "jspdf";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineDelete, AiOutlineFilePdf } from "react-icons/ai";
-import { auth, db } from "../config/firebase"; // Ensure this is correctly configured
+import { auth, db } from "../config/firebase";
+import DownloadInvoice from '../Components/DownloadInvoice'; 
+import { FaFileInvoice } from "react-icons/fa6";
 
 const ViewAllInvoice = () => {
   const [user] = useAuthState(auth);
   const [invoiceData, setInvoiceData] = useState([]);
+  const [filteredInvoiceData, setFilteredInvoiceData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [paidCount, setPaidCount] = useState(0);
   const [unpaidCount, setUnpaidCount] = useState(0);
-  const [totalAmount, setTotalAmount] = useState(0); // New state for total amount
+  const [totalAmount, setTotalAmount] = useState(0);
 
+  const [filter, setFilter] = useState({
+    paymentStatus: "",
+    startDate: "",
+    endDate: "",
+    specificDate: "",
+    customerName: "",
+    invoiceNumber: "",
+    existingClient: "", // New filter for existing clients
+  });
 
-  // Fetch invoices from Firestore
-  const fetchInvoices = async () => {
-    if (!user?.email) {
-      console.error("User is not authenticated");
-      return;
+  useEffect(() => {
+    if (user?.email) {
+      fetchInvoices();
     }
+  }, [user]);
 
+  useEffect(() => {
+    applyFilter();
+  }, [filter, invoiceData]);
+
+  const fetchInvoices = async () => {
     try {
       const invoicesRef = collection(db, "admins", user.email, "Invoices");
       const querySnapshot = await getDocs(invoicesRef);
@@ -38,25 +53,30 @@ const ViewAllInvoice = () => {
         ...doc.data(),
       }));
 
-      console.log("Fetched Invoices:", invoices);
       setInvoiceData(invoices);
+      setFilteredInvoiceData(invoices);
+
+      const paid = invoices.filter(
+        (invoice) => invoice.paymentStatus === "Paid"
+      ).length;
+      const unpaid = invoices.filter(
+        (invoice) => invoice.paymentStatus === "Unpaid"
+      ).length;
+
+      setPaidCount(paid);
+      setUnpaidCount(unpaid);
+
+      const total = invoices.reduce((acc, invoice) => {
+        const invoiceTotal = (invoice.products || []).reduce(
+          (productAcc, product) => productAcc + (product.total || 0),
+          0
+        );
+        return acc + invoiceTotal;
+      }, 0);
+
+      setTotalAmount(total);
+
       setLoading(false);
-
-// Count Paid and Unpaid invoices
-const paid = invoices.filter((invoice) => invoice.paymentStatus === "Paid").length;
-const unpaid = invoices.filter((invoice) => invoice.paymentStatus === "Unpaid").length;
-
-setPaidCount(paid);
-setUnpaidCount(unpaid);
-
-// Calculate the total amount
-const total = invoices.reduce((acc, invoice) => {
-  const invoiceTotal = (invoice.products || []).reduce((productAcc, product) => productAcc + (product.total || 0), 0);
-  return acc + invoiceTotal;
-}, 0);
-
-setTotalAmount(total); // Update total amount
-
     } catch (error) {
       console.error("Error fetching invoices:", error);
       Swal.fire({
@@ -67,254 +87,289 @@ setTotalAmount(total); // Update total amount
     }
   };
 
-  useEffect(() => {
-    if (user?.email) {
-      fetchInvoices();
-    }
-  }, [user]);
-
-  // Delete invoice
-const handleDeleteInvoice = async (invoiceNumber) => {
-  if (!user) {
-    Swal.fire({
-      icon: "warning",
-      title: "Not Logged In",
-      text: "Please log in to delete an invoice.",
-      confirmButtonText: "Okay",
-      confirmButtonColor: "#3085d6",
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilter({
+      ...filter,
+      [name]: value,
     });
-    return;
-  }
+  };
 
-  try {
-    // Confirm deletion with SweetAlert
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: "You won’t be able to undo this action!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, delete it!",
-      cancelButtonText: "Cancel",
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-    });
+  const applyFilter = () => {
+    let filteredData = [...invoiceData];
 
-    if (result.isConfirmed) {
-      const invoiceDocRef = doc(
-        db,
-        "admins",
-        user.email,
-        "Invoices",
-        invoiceNumber.toString()
+    if (filter.paymentStatus) {
+      filteredData = filteredData.filter(
+        (item) =>
+          item.paymentStatus?.toLowerCase() ===
+          filter.paymentStatus.toLowerCase()
       );
+    }
 
-      // Delete the invoice from Firestore
-      await deleteDoc(invoiceDocRef);
-
-      // Update the UI by filtering out the deleted invoice
-      setInvoiceData((prevInvoices) =>
-        prevInvoices.filter((invoice) => invoice.invoiceNumber !== invoiceNumber)
+    if (filter.customerName) {
+      filteredData = filteredData.filter((item) =>
+        item.billTo?.name
+          ?.toLowerCase()
+          .includes(filter.customerName.toLowerCase())
       );
-
-      // Success SweetAlert
-      Swal.fire({
-        icon: "success",
-        title: "Deleted!",
-        text: `Invoice ${invoiceNumber} has been deleted successfully.`,
-        confirmButtonText: "Okay",
-        confirmButtonColor: "#3085d6",
-      });
     }
-  } catch (error) {
-    console.error("Error deleting invoice:", error);
 
-    // Error SweetAlert
-    Swal.fire({
-      icon: "error",
-      title: "Error!",
-      text: "Failed to delete the invoice. Please try again later.",
-      confirmButtonText: "Okay",
-      confirmButtonColor: "#d33",
-    });
-  }
-};
-
-const handleDownloadInvoice = async (invoiceNumber) => {
-  try {
-    // Reference to the invoice document in Firestore
-    const invoiceDocRef = doc(
-      db,
-      "admins",
-      user.email,
-      "Invoices",
-      invoiceNumber.toString()
-    );
-
-    // Fetch the document
-    const invoiceDocSnap = await getDoc(invoiceDocRef);
-
-    if (invoiceDocSnap.exists()) {
-      const invoiceData = invoiceDocSnap.data();
-      console.log("Invoice details:", invoiceData);
-
-      // Create a new PDF document
-      const pdfDoc = new jsPDF();
-
-      // Add the main details to the PDF
-      pdfDoc.text(`Invoice Date: ${new Date(invoiceData.invoiceDate).toLocaleDateString()}`, 10, 60);
-      pdfDoc.text(`Invoice Number: ${invoiceData.invoiceNumber}`, 10, 10);
-      pdfDoc.text(`Customer Name: ${invoiceData.billTo?.name}`, 10, 20);
-      pdfDoc.text(`Email: ${invoiceData.billTo?.email}`, 10, 30);
-      pdfDoc.text(`Phone: ${invoiceData.billTo?.phone}`, 10, 40);
-      pdfDoc.text(`Address: ${invoiceData.billTo?.address}`, 10, 50);
-      pdfDoc.text(`City: ${invoiceData.billTo?.city}`, 10, 60);
-      pdfDoc.text(`State: ${invoiceData.billTo?.state}`, 10, 70);
-      pdfDoc.text(`ZipCode: ${invoiceData.billTo?.zipCode}`, 10, 80);
-      pdfDoc.text(`GstNumber: ${invoiceData.billTo?.gstNumber}`, 10, 90);
-      pdfDoc.text(`Aadhaar: ${invoiceData.billTo?.aadhaar}`, 10, 100);
-      pdfDoc.text(`Panno: ${invoiceData.billTo?.panno}`, 10, 110);
-      pdfDoc.text(`Website: ${invoiceData.billTo?.website}`, 10, 120);
-      pdfDoc.text(`BillFrom: ${invoiceData.billFrom}`, 10, 130);
-      pdfDoc.text(`Payment Status: ${invoiceData.paymentStatus}`, 10, 140);
-      pdfDoc.text(`Shipping Method: ${invoiceData.shippingMethod}`, 10, 150);
-      pdfDoc.text(`Payment Method: ${invoiceData.paymentMethod}`, 10, 160);
-
-      // Add tax details to the PDF
-      pdfDoc.text(`CGST: ₹${invoiceData.taxDetails?.CGST || 0}`, 10, 170);
-      pdfDoc.text(`SGST: ₹${invoiceData.taxDetails?.SGST || 0}`, 10, 180);
-      pdfDoc.text(`IGST: ₹${invoiceData.taxDetails?.IGST || 0}`, 10, 190);
-
-      // Add subtotal and total to the PDF
-      pdfDoc.text(`Subtotal: ₹${invoiceData.subtotal}`, 10, 200);
-      const totalAmount = Number(invoiceData.total);
-      if (!isNaN(totalAmount)) {
-        pdfDoc.text(`Total Amount: ₹${totalAmount.toFixed(2)}`, 10, 210);
-      } else {
-        console.error("Invalid total amount:", invoiceData.total);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Invalid total amount in invoice.",
-        });
-        return;
-      }
-
-      // Add products table if applicable
-      const products = invoiceData.products || [];
-      if (products.length > 0) {
-        let yOffset = 220; // Start position for the products table
-
-        // Table Header
-        pdfDoc.text("Products", 10, yOffset);
-        yOffset += 10;
-        pdfDoc.text("Name", 10, yOffset);
-        pdfDoc.text("Quantity", 70, yOffset);
-        pdfDoc.text("Rate", 100, yOffset);
-        pdfDoc.text("Total", 140, yOffset);
-        yOffset += 10;
-
-        // Table Content
-        products.forEach((product, index) => {
-          pdfDoc.text(`${index + 1}. ${product.name}`, 10, yOffset);
-          pdfDoc.text(`${product.quantity}`, 70, yOffset);
-          pdfDoc.text(`₹${Number(product.rate).toFixed(2)}`, 100, yOffset);
-          pdfDoc.text(`₹${Number(product.total).toFixed(2)}`, 140, yOffset);
-          yOffset += 10;
-        });
-      }
-
-      // Save the PDF with the invoice number
-      pdfDoc.save(`Invoice_${invoiceNumber}.pdf`);
-    } else {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Invoice not found.",
-      });
+    if (filter.startDate) {
+      filteredData = filteredData.filter(
+        (item) => new Date(item.invoiceDate) >= new Date(filter.startDate)
+      );
     }
-  } catch (error) {
-    console.error("Error downloading invoice:", error);
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "Failed to download invoice.",
-    });
-  }
-};
 
+    if (filter.endDate) {
+      filteredData = filteredData.filter(
+        (item) => new Date(item.invoiceDate) <= new Date(filter.endDate)
+      );
+    }
+
+    if (filter.specificDate) {
+      filteredData = filteredData.filter(
+        (item) =>
+          new Date(item.invoiceDate).toDateString() ===
+          new Date(filter.specificDate).toDateString()
+      );
+    }
+
+    if (filter.invoiceNumber) {
+      filteredData = filteredData.filter((item) =>
+        item.invoiceNumber.toString().includes(filter.invoiceNumber)
+      );
+    }
+
+    setInvoiceData(filteredData);
+  };
+
+  const handleDeleteInvoice = async (invoiceNumber) => {
+    try {
+      const result = await Swal.fire({
+        title: "Are you sure?",
+        text: "You won’t be able to undo this action!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Yes, delete it!",
+        cancelButtonText: "Cancel",
+      });
+
+      if (result.isConfirmed) {
+        const invoiceDocRef = doc(
+          db,
+          "admins",
+          user.email,
+          "Invoices",
+          invoiceNumber.toString()
+        );
+
+        await deleteDoc(invoiceDocRef);
+
+        setInvoiceData((prevInvoices) =>
+          prevInvoices.filter(
+            (invoice) => invoice.invoiceNumber !== invoiceNumber
+          )
+        );
+
+        Swal.fire(
+          "Deleted!",
+          `Invoice ${invoiceNumber} has been deleted.`,
+          "success"
+        );
+      }
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      Swal.fire("Error!", "Failed to delete the invoice.", "error");
+    }
+  };
+
+  const handleDownloadInvoice = async (invoiceNumber) => {
+    try {
+      // Call the DownloadInvoice function from the imported file
+      await DownloadInvoice(invoiceNumber);
+    } catch (error) {
+      console.error("Error calling DownloadInvoice:", error);
+    }
+  };
+  
 
 
   return (
-    <div className="container mx-auto p-6 mt-5 bg-white rounded-lg shadow-lg">
-      <h1 className="text-5xl font-extrabold text-pink-700 mb-6 flex items-center">View All Invoices</h1>
+    <div className="container mx-auto p-6 bg-white rounded-lg shadow-lg">
+     <h1 className="text-5xl font-extrabold text-blue-700 mb-6 flex items-center">
+   All Invoices
+  <FaFileInvoice className="ml-4 animate-pulseSpin" />
+</h1>
 
-{/* Invoice counts */}
-<div className="flex justify-between mb-4">
-  <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center border-2 border-indigo-300 w-full mx-2">
-    <h3 className="text-xl font-semibold text-indigo-600">Paid Count</h3>
-    <p className="text-4xl font-bold text-yellow-500">{paidCount}</p>
-  </div>
+      {/* Info Boxes */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="p-6 bg-blue-600 text-white rounded-lg shadow-lg">
+          <h3 className="text-xl font-semibold">Paid Count</h3>
+          <p className="text-4xl">{paidCount}</p>
+        </div>
+        <div className="p-6 bg-green-600 text-white rounded-lg shadow-lg">
+          <h3 className="text-xl font-semibold">Unpaid Count</h3>
+          <p className="text-4xl">{unpaidCount}</p>
+        </div>
+        <div className="p-6 bg-red-600 text-white rounded-lg shadow-lg">
+          <h3 className="text-xl font-semibold">Total Amount</h3>
+          <p className="text-4xl">₹{totalAmount.toFixed(2)}</p>
+        </div>
+      </div>
 
-  <div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center border-2 border-indigo-300 w-full mx-2">
-    <h3 className="text-xl font-semibold text-indigo-600">Unpaid Count </h3>
-    <p className="text-4xl font-bold text-yellow-500">{unpaidCount}</p>
-  </div>
+      {/* Filters */}
+      <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
+        <h2 className="text-lg font-bold text-gray-100 mb-4">
+          Filter Invoices
+        </h2>
+        <div className="grid grid-cols-7 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {/* Payment Status */}
+          <div>
+            <label htmlFor="paymentStatus" className="font-bold text-gray-100">
+              Payment Status:
+            </label>
+            <select
+              name="paymentStatus"
+              value={filter.paymentStatus}
+              onChange={handleFilterChange}
+              className="mt-2 p-2 w-full border border-gray-300 rounded-md"
+            >
+              <option value="">All</option>
+              <option value="Paid">Paid</option>
+              <option value="Unpaid">Unpaid</option>
+            </select>
+          </div>
 
-{/* Total Amount */}
-<div className="bg-indigo-100 p-6 rounded-lg shadow-lg text-center border-2 border-indigo-300 w-full mx-2">
-    <h3 className="text-xl font-semibold text-indigo-600" >Total Amount</h3>
-    <p className="text-4xl font-bold text-yellow-500" >₹{totalAmount.toFixed(2)}</p>
-  </div>
+          {/* Customer Name */}
+          <div>
+            <label htmlFor="customerName" className="font-bold text-gray-100">
+              Customer Name:
+            </label>
+            <input
+              type="text"
+              name="customerName"
+              value={filter.customerName}
+              onChange={handleFilterChange}
+              placeholder="Customer Name"
+              className="mt-2 p-2 w-full border border-gray-300 rounded-md"
+            />
+          </div>
 
-</div>
+          {/* Start Date */}
+          <div>
+            <label htmlFor="startDate" className="font-bold text-gray-100">
+              Start Date:
+            </label>
+            <input
+              type="date"
+              name="startDate"
+              value={filter.startDate}
+              onChange={handleFilterChange}
+              className="mt-2 p-2 w-full border border-gray-300 rounded-md"
+            />
+          </div>
 
-      {loading ? (
-        <div>Loading...</div>
-      ) : (
-        <table className="min-w-full bg-white shadow-md rounded-lg">
-          <thead className="bg-gray-800 text-white">
-            <tr>
-              <th className="py-2 px-4 text-left">UID</th>
-              <th className="py-2 px-4 text-left">Client</th>
-              <th className="py-2 px-4 text-left">Email</th>
-              <th className="py-2 px-4 text-left">Amount</th>
-              <th className="py-2 px-4 text-left">Date</th>
-              <th className="py-2 px-4 text-left">Status</th>
-              <th className="py-2 px-4 text-left">Actions</th>
+          {/* End Date */}
+          <div>
+            <label htmlFor="endDate" className="font-bold text-gray-100">
+              End Date:
+            </label>
+            <input
+              type="date"
+              name="endDate"
+              value={filter.endDate}
+              onChange={handleFilterChange}
+              className="mt-2 p-2 w-full border border-gray-300 rounded-md"
+            />
+          </div>
+
+          {/* Specific Date */}
+          <div>
+            <label htmlFor="specificDate" className="font-bold text-gray-100">
+              Specific Date:
+            </label>
+            <input
+              type="date"
+              name="specificDate"
+              value={filter.specificDate}
+              onChange={handleFilterChange}
+              className="mt-2 p-2 w-full border border-gray-300 rounded-md"
+            />
+          </div>
+
+          {/* Invoice Number */}
+          <div>
+            <label htmlFor="invoiceNumber" className="font-bold text-gray-100">
+              Invoice Number:
+            </label>
+            <input
+              type="text"
+              name="invoiceNumber"
+              value={filter.invoiceNumber}
+              onChange={handleFilterChange}
+              placeholder="Invoice Number"
+              className="mt-2 p-2 w-full border border-gray-300 rounded-md"
+            />
+          </div>
+
+          {/* Existing Client */}
+
+          {/* Filter Button */}
+          <div className="flex items-end">
+            <button
+              onClick={applyFilter}
+              className="py-3 px-6 w-full bg-green-500 text-white rounded-md hover:bg-blue-600"
+            >
+              Apply Filter
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Invoice Table */}
+      <table className="min-w-full bg-white rounded-lg shadow-md">
+        <thead className="bg-blue-600 text-white">
+          <tr>
+            <th className="py-3 px-4 text-left ">UID</th>
+            <th className="py-3 px-4 text-left ">Client</th>
+            <th className="py-3 px-4 text-left ">Email</th>
+            <th className="py-3 px-4 text-left ">Amount</th>
+            <th className="py-3 px-4 text-left ">Date</th>
+            <th className="py-3 px-4 text-left ">Status</th>
+            <th className="py-3 px-4 text-left ">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredInvoiceData.map((invoice) => (
+            <tr key={invoice.id} className="hover:bg-gray-100">
+              <td className="py-3 px-4">{invoice.invoiceNumber}</td>
+              <td className="py-3 px-4">{invoice.billTo?.name}</td>
+              <td className="py-3 px-4">{invoice.billTo?.email}</td>
+              <td className="py-3 px-4">
+                ₹{(invoice.products || []).reduce((acc, p) => acc + p.total, 0)}
+              </td>
+              <td className="py-3 px-4">
+                {new Date(invoice.invoiceDate).toLocaleDateString()}
+              </td>
+              <td className="py-3 px-4">{invoice.paymentStatus}</td>
+              <td className="py-3 px-4 flex gap-2">
+                <button
+                  onClick={() => handleDownloadInvoice(invoice.invoiceNumber)}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  <AiOutlineFilePdf size={20} />
+                </button>
+                <button
+                  onClick={() => handleDeleteInvoice(invoice.invoiceNumber)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <AiOutlineDelete size={20} />
+                </button>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {invoiceData.map((invoice) => (
-              <tr key={invoice.id} className="border-b">
-                <td className="py-3 px-4">{invoice.invoiceNumber}</td>
-                <td className="py-3 px-4">{invoice.billTo?.name}</td>
-                <td className="py-3 px-4">{invoice.billTo?.email}</td>
-                <td className="py-3 px-4">
-                  ₹{(invoice.products || []).reduce((acc, p) => acc + p.total, 0).toFixed(2)}
-                </td>
-                <td className="py-3 px-4">
-                  {new Date(invoice.invoiceDate).toLocaleDateString()}
-                </td>
-                <td className="py-3 px-4">{invoice.paymentStatus}</td>
-                <td className="py-3 px-4">
-                  <button
-                    onClick={() => handleDownloadInvoice(invoice.invoiceNumber)}
-                    className="text-green-500 hover:text-green-700 mx-1"
-                  >
-                    <AiOutlineFilePdf size={20} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteInvoice(invoice)}
-                    className="text-red-500 hover:text-red-700 mx-1"
-                  >
-                    <AiOutlineDelete size={20} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
