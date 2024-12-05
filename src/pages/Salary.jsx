@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faTimes, faClock } from '@fortawesome/free-solid-svg-icons';
   
 import Swal from 'sweetalert2';
-const AttendanceTable = () => {
+const Salary = () => {
   
 
   const [employees, setEmployees] = useState([]);
@@ -86,73 +86,73 @@ const AttendanceTable = () => {
     }
   }, [currentUser, formattedDate]);
 
-  const handleStatusToggle = (employeeId, currentStatus) => {
-    const newStatus = currentStatus === "Present" ? "Absent" : "Present";
-    console.log("Toggling status for:", employeeId, "Current Status:", currentStatus, "New Status:", newStatus);
+//   const handleStatusToggle = (employeeId, currentStatus) => {
+//     const newStatus = currentStatus === "Present" ? "Absent" : "Present";
+//     console.log("Toggling status for:", employeeId, "Current Status:", currentStatus, "New Status:", newStatus);
   
-    const updatedEmployees = filteredEmployees.map((employee) => {
-      if (employee.id === employeeId) {
-        return { ...employee, attendance: newStatus }; // Update attendance status for the selected employee
-      }
-      return employee;
-    });
+//     const updatedEmployees = filteredEmployees.map((employee) => {
+//       if (employee.id === employeeId) {
+//         return { ...employee, attendance: newStatus }; // Update attendance status for the selected employee
+//       }
+//       return employee;
+//     });
   
-    setFilteredEmployees(updatedEmployees); // Update the state with the new employee list
-  };
+//     setFilteredEmployees(updatedEmployees); // Update the state with the new employee list
+//   };
   
-  const saveAttendance = async () => {
-    try {
-      // Prepare attendance data
-      const attendanceData = filteredEmployees.map((employee) => ({
-        id: employee.id,
-        name: employee.name,
-        contact: employee.contact,
-        email: employee.email,
-        role: employee.role || "Unknown",
-        dob: employee.dob,
-        photo: employee.photo,
-        status: attendance[employee.id] || employee.attendance || "Absent",
-        date: formattedDate, // Original date in dd.mm.yyyy format
-      }));
+//   const saveAttendance = async () => {
+//     try {
+//       // Prepare attendance data
+//       const attendanceData = filteredEmployees.map((employee) => ({
+//         id: employee.id,
+//         name: employee.name,
+//         contact: employee.contact,
+//         email: employee.email,
+//         role: employee.role || "Unknown",
+//         dob: employee.dob,
+//         photo: employee.photo,
+//         status: attendance[employee.id] || employee.attendance || "Absent",
+//         date: formattedDate, // Original date in dd.mm.yyyy format
+//       }));
   
-      // Extract current month and year in the desired format
-      const dateObj = new Date(); // Adjust if you're using a specific date source
-      const options = { month: 'short', year: 'numeric' };
-      const currentMonthYear = dateObj.toLocaleDateString('en-US', options);
+//       // Extract current month and year in the desired format
+//       const dateObj = new Date(); // Adjust if you're using a specific date source
+//       const options = { month: 'short', year: 'numeric' };
+//       const currentMonthYear = dateObj.toLocaleDateString('en-US', options);
   
-      // Reference for Firestore path
-      const attendanceRef = collection(db, "admins", currentUser.email, "attendance");
+//       // Reference for Firestore path
+//       const attendanceRef = collection(db, "admins", currentUser.email, "attendance");
   
-      const monthDocRef = doc(attendanceRef, currentMonthYear); // "Dec 2024" as a document
-      const dayCollectionRef = collection(monthDocRef, formattedDate); // "04.12.2024" as a subcollection
+//       const monthDocRef = doc(attendanceRef, currentMonthYear); // "Dec 2024" as a document
+//       const dayCollectionRef = collection(monthDocRef, formattedDate); // "04.12.2024" as a subcollection
   
-      // Save attendance data for the first path (with "data")
-      const dayDocRef = doc(dayCollectionRef, "data"); // Document ID (can be "data" or any identifier)
-      await setDoc(dayDocRef, { employees: attendanceData });
+//       // Save attendance data for the first path (with "data")
+//       const dayDocRef = doc(dayCollectionRef, "data"); // Document ID (can be "data" or any identifier)
+//       await setDoc(dayDocRef, { employees: attendanceData });
   
-      // Save attendance data for the second path (without "data")
-      const dayDocRefNoData = doc(attendanceRef, formattedDate); // Direct path without "data"
-      await setDoc(dayDocRefNoData, { employees: attendanceData }); // Wrap the array in an object with a key
+//       // Save attendance data for the second path (without "data")
+//       const dayDocRefNoData = doc(attendanceRef, formattedDate); // Direct path without "data"
+//       await setDoc(dayDocRefNoData, { employees: attendanceData }); // Wrap the array in an object with a key
   
-      // Show success alert using SweetAlert
-      Swal.fire({
-        icon: "success",
-        title: "Attendance saved successfully!",
-        text: `Attendance for ${currentMonthYear} on ${formattedDate} has been saved in both locations.`,
-        confirmButtonText: "OK",
-      });
-    } catch (error) {
-      console.error("Error saving attendance:", error);
+//       // Show success alert using SweetAlert
+//       Swal.fire({
+//         icon: "success",
+//         title: "Attendance saved successfully!",
+//         text: `Attendance for ${currentMonthYear} on ${formattedDate} has been saved in both locations.`,
+//         confirmButtonText: "OK",
+//       });
+//     } catch (error) {
+//       console.error("Error saving attendance:", error);
   
-      // Show error alert using SweetAlert
-      Swal.fire({
-        icon: "error",
-        title: "Error!",
-        text: "There was an error saving the attendance. Please try again.",
-        confirmButtonText: "OK",
-      });
-    }
-  };
+//       // Show error alert using SweetAlert
+//       Swal.fire({
+//         icon: "error",
+//         title: "Error!",
+//         text: "There was an error saving the attendance. Please try again.",
+//         confirmButtonText: "OK",
+//       });
+//     }
+//   };
   const handleMonthlyFilter = (e) => {
     const isChecked = e.target.checked;
     setMonthlyFilter(isChecked);
@@ -324,28 +324,28 @@ const handleRoleChange = (e) => {
       <div className="w-3/4 bg-white p-4 rounded-lg shadow-lg overflow-x-auto">
         <div className="w-full flex flex-col items-start mb-4">
           <h2 className="text-2xl font-semibold text-indigo-600 mb-4 ml-0 mt-5 animate__animated animate__fadeIn">
-            Attendance for {formattedDate}
+           Payroll Managemnet System
           </h2>
           <div className="flex items-center text-sm font-semibold text-gray-600 ml-0 animate__animated animate__fadeIn animate__delay-1s">
       <FontAwesomeIcon icon={faClock} className="text-indigo-600 ml-0 mr-2 animate__animated animate__bounceIn" />
       <span>Current Time: {currentDate.toLocaleTimeString()}</span> {/* Display time */}
     </div>
-          <h2 className="text-xl font-semibold text-indigo-600 mt-8">Employee Attendance</h2>
+          <h2 className="text-xl font-semibold text-indigo-600 mt-8">Employee Details</h2>
          
           <table className="min-w-full border-collapse">
             <thead>
               <tr className="bg-indigo-100">
                 <th className="px-4 py-2 text-left text-sm font-semibold">Employee</th>
-                <th className="px-4 py-2 text-left text-sm font-semibold">DOB</th>
+             
                 <th className="px-4 py-2 text-left text-sm font-semibold">Contact</th>
                 <th className="px-4 py-2 text-left text-sm font-semibold">Role</th>
                 <th className="px-4 py-2 text-left text-sm font-semibold">Email</th>
-                <th className="px-4 py-2 text-left text-sm font-semibold">Status</th>
+                <th className="px-4 py-2 text-left text-sm font-semibold">Present days</th>
+                <th className="px-4 py-2 text-left text-sm font-semibold">Absent days</th>
+                <th className="px-4 py-2 text-left text-sm font-semibold">Total days</th>
               </tr>
             </thead>
-            
             <tbody>
-            
   {filteredEmployees.length === 0 ? (
     <tr>
       <td colSpan="5" className="text-center py-4 text-red-500 font-semibold">
@@ -368,24 +368,12 @@ const handleRoleChange = (e) => {
           <span>{employee.name}</span>
         </td>
         </td>
-        <td className="px-4 py-2">{employee.dob}</td>
+     
         <td className="px-4 py-2">{employee.contact}</td>
         <td className="px-4 py-2">{employee.role}</td>
         <td className="px-4 py-2">{employee.email}</td>
         <td className="px-4 py-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleStatusToggle(employee.id, employee.attendance);
-            }}
-            className={`py-1 px-4 bg-${employee.attendance === 'Present' ? 'green' : 'red'}-500 text-white rounded-md`}
-          >
-            {employee.attendance === 'Present' ? (
-              <FontAwesomeIcon icon={faCheck} />
-            ) : (
-              <FontAwesomeIcon icon={faTimes} />
-            )}
-          </button>
+          
         </td>
       </tr>
     ))
@@ -394,12 +382,7 @@ const handleRoleChange = (e) => {
 
           </table>
           <div className="mt-4">
-          <button
-  onClick={saveAttendance}
-  className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full shadow-lg hover:from-indigo-400 hover:to-purple-400 transition-all duration-300"
->
-  Save All
-</button>
+    
           </div>
         </div>
       </div>
@@ -410,7 +393,7 @@ const handleRoleChange = (e) => {
       <h2 className="text-xl font-semibold text-indigo-600 mb-5 mt-7">Filters</h2>
       
       {/* Status Filter */}
-      <div className="mb-6">
+      {/* <div className="mb-6">
   <label htmlFor="status" className="text-lg font-semibold text-gray-700">Status</label>
   <select
     name="status"
@@ -424,7 +407,7 @@ const handleRoleChange = (e) => {
     <option value="Present">Present</option>
     <option value="Absent">Absent</option>
   </select>
-</div>
+</div> */}
 
 <div className="mb-6">
   <label htmlFor="role" className="text-lg font-semibold text-gray-700">Role</label>
@@ -524,4 +507,4 @@ const handleRoleChange = (e) => {
   );
 };
 
-export default AttendanceTable;
+export default Salary;
