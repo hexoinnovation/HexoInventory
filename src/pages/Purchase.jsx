@@ -162,7 +162,6 @@ const Purchase = () => {
   return (
     <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
       {/* Info Boxes */}
-
       <h1 className="text-5xl font-extrabold text-blue-900 mb-6">
         Purchase Orders
         <FontAwesomeIcon

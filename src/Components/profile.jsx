@@ -15,7 +15,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import WcIcon from "@mui/icons-material/Wc";
 import EditIcon from "@mui/icons-material/Edit";
 import LockIcon from "@mui/icons-material/Lock";
-import { useAuth } from "../Authcontext";
+import Swal from "sweetalert2";
 
 const MyProfile = () => {
   const [user, loading] = useAuthState(auth);
@@ -34,7 +34,7 @@ const MyProfile = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [passwordReset, setPasswordReset] = useState(false);
-  const { currentUser } = useAuth();
+
 
   useEffect(() => {
     if (user) {
@@ -156,21 +156,49 @@ const MyProfile = () => {
 
   const handleSave = async () => {
     try {
+      // Confirm the doc path
       const docRef = doc(db, "admins", user.email, "user_profiles", user.uid);
+      console.log('Updating document at path:', docRef); // Log the path
+  
+      // Ensure profile object contains the required fields
+      console.log('Profile to update:', profile);
+  
       await updateDoc(docRef, profile);
       setIsEditing(false);
       alert("Profile updated successfully!");
     } catch (error) {
-      console.error("Error updating profile:", error);
-      alert("Failed to update profile. Please try again.");
+      console.error("Error updating profile:", error.message);
+      alert(`Error: ${error.message}`); // Display error message
     }
   };
 
-  const handlePasswordReset = () => {
-    // Logic for resetting password (e.g., send password reset email)
-    alert("Password reset email sent. Please check your inbox.");
-    setPasswordReset(false);
+  const handlePasswordReset = async () => {
+    Swal.fire({
+      title: "Reset Password",
+      input: "password",
+      inputLabel: `Enter a new password for ${user.email}:`,
+      inputPlaceholder: "Enter new password",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Reset Password",
+    }).then((result) => {
+      if (result.isConfirmed && result.value) {
+        const newPassword = result.value;
+  
+        // Simulating backend password reset logic
+        resetPasswordForUser(newPassword);
+  
+        Swal.fire(
+          "Password Reset Successful",
+          `The password for ${user.email} has been reset.`,
+          "success"
+        );
+      }
+    });
   };
+
+
 
   if (loading) return <div className="text-center">Loading...</div>;
 
@@ -237,20 +265,12 @@ const MyProfile = () => {
               <input
                 type="email"
                 value={emailEdit}
-                onChange={(e) => setEmailEdit(e.target.value)}
+                onChange={handleInputChange}
                 disabled={!isEditing}
                 className={`mt-1 block w-full px-4 py-2 border rounded-lg ${
                   isEditing ? "bg-white" : "bg-gray-100"
                 }`}
               />
-              {isEditing && (
-                <button
-                  onClick={handleEmailChange}
-                  className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500"
-                >
-                  Update Email
-                </button>
-              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
@@ -315,6 +335,7 @@ const MyProfile = () => {
                 <option value="other">Other</option>
               </select>
             </div>
+            
             <div>
               <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
                 <LockIcon /> Status
@@ -360,27 +381,12 @@ const MyProfile = () => {
             )}
           </div>
 
-          {/* Password Reset */}
-          <div className="mt-4">
-            <button
-              onClick={() => setPasswordReset(true)}
-              className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-500"
-            >
-              Reset Password
-            </button>
-          </div>
-
-          {passwordReset && (
-            <div className="mt-4">
-              <p>Are you sure you want to reset your password?</p>
-              <button
-                onClick={handlePasswordReset}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500"
-              >
-                Reset Password
-              </button>
-            </div>
-          )}
+          <button
+        onClick={handlePasswordReset}
+        className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500"
+      >
+        Reset Password
+      </button>
         </div>
       </div>
     </div>
