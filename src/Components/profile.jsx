@@ -34,7 +34,7 @@ const MyProfile = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [passwordReset, setPasswordReset] = useState(false);
-  const { currentUser } = useAuth();
+
 
   useEffect(() => {
     if (user) {
