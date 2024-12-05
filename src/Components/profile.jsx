@@ -15,7 +15,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import WcIcon from "@mui/icons-material/Wc";
 import EditIcon from "@mui/icons-material/Edit";
 import LockIcon from "@mui/icons-material/Lock";
-import { useAuth } from "../Authcontext";
+import Swal from "sweetalert2";
 
 const MyProfile = () => {
   const [user, loading] = useAuthState(auth);
@@ -156,21 +156,66 @@ const MyProfile = () => {
 
   const handleSave = async () => {
     try {
+      // Confirm the doc path
       const docRef = doc(db, "admins", user.email, "user_profiles", user.uid);
+      console.log('Updating document at path:', docRef); // Log the path
+  
+      // Ensure profile object contains the required fields
+      console.log('Profile to update:', profile);
+  
       await updateDoc(docRef, profile);
       setIsEditing(false);
       alert("Profile updated successfully!");
     } catch (error) {
-      console.error("Error updating profile:", error);
-      alert("Failed to update profile. Please try again.");
+      console.error("Error updating profile:", error.message);
+      alert(`Error: ${error.message}`); // Display error message
     }
   };
 
-  const handlePasswordReset = () => {
-    // Logic for resetting password (e.g., send password reset email)
-    alert("Password reset email sent. Please check your inbox.");
-    setPasswordReset(false);
+
+  const generateRandomPassword = () => {
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$!";
+    let password = "";
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
   };
+
+  const handlePasswordReset = async () => {
+    const randomPassword = generateRandomPassword();
+    Swal.fire({
+      title: "Reset Password",
+      text: `Are you sure you want to reset the password for ${user.email}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, reset it!",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Simulating backend password reset logic
+        resetPasswordForUser(randomPassword);
+
+        Swal.fire(
+          "Password Reset",
+          `The new password for ${user.email} is: ${randomPassword}`,
+          "success"
+        );
+
+        setPasswordReset(false); // Close the reset UI
+      }
+    });
+  };
+
+  const resetPasswordForUser = (newPassword) => {
+    // Logic to update the user's password in the backend/database
+    console.log(`Password for ${user.email} has been reset to: ${newPassword}`);
+    // You can call a backend API here to update the password
+  };
+
+
 
   if (loading) return <div className="text-center">Loading...</div>;
 
@@ -237,20 +282,12 @@ const MyProfile = () => {
               <input
                 type="email"
                 value={emailEdit}
-                onChange={(e) => setEmailEdit(e.target.value)}
+                onChange={handleInputChange}
                 disabled={!isEditing}
                 className={`mt-1 block w-full px-4 py-2 border rounded-lg ${
                   isEditing ? "bg-white" : "bg-gray-100"
                 }`}
               />
-              {isEditing && (
-                <button
-                  onClick={handleEmailChange}
-                  className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500"
-                >
-                  Update Email
-                </button>
-              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
@@ -372,16 +409,23 @@ const MyProfile = () => {
           </div>
 
           {passwordReset && (
-            <div className="mt-4">
-              <p>Are you sure you want to reset your password?</p>
-              <button
-                onClick={handlePasswordReset}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500"
-              >
-                Reset Password
-              </button>
-            </div>
-          )}
+        <div className="mt-4">
+          <p>Are you sure you want to reset your password?</p>
+          <button
+            onClick={handlePasswordReset}
+            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500"
+          >
+            Reset Password
+          </button>
+        </div>
+      )}
+      {/* Example trigger for showing the reset password UI */}
+      <button
+        onClick={() => setPasswordReset(true)}
+        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 mt-4"
+      >
+        Initiate Password Reset
+      </button>
         </div>
       </div>
     </div>
