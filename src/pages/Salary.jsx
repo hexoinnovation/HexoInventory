@@ -333,7 +333,7 @@ const handleRoleChange = (e) => {
           <h2 className="text-xl font-semibold text-indigo-600 mt-8">Employee Details</h2>
          
           <table className="min-w-full border-collapse">
-            <thead>
+                        <thead>
               <tr className="bg-indigo-100">
                 <th className="px-4 py-2 text-left text-sm font-semibold">Employee</th>
              
@@ -368,6 +368,7 @@ const handleRoleChange = (e) => {
           <span>{employee.name}</span>
         </td>
         </td>
+     
      
         <td className="px-4 py-2">{employee.contact}</td>
         <td className="px-4 py-2">{employee.role}</td>

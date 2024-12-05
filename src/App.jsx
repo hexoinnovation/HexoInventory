@@ -15,8 +15,9 @@ import {
   auth,
   createUserWithEmailAndPassword,
   db,
+  
   signInWithEmailAndPassword,
-} from "./config/firebase";
+  } from "./config/firebase";
 import Shop from "./pages/Account";
 import Attendence from "./pages/Attendence";
 import Salary from "./pages/Salary";
