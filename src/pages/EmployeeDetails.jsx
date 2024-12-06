@@ -21,6 +21,7 @@ const App = () => {
     gender: "",
     contact: "",
     email: "",
+    role:"",
     address: "",
     state: "",
     country: "",
@@ -133,6 +134,7 @@ const App = () => {
           gender: '',
           contact: '',
           email: '',
+          role:'',
           address: '',
           state: '',
           country: '',
@@ -486,7 +488,21 @@ const App = () => {
             required
           ></textarea>
         </div>
-
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Role</label>
+          <select
+            name="role"
+            value={newEmployee.role}
+            onChange={handleInputChange}
+            className="border border-gray-300 rounded-lg p-3 w-full focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-300 hover:shadow-lg transition duration-300 ease-in-out"
+            required
+          >
+            <option value="">Select Role</option>
+            <option value="Permanent">Permanent</option>
+            <option value="Temporary">Temporary</option>
+            <option value="Dailywages">Daily Wages</option>
+          </select>
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">State</label>
           <input
@@ -498,7 +514,8 @@ const App = () => {
             required
           />
         </div>
-
+        
+        
         <div>
           <label className="block text-sm font-medium text-gray-700">Country</label>
           <select
@@ -548,6 +565,7 @@ const App = () => {
       <th className="px-4 py-2 text-left">Date of Birth</th>
       <th className="px-4 py-2 text-left">Contact</th>
       <th className="px-4 py-2 text-left">Email</th>
+      <th className="px-4 py-2 text-left">Role</th>
       <th className="px-4 py-2 text-left">Address</th>
       <th className="px-4 py-2 text-left">State</th>
       <th className="px-4 py-2 text-left">Country</th>
@@ -577,7 +595,9 @@ const App = () => {
       <td className="px-4 py-2">{employee.dob}</td>
       <td className="px-4 py-2">{employee.contact}</td>
       <td className="px-4 py-2">{employee.email}</td>
+      <td className="px-4 py-2">{employee.role}</td>
       <td className="px-4 py-2">{employee.address}</td>
+     
       <td className="px-4 py-2">{employee.state}</td>
       <td className="px-4 py-2">{employee.country}</td>
       <td className="px-3 py-2">
@@ -678,6 +698,15 @@ const App = () => {
             type="email"
             value={selectedEmployee?.email || ''}
             onChange={(e) => handleChange(e, 'email')}
+            className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
+          />
+        </div>
+        <div>
+          <label className="block font-semibold text-purple-700">Role:</label>
+          <input
+            type="text"
+            value={selectedEmployee?.role || ''}
+            onChange={(e) => handleChange(e, 'role')}
             className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
           />
         </div>

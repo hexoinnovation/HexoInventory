@@ -15,10 +15,12 @@ import {
   auth,
   createUserWithEmailAndPassword,
   db,
+  
   signInWithEmailAndPassword,
-} from "./config/firebase";
+  } from "./config/firebase";
 import Shop from "./pages/Account";
 import Attendence from "./pages/Attendence";
+import Salary from "./pages/Salary";
 import BusinessDetails from "./pages/BusinessDetails";
 import CustomerDetails from "./pages/CustomerDetails";
 import Dashboard from "./pages/Dashboard";
@@ -200,6 +202,10 @@ const handleLogin = async () => {
               <Route
                 path="/attendence"
                 element={isAuthenticated ? <Attendence /> : <Navigate to="/" />}
+              />
+                 <Route
+                path="/salary"
+                element={isAuthenticated ? <Salary /> : <Navigate to="/" />}
               />
               <Route path="/notifications" element={<Notifications />} />
             </Routes>
