@@ -188,7 +188,6 @@ const AttendanceTable = () => {
       console.error("Error updating attendance:", error);
     }
   };
-
   const saveAttendance = async () => {
     try {
       const attendanceRef = doc(
