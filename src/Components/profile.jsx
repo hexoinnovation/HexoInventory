@@ -5,6 +5,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { updateEmail } from "firebase/auth";
 import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+import { updatePassword } from "firebase/auth";  // Importing updatePassword
 
 // Import Material Icons
 import PersonIcon from "@mui/icons-material/Person";
@@ -172,32 +173,68 @@ const MyProfile = () => {
     }
   };
 
-  const handlePasswordReset = async () => {
-    Swal.fire({
-      title: "Reset Password",
-      input: "password",
-      inputLabel: `Enter a new password for ${user.email}:`,
-      inputPlaceholder: "Enter new password",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Reset Password",
-    }).then((result) => {
-      if (result.isConfirmed && result.value) {
-        const newPassword = result.value;
-  
-        // Simulating backend password reset logic
-        resetPasswordForUser(newPassword);
-  
+ // Regular expression to validate password format
+const passwordRegex = /^(?=.*\d)(?=.*[!@#$%^&*])[a-zA-Z\d!@#$%^&*]{6,}$/;
+
+// Handle password reset logic
+const handlePasswordReset = async () => {
+  Swal.fire({
+    title: "Reset Password",
+    input: "password",
+    inputLabel: `Enter a new password for ${user.email}:`,
+    inputPlaceholder: "Enter new password",
+    inputAttributes: {
+      maxlength: 20,
+      autocapitalize: "off",
+      autocorrect: "off",
+    },
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Reset Password",
+  }).then(async (result) => {
+    if (result.isConfirmed && result.value) {
+      const newPassword = result.value;
+
+      // Validate password format
+      if (!passwordRegex.test(newPassword)) {
+        Swal.fire(
+          "Invalid Password",
+          "Password must be at least 6 characters long, include at least 1 number, and 1 special character.",
+          "error"
+        );
+        return;
+      }
+
+      try {
+        // Update password in Firebase Authentication
+        await updatePassword(user, newPassword);
+
+        // Update exact password in Firestore
+        await setDoc(
+          doc(db, "admins", user.email),
+          {
+            password: newPassword, // Directly store exact password
+          },
+          { merge: true } // Merge with existing document
+        );
+
         Swal.fire(
           "Password Reset Successful",
-          `The password for ${user.email} has been reset.`,
+          `The password for ${user.email} has been updated.`,
           "success"
         );
+      } catch (error) {
+        console.error("Error updating password: ", error);
+        Swal.fire(
+          "Password Reset Failed",
+          "An error occurred while resetting the password. Please try again.",
+          "error"
+        );
       }
-    });
-  };
-
+    }
+  });
+};
 
 
   if (loading) return <div className="text-center">Loading...</div>;

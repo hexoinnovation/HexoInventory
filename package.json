@@ -23,6 +23,7 @@
     "@mui/material": "^6.1.9",
     "antd": "^5.22.2",
     "axios": "^1.7.7",
+    "bcryptjs": "^2.4.3",
     "chart.js": "^4.4.6",
     "date-fns": "^4.1.0",
     "firebase": "^11.0.2",

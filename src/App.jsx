@@ -35,6 +35,8 @@ import Ecomdashboard from "./pages/ecomdashboard";
 import Notifications from "./Components/Notifications"; // Example page component
 import { AuthProvider } from "./authContext";
 import Profile from "./Components/profile";
+import bcrypt from "bcryptjs"; // Import bcrypt for hashing passwords
+
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -44,49 +46,58 @@ const App = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // Handle sign-up logic
-  const handleSignup = async () => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      const user = userCredential.user;
+  
+  // Regular expression to validate password format
+const passwordRegex = /^(?=.*\d)(?=.*[!@#$%^&*])[a-zA-Z\d!@#$%^&*]{6,}$/;
 
-      // Add admin data to the "admins" collection in Firestore
-      await setDoc(doc(db, "admins", user.email), {
-        email: user.email,
-        createdAt: new Date(),
-      });
+// Handle sign-up logic
+const handleSignup = async () => {
+  // Validate password format
+  if (!passwordRegex.test(password)) {
+    alert(
+      "Password must be at least 6 characters long, include at least 1 number, and 1 special character."
+    );
+    return; // Stop execution if password is invalid
+  }
 
-      alert("Account created successfully! You can now log in.");
-      setIsSignup(false); // Switch to login form
-    } catch (error) {
-      if (error.code === "auth/email-already-in-use") {
-        alert(
-          "This email is already registered. Please use a different email or log in."
-        );
-      } else if (error.code === "auth/weak-password") {
-        alert("Password should be at least 6 characters.");
-      } else {
-        console.error("Error during sign-up: ", error);
-        alert("An error occurred. Please try again.");
-      }
+  try {
+    // Create user in Firebase Authentication
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Add admin data (email and plain password) to Firestore
+    await setDoc(doc(db, "admins", user.email), {
+      email: user.email,
+      password: password, // Store plain password (not recommended)
+      createdAt: new Date(),
+    });
+
+    alert("Account created successfully! You can now log in.");
+    setIsSignup(false); // Switch to login form
+  } catch (error) {
+    if (error.code === "auth/email-already-in-use") {
+      alert("This email is already registered. Please use a different email or log in.");
+    } else if (error.code === "auth/weak-password") {
+      alert("Password should be at least 6 characters.");
+    } else {
+      console.error("Error during sign-up: ", error);
+      alert("An error occurred. Please try again.");
     }
-  };
+  }
+};
 
-  // Handle login logic
-  const handleLogin = async () => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      setIsAuthenticated(true);
-      setShowModal(false); // Hide modal after login
-    } catch (error) {
-      console.error("Error during login: ", error);
-      alert("Invalid email or password. Please try again.");
-    }
-  };
+// Handle login logic
+const handleLogin = async () => {
+  try {
+    // Authenticate user with Firebase Authentication
+    await signInWithEmailAndPassword(auth, email, password);
+    setIsAuthenticated(true);
+    setShowModal(false); // Hide modal after login
+  } catch (error) {
+    console.error("Error during login: ", error);
+    alert("Invalid email or password. Please try again.");
+  }
+};
 
   // Handle logout logic
   const handleLogout = () => {
