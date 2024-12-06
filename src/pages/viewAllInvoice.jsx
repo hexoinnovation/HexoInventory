@@ -556,7 +556,7 @@ const ViewAllInvoice = () => {
                     Notes:
                   </h4>
                   <p className="text-gray-700">
-                    {selectedInvoice.notes || "No additional notes"}
+                    {selectedInvoice.note || "No additional notes"}
                   </p>
                 </div>
                 <div>
