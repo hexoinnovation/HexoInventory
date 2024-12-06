@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../config/firebase';
-import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc ,getDoc} from 'firebase/firestore';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMoneyBill, faCheckCircle, faCalendarAlt, faUser } from '@fortawesome/free-solid-svg-icons';
@@ -14,8 +14,15 @@ const Salary = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isPaid, setIsPaid] = useState(false);
+  const [selectedDate, setSelectedDate] = useState("");
+  const currentDate = new Date();
+  const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}.${(currentDate.getMonth() + 1).toString().padStart(2, '0')}.${currentDate.getFullYear()}`;
   const currentUser = auth.currentUser;
-
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+  const [attendanceData, setAttendanceData] = useState([]); 
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
@@ -38,12 +45,6 @@ const Salary = () => {
 
     fetchEmployees();
   }, [currentUser]);
-
-  const handleMonthChange = (e) => {
-    const month = e.target.value;
-    setSelectedMonth(month);
-    filterData(month, selectedRole); // Reapply filters with updated month
-  };
   
   const handleRoleChange = (e) => {
     const role = e.target.value;
@@ -95,7 +96,60 @@ const Salary = () => {
       });
     }
   };
+  const handleDateChange = (event) => {
+    setSelectedDate(event.target.value); // Set the selected date when the user selects a date
+  };
+// Salary.jsx
+const fetchAttendanceByMonth = async () => {
+  try {
+    // Ensure selectedDate is not empty
+    if (!selectedDate) {
+      console.error("Selected date is empty!");
+      return;  // Prevent fetching if the date is not set
+    }
 
+    // Encode the email for Firestore path
+    const encodedEmail = encodeURIComponent(currentUser.email);
+
+    // Construct the path, ensuring there are no extra slashes
+    const path = `admins/${encodedEmail}/attendance/${selectedMonth}/${selectedDate}/data`;
+
+    console.log("Fetching from path:", path);
+
+    // Get the collection reference
+    const dayCollectionRef = collection(db, path);
+
+    // Fetch data from Firestore
+    const attendanceSnapshot = await getDocs(dayCollectionRef);
+
+    // Map the fetched data into an array
+    const fetchedAttendanceData = attendanceSnapshot.docs.map(doc => doc.data());
+
+    console.log("Fetched Attendance Data:", fetchedAttendanceData);
+
+    // Update state with fetched data
+    setAttendanceData(fetchedAttendanceData);
+  } catch (error) {
+    console.error("Error fetching attendance data:", error);
+  }
+};
+
+  useEffect(() => {
+    fetchAttendanceByMonth();
+  }, [selectedMonth, selectedDate]);
+  const renderAttendanceDetails = (attendanceData) => {
+    return attendanceData.map((employee, index) => (
+      <div key={index}>
+        <p>Name: {employee.name}</p>
+        <p>Status: {employee.status}</p>
+        <p>Role: {employee.role}</p>
+        <p>Date: {employee.date}</p>
+        <p>Contact: {employee.contact}</p>
+        <p>DOB: {employee.dob}</p>
+        <p>Email: {employee.email}</p>
+      </div>
+    ));
+  };
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white rounded-lg shadow-lg">
       <div className="flex items-center mb-6">
@@ -105,8 +159,26 @@ const Salary = () => {
       <div className="flex space-x-4 mb-4">
   {/* Month Picker with Icon */}
   <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">Select Month:</label>
-    <div className="relative">
+  <input
+    type="date"
+    value={selectedDate}
+    onChange={handleDateChange} // Update the selected date on change
+  />
+  <label htmlFor="month">Select Month: </label>
+      <select
+        id="month"
+        value={selectedMonth}
+        onChange={(e) => setSelectedMonth(e.target.value)}
+      >
+        <option value="Dec 2024">Dec 2024</option>
+        <option value="Nov 2024">Nov 2024</option>
+        <option value="Oct 2024">Oct 2024</option>
+        {/* Add more months here */}
+      </select>
+
+      <div>{renderAttendanceDetails(attendanceData)}</div>
+      </div>
+    {/* <div className="relative">
       <input
         type="month"
         value={selectedMonth}
@@ -117,9 +189,8 @@ const Salary = () => {
         icon={faCalendarAlt}
         className="absolute top-1/2 left-3 transform -translate-y-1/2 text-gray-800 "
       />
-    </div>
-  </div>
-
+    </div> */}
+  
   {/* Role Dropdown with Icon */}
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-2">Select Role:</label>
