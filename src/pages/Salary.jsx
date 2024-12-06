@@ -1,40 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../config/firebase';
-import { collection, getDocs, setDoc, doc ,getDoc} from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMoneyBill, faCheckCircle, faCalendarAlt, faUser } from '@fortawesome/free-solid-svg-icons';
-import DatePicker from 'react-datepicker';
 import axios from 'axios';
+
 const Salary = () => {
   const [employees, setEmployees] = useState([]);
   const [filteredEmployees, setFilteredEmployees] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState('');
-  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedFilter, setSelectedFilter] = useState('daily'); // 'daily', 'weekly', 'monthly'
   const [roles, setRoles] = useState([]);
+  const [selectedRole, setSelectedRole] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [isPaid, setIsPaid] = useState(false);
-  const [selectedDate, setSelectedDate] = useState("");
-  const [filterDate, setFilterDate] = useState('');
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [monthlyFilter, setMonthlyFilter] = useState(false);
-  const [employee, setEmployee] = useState([]);
-  const [filter, setFilter] = useState('daily');
-  const [data, setData] = useState(null);
-  const [fetchedData, setFetchedData] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const currentDate = new Date();
-
-  const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}.${(currentDate.getMonth() + 1).toString().padStart(2, '0')}.${currentDate.getFullYear()}`;
   const currentUser = auth.currentUser;
   const months = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
   ];
-  const [attendanceData, setAttendanceData] = useState([]); 
+
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
@@ -57,31 +46,72 @@ const Salary = () => {
 
     fetchEmployees();
   }, [currentUser]);
-  
+
   const handleRoleChange = (e) => {
     const role = e.target.value;
     setSelectedRole(role);
-    filterData(selectedMonth, role); // Reapply filters with updated role
+    filterData(selectedDate, role, selectedFilter); // Reapply filters with updated role
   };
-  
-  const filterData = (month, role) => {
+
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
+    filterData(date, selectedRole, selectedFilter); // Reapply filters with updated date
+  };
+
+  const handleFilterChange = (filter) => {
+    setSelectedFilter(filter);
+    filterData(selectedDate, selectedRole, filter); // Reapply filters with updated filter
+  };
+
+  const filterData = (date, role, filter) => {
+    if (!date) return; // Don't filter if no date is selected
+
     const filtered = employees.filter((employee) => {
       let match = true;
-  
-      // Check if the date field exists and includes the selected month
-      if (month && (!employee.date || !employee.date.includes(month))) {
-        match = false;
-      }
-  
-      // Check if the employee role matches the selected role
+
+      // Filter by role if selected
       if (role && employee.role !== role) {
         match = false;
       }
+
+      // Filter by the selected filter (daily, weekly, monthly)
+      const employeeDate = new Date(employee.date);
+      const selectedDateObj = new Date(date);
+      
+      switch (filter) {
+        case 'daily':
+          if (employeeDate.toDateString() !== selectedDateObj.toDateString()) {
+            match = false;
+          }
+          break;
+        case 'weekly':
+          const startOfWeek = selectedDateObj.getDate() - selectedDateObj.getDay(); // Get Sunday of the current week
+          const endOfWeek = startOfWeek + 6; // Saturday
+          selectedDateObj.setDate(startOfWeek);
+          const weekStart = new Date(selectedDateObj);
+          const weekEnd = new Date(selectedDateObj.setDate(endOfWeek));
+
+          if (employeeDate < weekStart || employeeDate > weekEnd) {
+            match = false;
+          }
+          break;
+        case 'monthly':
+          const monthStart = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth(), 1); // Start of the month
+          const monthEnd = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth() + 1, 0); // End of the month
+          if (employeeDate < monthStart || employeeDate > monthEnd) {
+            match = false;
+          }
+          break;
+        default:
+          break;
+      }
+
       return match;
     });
-  
+
     setFilteredEmployees(filtered);
   };
+
   const handleViewSalary = (employee) => {
     setSelectedEmployee(employee);
     setModalVisible(true);
@@ -105,63 +135,6 @@ const Salary = () => {
       });
     }
   };
-  const fetchData = async () => {
-    if (!selectedDate) {
-      alert('Please select a date first!');
-      return;
-    }
-
-    const startDate = new Date(selectedDate);
-    let endDate = new Date(selectedDate);
-
-    switch (filter) {
-      case 'daily':
-        endDate = new Date(selectedDate);
-        break;
-      case 'weekly':
-        const startOfWeek = startDate.getDate() - startDate.getDay(); // Get Sunday of the current week
-        const endOfWeek = startOfWeek + 6; // Saturday
-        startDate.setDate(startOfWeek);
-        endDate.setDate(endOfWeek);
-        break;
-      case 'monthly':
-        startDate.setDate(1); // First day of the month
-        endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0); // Last day of the month
-        break;
-      default:
-        break;
-    }
-
-    const monthYear = `${startDate.toLocaleString('default', { month: 'short' })} ${startDate.getFullYear()}`;
-    const dayFormatted = startDate.toLocaleDateString('en-GB').split('/').join('.');
-
-    const url = `/admins/${currentUser.email}/attendance/${monthYear}/${dayFormatted}/data`;
-
-    setLoading(true);
-    setError(''); // Reset previous errors
-
-    try {
-      const response = await axios.get(url);
-      if (response.data) {
-        setData(response.data);
-      } else {
-        setError('No data found.');
-      }
-    } catch (err) {
-      setError('Error fetching data, please try again.');
-      console.error('Error fetching data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFilterChange = (newFilter) => {
-    setFilter(newFilter);
-  };
-
-  const handleDateChange = (date) => {
-    setSelectedDate(date);
-  };
 
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white rounded-lg shadow-lg">
@@ -169,53 +142,66 @@ const Salary = () => {
         <FontAwesomeIcon icon={faMoneyBill} className="text-3xl text-blue-600 mr-3" />
         <h1 className="text-3xl font-semibold text-gray-700">Payroll Management System</h1>
       </div>
-      <div className="flex space-x-4 mb-4">
-  
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">Select Role:</label>
-    <div className="relative">
-      <select
-        value={selectedRole}
-        onChange={handleRoleChange}
-        className="p-2 border border-gray-300 rounded-md w-full pl-10" // Add padding to the left for the icon
-      >
-        <option value="">All Roles</option>
-        {roles.map((role, index) => (
-          <option key={index} value={role}>
-            {role}
-          </option>
-        ))}
-      </select>
-      <FontAwesomeIcon
-        icon={faUser}
-        className="absolute top-1/2 left-3 transform -translate-y-1/2 text-gray-700"
-      />
-    </div>
-  </div>
-</div>
+
+      {/* Date Picker and Filter Options */}
+      <div className="flex items-center mb-6">
+        <div className="mr-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Select Date:</label>
+          <input
+            type="date"
+            value={selectedDate ? selectedDate : ''}
+            onChange={(e) => handleDateChange(e.target.value)}
+            className="p-2 border border-gray-300 rounded-md"
+          />
+        </div>
+
+        <div className="mr-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Filter By:</label>
+          <select
+            value={selectedFilter}
+            onChange={(e) => handleFilterChange(e.target.value)}
+            className="p-2 border border-gray-300 rounded-md"
+          >
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Select Role:</label>
+          <select
+            value={selectedRole}
+            onChange={handleRoleChange}
+            className="p-2 border border-gray-300 rounded-md"
+          >
+            <option value="">All Roles</option>
+            {roles.map((role, index) => (
+              <option key={index} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* Filtered Employee Table */}
       <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
         <thead>
           <tr className="bg-gray-100">
             <th className="p-3 text-left">Name</th>
             <th className="p-3 text-left">Role</th>
-           
             <th className="p-3 text-left">Action</th>
           </tr>
         </thead>
         <tbody>
           {filteredEmployees.map((employee) => (
             <tr key={employee.id}>
-              <td
-        className="px-4 py-2 flex items-center gap-3"> <img
-        src={employee.photo}
-        alt="Employee"
-        className="rounded-full w-12 h-12 object-cover"
-      />
-      <span>{employee.name}</span>
-    </td>
+              <td className="px-4 py-2 flex items-center gap-3">
+                <img src={employee.photo} alt="Employee" className="rounded-full w-12 h-12 object-cover" />
+                <span>{employee.name}</span>
+              </td>
               <td className="p-3">{employee.role}</td>
-              
               <td className="p-3">
                 <button
                   onClick={() => handleViewSalary(employee)}
@@ -232,118 +218,65 @@ const Salary = () => {
       {/* Modal for displaying the salary details */}
       {modalVisible && selectedEmployee && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded-lg w-1/2">
-            <h3 className="text-2xl font-semibold mb-4 text-center text-blue-600">
-              <FontAwesomeIcon icon={faMoneyBill} className="mr-2" />
-              Salary Details for {selectedEmployee.name}
-            </h3>
-            
-            {/* Display Salary Table */}
-            <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="p-3 text-left">Name</th>
-                  <th className="p-3 text-left">Role</th>
-                  <th className="p-3 text-left">Present Days</th>
-                  <th className="p-3 text-left">Absent Days</th>
-                  <th className="p-3 text-left">Total Working Days</th>
-                  <th className="p-3 text-left">PF</th>
-                  <th className="p-3 text-left">Gross Pay</th>
-                  <th className="p-3 text-left">Total Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="p-3">{selectedEmployee.name}</td>
-                  <td className="p-3">{selectedEmployee.role}</td>
-                  <td className="p-3">10</td> {/* Replace with real data */}
-                  <td className="p-3">5</td>  {/* Replace with real data */}
-                  <td className="p-3">20</td> {/* Replace with real data */}
-                  <td className="p-3">1000</td> {/* Replace with real data */}
-                  <td className="p-3">5000</td> {/* Replace with real data */}
-                  <td className="p-3">6000</td> {/* Replace with real data */}
-                </tr>
-              </tbody>
-            </table>
-
-            {/* Mark as Paid Button */}
-            {!isPaid && (
-              <button
-                onClick={handleMarkAsPaid}
-                className="bg-blue-500 text-white rounded px-4 py-2 mt-4 hover:bg-blue-600"
-              >
-                <FontAwesomeIcon icon={faCheckCircle} className="mr-2" />
-                Mark as Paid
-              </button>
-            )}
-            {isPaid && (
-              <div className="mt-4 text-green-500">
-                <FontAwesomeIcon icon={faCheckCircle} className="mr-2" />
-                Salary Paid
-              </div>
-            )}
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h2 className="text-2xl font-semibold text-gray-700">Salary Details</h2>
+            <div className="mt-4">
+              <table className="min-w-full">
+                <tbody>
+                  <tr>
+                    <td className="p-3 text-left font-medium">Name</td>
+                    <td className="p-3">{selectedEmployee.name}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-left font-medium">Role</td>
+                    <td className="p-3">{selectedEmployee.role}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-left font-medium">Salary</td>
+                    <td className="p-3">{selectedEmployee.salary}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-left font-medium">Paid Status</td>
+                    <td className="p-3">
+                      {selectedEmployee.isPaid ? (
+                        <span className="text-green-500">
+                          <FontAwesomeIcon icon={faCheckCircle} className="mr-2" />
+                          Paid
+                        </span>
+                      ) : (
+                        <span className="text-red-500">
+                          <FontAwesomeIcon icon={faCalendarAlt} className="mr-2" />
+                          Not Paid
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              {/* Mark as Paid Button */}
+              {!selectedEmployee.isPaid && (
+                <div className="mt-6 flex justify-center">
+                  <button
+                    onClick={handleMarkAsPaid}
+                    className="bg-green-500 text-white rounded px-4 py-2 hover:bg-green-600"
+                  >
+                    Mark as Paid
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={() => setModalVisible(false)}
-              className="bg-red-500 text-white rounded px-4 py-2 mt-4 hover:bg-red-600"
+              className="mt-4 text-red-500 hover:text-red-600"
             >
               Close
             </button>
           </div>
         </div>
       )}
-      {/* Month Picker with Icon */}
-      <div className="space-y-6">
-        {/* Date Picker */}
-        <div>
-          <label htmlFor="datePicker" className="block text-gray-600 font-medium">Select Date:</label>
-          <input
-            type="date"
-            id="datePicker"
-            value={selectedDate}
-            onChange={(e) => handleDateChange(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-         <div>
-          <label htmlFor="filterType" className="block text-gray-600 font-medium">Filter Type:</label>
-          <select
-            id="filterType"
-            value={filter}
-            onChange={(e) => handleFilterChange(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-        </div>
-        <div>
-          <button
-            onClick={fetchData}
-            className="w-full p-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
-          >
-            {loading ? 'Loading...' : 'Fetch Data'}
-          </button>
-        </div>
-      </div>
-    {/* Display Fetched Data or Errors */}
-    {loading && <div className="text-center mt-4 text-gray-500">Fetching data...</div>}
-
-{error && (
-  <div className="mt-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-md">
-    {error}
-  </div>
-)}
-
-{data && !loading && !error && (
-  <div className="mt-6 p-4 bg-gray-100 border border-gray-300 rounded-md">
-    <h3 className="text-lg font-semibold text-gray-700">Fetched Data:</h3>
-    <pre className="text-gray-600">{JSON.stringify(data, null, 2)}</pre>
-  </div>
-)}
     </div>
   );
 };
+
 export default Salary;
