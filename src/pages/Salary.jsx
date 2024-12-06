@@ -4,7 +4,8 @@ import { collection, getDocs, setDoc, doc ,getDoc} from 'firebase/firestore';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMoneyBill, faCheckCircle, faCalendarAlt, faUser } from '@fortawesome/free-solid-svg-icons';
-
+import DatePicker from 'react-datepicker';
+import axios from 'axios';
 const Salary = () => {
   const [employees, setEmployees] = useState([]);
   const [filteredEmployees, setFilteredEmployees] = useState([]);
@@ -18,7 +19,15 @@ const Salary = () => {
   const [filterDate, setFilterDate] = useState('');
   const [statusFilter, setStatusFilter] = useState("All");
   const [monthlyFilter, setMonthlyFilter] = useState(false);
+  const [employee, setEmployee] = useState([]);
+  const [filter, setFilter] = useState('daily');
+  const [data, setData] = useState(null);
+  const [fetchedData, setFetchedData] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   const currentDate = new Date();
+
   const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}.${(currentDate.getMonth() + 1).toString().padStart(2, '0')}.${currentDate.getFullYear()}`;
   const currentUser = auth.currentUser;
   const months = [
@@ -96,130 +105,64 @@ const Salary = () => {
       });
     }
   };
-  const handleFilterChange = (e) => {
-    const { type, value } = e.target; // Destructure to get type and value from event target
-    console.log("Selected Value:", value); // Debugging log
-  
-    if (type === "date") {
-      // Handle specific date selection
-      const formattedDate = convertToDDMMYYYY(value); // Format selected date (e.g., 04.12.2024)
-      setFilterDate(formattedDate); // Update state with the selected date
-  
-      if (monthlyFilter) {
-        // If monthly filter is enabled, extract month and year
-        const formattedMonth = value.slice(0, 7).replace("-", "."); // Format as "YYYY.MM"
-        filterAttendance(formattedMonth, true); // Fetch attendance for the selected month
-      } else {
-        filterAttendance(formattedDate, false); // Fetch attendance for the exact date
-      }
-    } else if (type === "month") {
-      // Handle month selection (if monthlyFilter uses a month picker)
-      const formattedMonth = value.replace("-", "."); // Format selected month (e.g., 12.2024)
-      setFilterDate(formattedMonth); // Update state with the selected month
-      filterAttendance(formattedMonth, true); // Fetch attendance for the selected month
-    } else if (value === "All") {
-      // Handle "All" filter to show all employees
-      setStatusFilter("All");
-      if (filterDate) {
-        filterAttendance(filterDate, monthlyFilter); // Apply date or month filter if set
-      } else {
-        setFilteredEmployees(employees); // Show all employees if no date/month filter is set
-      }
-    } else if (value === "Present" || value === "Absent") {
-      // Handle "Present" or "Absent" filters
-      setStatusFilter(value);
-      if (filterDate) {
-        // Apply both status and date/month filters
-        filterAttendance(filterDate, monthlyFilter, value);
-      } else {
-        // Filter employees based on attendance status
-        const filteredByStatus = employees.filter(
-          (employee) => employee.attendance === value
-        );
-        setFilteredEmployees(filteredByStatus);
-      }
-    } else {
-      console.warn("Unhandled filter type or value:", { type, value });
+  const fetchData = async () => {
+    if (!selectedDate) {
+      alert('Please select a date first!');
+      return;
     }
-  };
-  const filterAttendance = async (value, isMonth, statusFilter = null) => {
+
+    const startDate = new Date(selectedDate);
+    let endDate = new Date(selectedDate);
+
+    switch (filter) {
+      case 'daily':
+        endDate = new Date(selectedDate);
+        break;
+      case 'weekly':
+        const startOfWeek = startDate.getDate() - startDate.getDay(); // Get Sunday of the current week
+        const endOfWeek = startOfWeek + 6; // Saturday
+        startDate.setDate(startOfWeek);
+        endDate.setDate(endOfWeek);
+        break;
+      case 'monthly':
+        startDate.setDate(1); // First day of the month
+        endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0); // Last day of the month
+        break;
+      default:
+        break;
+    }
+
+    const monthYear = `${startDate.toLocaleString('default', { month: 'short' })} ${startDate.getFullYear()}`;
+    const dayFormatted = startDate.toLocaleDateString('en-GB').split('/').join('.');
+
+    const url = `/admins/${currentUser.email}/attendance/${monthYear}/${dayFormatted}/data`;
+
+    setLoading(true);
+    setError(''); // Reset previous errors
+
     try {
-        if (isMonth) {
-            // Extract year and month from the value (e.g., "2024-11")
-            const [year, month] = value.split("-");
-            console.log(`Querying monthly attendance for: ${monthNames[parseInt(month, 10) - 1]} ${year}`);
-  
-            // Query Firestore for attendance records for the selected month
-            const attendanceCollection = collection(db, "admins", currentUser.email, "attendance");
-            const querySnapshot = await getDocs(attendanceCollection);
-  
-            let allEmployees = [];
-            querySnapshot.forEach((doc) => {
-                const record = doc.data();
-                const recordDate = record.date; // Assuming `record.date` is in `dd.mm.yyyy`
-  
-                // Check if recordDate exists and is in the correct format
-                if (recordDate && typeof recordDate === 'string' && recordDate.split(".").length === 3) {
-                    const [recordDay, recordMonth, recordYear] = recordDate.split("."); // Split into day, month, year
-                    console.log(`Found record with date: ${recordDate} (Day: ${recordDay}, Month: ${recordMonth}, Year: ${recordYear})`);
-  
-                    // Check if the year and month match
-                    if (recordYear === year && recordMonth === month) {
-                        allEmployees = [...allEmployees, ...record.employees];
-                    }
-                } else {
-                    console.warn("Invalid or missing recordDate:", recordDate);
-                }
-            });
-  
-            // Apply status filter if needed
-            let updatedData = allEmployees.map((employee) => ({
-                ...employee,
-                attendance: employee.status,
-            }));
-  
-            if (statusFilter) {
-                updatedData = updatedData.filter((employee) => employee.attendance === statusFilter);
-            }
-  
-            setFilteredEmployees(updatedData);
-        } else {
-            // For exact date filtering (e.g., "02.12.2024")
-            console.log("Exact date filter applied:", value);
-  
-            const attendanceRef = doc(db, "admins", currentUser.email, "attendance", value);
-            const docSnapshot = await getDoc(attendanceRef);
-  
-            if (docSnapshot.exists()) {
-                let data = docSnapshot.data().employees.map((employee) => ({
-                    ...employee,
-                    attendance: employee.status,
-                }));
-  
-                if (statusFilter) {
-                    data = data.filter((employee) => employee.attendance === statusFilter);
-                }
-  
-                setFilteredEmployees(data);
-            } else {
-                console.log("No data found for the selected date.");
-                setFilteredEmployees([]);
-            }
-        }
-    } catch (error) {
-        console.error("Error fetching attendance:", error);
+      const response = await axios.get(url);
+      if (response.data) {
+        setData(response.data);
+      } else {
+        setError('No data found.');
+      }
+    } catch (err) {
+      setError('Error fetching data, please try again.');
+      console.error('Error fetching data:', err);
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const convertToYYYYMMDD = (ddmmyyyy) => {
-    const [day, month, year] = ddmmyyyy.split(".");
-    return `${year}-${month}-${day}`; // Format for input type="date"
+
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter);
   };
-  const convertToDDMMYYYY = (yyyymmdd) => {
-    const [year, month, day] = yyyymmdd.split("-");
-    return `${day}.${month}.${year}`; // Format for your attendance system
+
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
   };
-  
+
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white rounded-lg shadow-lg">
       <div className="flex items-center mb-6">
@@ -227,22 +170,7 @@ const Salary = () => {
         <h1 className="text-3xl font-semibold text-gray-700">Payroll Management System</h1>
       </div>
       <div className="flex space-x-4 mb-4">
-  {/* Month Picker with Icon */}
-  <div>
-  <div className="mb-6">
-  <label htmlFor="date" className="text-lg font-semibold text-gray-700">Date</label>
-  <input
-    type="date"
-    name="date"
-    value={filterDate ? convertToYYYYMMDD(filterDate) : ""}  
-    onChange={handleFilterChange}
-    className="w-full px-4 py-3 mt-2 rounded-lg bg-white border-2 border-gradient-to-r from-indigo-600 to-purple-600 
-      hover:border-gradient-to-r hover:from-pink-500 hover:to-yellow-500 focus:outline-none focus:ring-2 focus:ring-blue-400 
-      transition duration-300 ease-in-out"
-   
-  />
-</div>
-      </div>
+  
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-2">Select Role:</label>
     <div className="relative">
@@ -265,7 +193,6 @@ const Salary = () => {
     </div>
   </div>
 </div>
-
       {/* Filtered Employee Table */}
       <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
         <thead>
@@ -365,8 +292,58 @@ const Salary = () => {
           </div>
         </div>
       )}
+      {/* Month Picker with Icon */}
+      <div className="space-y-6">
+        {/* Date Picker */}
+        <div>
+          <label htmlFor="datePicker" className="block text-gray-600 font-medium">Select Date:</label>
+          <input
+            type="date"
+            id="datePicker"
+            value={selectedDate}
+            onChange={(e) => handleDateChange(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+         <div>
+          <label htmlFor="filterType" className="block text-gray-600 font-medium">Filter Type:</label>
+          <select
+            id="filterType"
+            value={filter}
+            onChange={(e) => handleFilterChange(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div>
+          <button
+            onClick={fetchData}
+            className="w-full p-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
+          >
+            {loading ? 'Loading...' : 'Fetch Data'}
+          </button>
+        </div>
+      </div>
+    {/* Display Fetched Data or Errors */}
+    {loading && <div className="text-center mt-4 text-gray-500">Fetching data...</div>}
+
+{error && (
+  <div className="mt-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-md">
+    {error}
+  </div>
+)}
+
+{data && !loading && !error && (
+  <div className="mt-6 p-4 bg-gray-100 border border-gray-300 rounded-md">
+    <h3 className="text-lg font-semibold text-gray-700">Fetched Data:</h3>
+    <pre className="text-gray-600">{JSON.stringify(data, null, 2)}</pre>
+  </div>
+)}
     </div>
   );
 };
-
 export default Salary;
