@@ -15,6 +15,9 @@ const Salary = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isPaid, setIsPaid] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
+  const [filterDate, setFilterDate] = useState('');
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [monthlyFilter, setMonthlyFilter] = useState(false);
   const currentDate = new Date();
   const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}.${(currentDate.getMonth() + 1).toString().padStart(2, '0')}.${currentDate.getFullYear()}`;
   const currentUser = auth.currentUser;
@@ -65,14 +68,11 @@ const Salary = () => {
       if (role && employee.role !== role) {
         match = false;
       }
-  
       return match;
     });
   
     setFilteredEmployees(filtered);
   };
-  
-
   const handleViewSalary = (employee) => {
     setSelectedEmployee(employee);
     setModalVisible(true);
@@ -96,60 +96,130 @@ const Salary = () => {
       });
     }
   };
-  const handleDateChange = (event) => {
-    setSelectedDate(event.target.value); // Set the selected date when the user selects a date
-  };
-// Salary.jsx
-const fetchAttendanceByMonth = async () => {
-  try {
-    // Ensure selectedDate is not empty
-    if (!selectedDate) {
-      console.error("Selected date is empty!");
-      return;  // Prevent fetching if the date is not set
+  const handleFilterChange = (e) => {
+    const { type, value } = e.target; // Destructure to get type and value from event target
+    console.log("Selected Value:", value); // Debugging log
+  
+    if (type === "date") {
+      // Handle specific date selection
+      const formattedDate = convertToDDMMYYYY(value); // Format selected date (e.g., 04.12.2024)
+      setFilterDate(formattedDate); // Update state with the selected date
+  
+      if (monthlyFilter) {
+        // If monthly filter is enabled, extract month and year
+        const formattedMonth = value.slice(0, 7).replace("-", "."); // Format as "YYYY.MM"
+        filterAttendance(formattedMonth, true); // Fetch attendance for the selected month
+      } else {
+        filterAttendance(formattedDate, false); // Fetch attendance for the exact date
+      }
+    } else if (type === "month") {
+      // Handle month selection (if monthlyFilter uses a month picker)
+      const formattedMonth = value.replace("-", "."); // Format selected month (e.g., 12.2024)
+      setFilterDate(formattedMonth); // Update state with the selected month
+      filterAttendance(formattedMonth, true); // Fetch attendance for the selected month
+    } else if (value === "All") {
+      // Handle "All" filter to show all employees
+      setStatusFilter("All");
+      if (filterDate) {
+        filterAttendance(filterDate, monthlyFilter); // Apply date or month filter if set
+      } else {
+        setFilteredEmployees(employees); // Show all employees if no date/month filter is set
+      }
+    } else if (value === "Present" || value === "Absent") {
+      // Handle "Present" or "Absent" filters
+      setStatusFilter(value);
+      if (filterDate) {
+        // Apply both status and date/month filters
+        filterAttendance(filterDate, monthlyFilter, value);
+      } else {
+        // Filter employees based on attendance status
+        const filteredByStatus = employees.filter(
+          (employee) => employee.attendance === value
+        );
+        setFilteredEmployees(filteredByStatus);
+      }
+    } else {
+      console.warn("Unhandled filter type or value:", { type, value });
     }
-
-    // Encode the email for Firestore path
-    const encodedEmail = encodeURIComponent(currentUser.email);
-
-    // Construct the path, ensuring there are no extra slashes
-    const path = `admins/${encodedEmail}/attendance/${selectedMonth}/${selectedDate}/data`;
-
-    console.log("Fetching from path:", path);
-
-    // Get the collection reference
-    const dayCollectionRef = collection(db, path);
-
-    // Fetch data from Firestore
-    const attendanceSnapshot = await getDocs(dayCollectionRef);
-
-    // Map the fetched data into an array
-    const fetchedAttendanceData = attendanceSnapshot.docs.map(doc => doc.data());
-
-    console.log("Fetched Attendance Data:", fetchedAttendanceData);
-
-    // Update state with fetched data
-    setAttendanceData(fetchedAttendanceData);
-  } catch (error) {
-    console.error("Error fetching attendance data:", error);
-  }
-};
-
-  useEffect(() => {
-    fetchAttendanceByMonth();
-  }, [selectedMonth, selectedDate]);
-  const renderAttendanceDetails = (attendanceData) => {
-    return attendanceData.map((employee, index) => (
-      <div key={index}>
-        <p>Name: {employee.name}</p>
-        <p>Status: {employee.status}</p>
-        <p>Role: {employee.role}</p>
-        <p>Date: {employee.date}</p>
-        <p>Contact: {employee.contact}</p>
-        <p>DOB: {employee.dob}</p>
-        <p>Email: {employee.email}</p>
-      </div>
-    ));
   };
+  const filterAttendance = async (value, isMonth, statusFilter = null) => {
+    try {
+        if (isMonth) {
+            // Extract year and month from the value (e.g., "2024-11")
+            const [year, month] = value.split("-");
+            console.log(`Querying monthly attendance for: ${monthNames[parseInt(month, 10) - 1]} ${year}`);
+  
+            // Query Firestore for attendance records for the selected month
+            const attendanceCollection = collection(db, "admins", currentUser.email, "attendance");
+            const querySnapshot = await getDocs(attendanceCollection);
+  
+            let allEmployees = [];
+            querySnapshot.forEach((doc) => {
+                const record = doc.data();
+                const recordDate = record.date; // Assuming `record.date` is in `dd.mm.yyyy`
+  
+                // Check if recordDate exists and is in the correct format
+                if (recordDate && typeof recordDate === 'string' && recordDate.split(".").length === 3) {
+                    const [recordDay, recordMonth, recordYear] = recordDate.split("."); // Split into day, month, year
+                    console.log(`Found record with date: ${recordDate} (Day: ${recordDay}, Month: ${recordMonth}, Year: ${recordYear})`);
+  
+                    // Check if the year and month match
+                    if (recordYear === year && recordMonth === month) {
+                        allEmployees = [...allEmployees, ...record.employees];
+                    }
+                } else {
+                    console.warn("Invalid or missing recordDate:", recordDate);
+                }
+            });
+  
+            // Apply status filter if needed
+            let updatedData = allEmployees.map((employee) => ({
+                ...employee,
+                attendance: employee.status,
+            }));
+  
+            if (statusFilter) {
+                updatedData = updatedData.filter((employee) => employee.attendance === statusFilter);
+            }
+  
+            setFilteredEmployees(updatedData);
+        } else {
+            // For exact date filtering (e.g., "02.12.2024")
+            console.log("Exact date filter applied:", value);
+  
+            const attendanceRef = doc(db, "admins", currentUser.email, "attendance", value);
+            const docSnapshot = await getDoc(attendanceRef);
+  
+            if (docSnapshot.exists()) {
+                let data = docSnapshot.data().employees.map((employee) => ({
+                    ...employee,
+                    attendance: employee.status,
+                }));
+  
+                if (statusFilter) {
+                    data = data.filter((employee) => employee.attendance === statusFilter);
+                }
+  
+                setFilteredEmployees(data);
+            } else {
+                console.log("No data found for the selected date.");
+                setFilteredEmployees([]);
+            }
+        }
+    } catch (error) {
+        console.error("Error fetching attendance:", error);
+    }
+  };
+  
+  const convertToYYYYMMDD = (ddmmyyyy) => {
+    const [day, month, year] = ddmmyyyy.split(".");
+    return `${year}-${month}-${day}`; // Format for input type="date"
+  };
+  const convertToDDMMYYYY = (yyyymmdd) => {
+    const [year, month, day] = yyyymmdd.split("-");
+    return `${day}.${month}.${year}`; // Format for your attendance system
+  };
+  
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white rounded-lg shadow-lg">
       <div className="flex items-center mb-6">
@@ -159,39 +229,20 @@ const fetchAttendanceByMonth = async () => {
       <div className="flex space-x-4 mb-4">
   {/* Month Picker with Icon */}
   <div>
+  <div className="mb-6">
+  <label htmlFor="date" className="text-lg font-semibold text-gray-700">Date</label>
   <input
     type="date"
-    value={selectedDate}
-    onChange={handleDateChange} // Update the selected date on change
+    name="date"
+    value={filterDate ? convertToYYYYMMDD(filterDate) : ""}  
+    onChange={handleFilterChange}
+    className="w-full px-4 py-3 mt-2 rounded-lg bg-white border-2 border-gradient-to-r from-indigo-600 to-purple-600 
+      hover:border-gradient-to-r hover:from-pink-500 hover:to-yellow-500 focus:outline-none focus:ring-2 focus:ring-blue-400 
+      transition duration-300 ease-in-out"
+   
   />
-  <label htmlFor="month">Select Month: </label>
-      <select
-        id="month"
-        value={selectedMonth}
-        onChange={(e) => setSelectedMonth(e.target.value)}
-      >
-        <option value="Dec 2024">Dec 2024</option>
-        <option value="Nov 2024">Nov 2024</option>
-        <option value="Oct 2024">Oct 2024</option>
-        {/* Add more months here */}
-      </select>
-
-      <div>{renderAttendanceDetails(attendanceData)}</div>
+</div>
       </div>
-    {/* <div className="relative">
-      <input
-        type="month"
-        value={selectedMonth}
-        onChange={handleMonthChange}
-        className="p-2 border border-gray-300 rounded-md w-full pl-10" // Add padding to the left for the icon
-      />
-      <FontAwesomeIcon
-        icon={faCalendarAlt}
-        className="absolute top-1/2 left-3 transform -translate-y-1/2 text-gray-800 "
-      />
-    </div> */}
-  
-  {/* Role Dropdown with Icon */}
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-2">Select Role:</label>
     <div className="relative">
