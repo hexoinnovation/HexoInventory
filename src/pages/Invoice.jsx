@@ -270,15 +270,15 @@ const Invoice = () => {
     setIsPopupOpen(false); // Close the popup
   };
 
-    // Print Handler
-    const handlePrint = () => {
-      const printContent = document.getElementById("invoiceContainers"); // Get the invoice container
-      const printWindow = window.open("", "", "height=700, width=1000"); // Open a new window
-  
-      // Add styles for print
-      printWindow.document.write("<html><head><title>Print Invoice</title>");
-      printWindow.document.write("<style>");
-      printWindow.document.write(`
+  // Print Handler
+  const handlePrint = () => {
+    const printContent = document.getElementById("invoiceContainers"); // Get the invoice container
+    const printWindow = window.open("", "", "height=700, width=1000"); // Open a new window
+
+    // Add styles for print
+    printWindow.document.write("<html><head><title>Print Invoice</title>");
+    printWindow.document.write("<style>");
+    printWindow.document.write(`
         body { font-family: Arial, sans-serif; margin: 20px; }
         h1, h3 { margin-bottom: 10px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -307,14 +307,14 @@ const Invoice = () => {
   }
         }
       `);
-      printWindow.document.write("</style></head><body>");
-      printWindow.document.write(printContent.outerHTML); // Clone and write the invoice content
-      printWindow.document.write("</body></html>");
-  
-      printWindow.document.close(); // Close the document for rendering
-      printWindow.print(); // Open the print dialog
-    };
-  
+    printWindow.document.write("</style></head><body>");
+    printWindow.document.write(printContent.outerHTML); // Clone and write the invoice content
+    printWindow.document.write("</body></html>");
+
+    printWindow.document.close(); // Close the document for rendering
+    printWindow.print(); // Open the print dialog
+  };
+
   const [isOpen, setIsOpen] = useState(false);
 
   const closeModal = () => setIsOpen(false);
@@ -670,11 +670,10 @@ const Invoice = () => {
 
   const [errorMessage, setErrorMessage] = useState(""); // Tracks the error message
 
-  
   // const handleActionConfirm = async () => {
   //   // Ensure all required fields are defined or fall back to default values
   //   const paymentStatus = isLightMode ? "Paid" : "Unpaid"; // Set payment status
-  
+
   //   const category2 = category || null;
   //   const status2 = status || null;
   //   const icst2 = icst || null;
@@ -685,7 +684,7 @@ const Invoice = () => {
   //   const products2 = products || [];
   //   const shippingMethod2 = shippingMethod || '';
   //   const paymentMethod2 = paymentMethod || '';
-  
+
   //   const dataToSave = {
   //     paymentStatus,
   //     invoiceDate: invoiceDate2,
@@ -704,17 +703,17 @@ const Invoice = () => {
   //     total: calculateTotal().toFixed(2),
   //     createdAt: new Date(),
   //   };
-  
+
   //   // Log the entire data object before saving to Firestore
   //   console.log('Data to be saved:', dataToSave);
-  
+
   //   // Check if any values are undefined
   //   for (const [key, value] of Object.entries(dataToSave)) {
   //     if (value === undefined) {
   //       console.error(`The field '${key}' is undefined!`);
   //     }
   //   }
-  
+
   //   try {
   //     const userDocRef = doc(db, "admins", user.email);
   //     const invoicesDocRef = doc(userDocRef, "Invoices", "paid unpaid");
@@ -724,10 +723,10 @@ const Invoice = () => {
   //       subCollectionName,
   //       invoiceNumber2.toString()
   //     );
-  
+
   //     // Save the data to Firestore
   //     await setDoc(subCollectionRef, dataToSave);
-  
+
   //     Swal.fire({
   //       icon: 'success',
   //       title: 'Status Saved!',
@@ -742,8 +741,7 @@ const Invoice = () => {
   //     });
   //   }
   // };
-  
-  
+
   const handleActionConfirm = async () => {
     const dataToSave = {
       paymentStatus: isLightMode ? "Paid" : "Unpaid",
@@ -761,16 +759,24 @@ const Invoice = () => {
       },
       subtotal: calculateSubtotal().toFixed(2),
       total: calculateTotal().toFixed(2),
+      note: note,
+      signature: signature,
       createdAt: new Date(),
     };
-  
+
     console.log("Data to be saved:", dataToSave);
-  
+
     try {
-      const invoiceRef = doc(db, "admins", user.email, "Invoices", dataToSave.invoiceNumber.toString());
-  
+      const invoiceRef = doc(
+        db,
+        "admins",
+        user.email,
+        "Invoices",
+        dataToSave.invoiceNumber.toString()
+      );
+
       await setDoc(invoiceRef, dataToSave);
-  
+
       Swal.fire({
         icon: "success",
         title: "Invoice Saved!",
@@ -785,35 +791,33 @@ const Invoice = () => {
       });
     }
   };
-  
+
   // const fetchPaidInvoices = async () => {
   //   const invoicesRef = collection(db, "admins", user.email, "Invoices");
   //   const q = query(invoicesRef, where("paymentStatus", "==", "Paid"));
-  
+
   //   const querySnapshot = await getDocs(q);
   //   querySnapshot.forEach((doc) => {
   //     console.log(doc.id, "=>", doc.data());
   //   });
   // };
-  
-  
-
-  
-  
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-r from-indigo-200 via-blue-100 to-green-100 p-8">
-      <div  id="invoiceContainers"  className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8 border-2 border-indigo-600">
+      <div
+        id="invoiceContainers"
+        className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8 border-2 border-indigo-600"
+      >
         <h1 className="text-4xl font-bold text-center text-indigo-700 mb-6">
           Invoice Generator
         </h1>
         {/* Invoice Header */}
         <div className="flex flex-col sm:flex-row justify-between mb-6">
-          <div  className="w-full sm:w-1/3 mb-4 sm:mb-0">
-            <h2  className="text-xl font-semibold text-gray-800">
+          <div className="w-full sm:w-1/3 mb-4 sm:mb-0">
+            <h2 className="text-xl font-semibold text-gray-800">
               Invoice Details
             </h2>
-            <div  className="text-blue-600">Invoice No: {invoiceNumber}</div>
+            <div className="text-blue-600">Invoice No: {invoiceNumber}</div>
             <div className="text-blue-600">Date: {invoiceDate}</div>
           </div>
 
@@ -825,12 +829,12 @@ const Invoice = () => {
                 <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center">
                   Bill From
                   <button
-  className="ml-3 text-white bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg print:hidden"
-  onClick={() => setShowModal(true)}
-  aria-label="Add"
->
-  <span className="print:hidden text-3xl font-bold">+</span>
-</button>
+                    className="ml-3 text-white bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg print:hidden"
+                    onClick={() => setShowModal(true)}
+                    aria-label="Add"
+                  >
+                    <span className="print:hidden text-3xl font-bold">+</span>
+                  </button>
                 </h2>
 
                 {/* Add Business Modal */}
@@ -1099,65 +1103,79 @@ const Invoice = () => {
                   ))}
                 </select>
                 {billFrom.registrationNumber && (
-  <div className="mt-4 text-gray-600">
-    <div className="print\\:right-align">
-      <div className="flex flex-wrap">
-        <div className="w-full sm:w-1/2">
-          <div className="mb-4">
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Company:</span>
-              <span className="w-2/3">{billFrom.businessName}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Reg Number:</span>
-              <span className="w-2/3">{billFrom.registrationNumber}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Address:</span>
-              <span className="w-2/3">{billFrom.address}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Contact:</span>
-              <span className="w-2/3">{billFrom.contactNumber}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Email:</span>
-              <span className="w-2/3">{billFrom.email}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Website:</span>
-              <span className="w-2/3">{billFrom.website}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">GST Number:</span>
-              <span className="w-2/3">{billFrom.gstNumber}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Aadhar:</span>
-              <span className="w-2/3">{billFrom.aadhaar}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">PAN Number:</span>
-              <span className="w-2/3">{billFrom.panno}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">State:</span>
-              <span className="w-2/3">{billFrom.state}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+                  <div className="mt-4 text-gray-600">
+                    <div className="print\\:right-align">
+                      <div className="flex flex-wrap">
+                        <div className="w-full sm:w-1/2">
+                          <div className="mb-4">
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">Company:</span>
+                              <span className="w-2/3">
+                                {billFrom.businessName}
+                              </span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">
+                                Reg Number:
+                              </span>
+                              <span className="w-2/3">
+                                {billFrom.registrationNumber}
+                              </span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">Address:</span>
+                              <span className="w-2/3">{billFrom.address}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">Contact:</span>
+                              <span className="w-2/3">
+                                {billFrom.contactNumber}
+                              </span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">Email:</span>
+                              <span className="w-2/3">{billFrom.email}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">Website:</span>
+                              <span className="w-2/3">{billFrom.website}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">
+                                GST Number:
+                              </span>
+                              <span className="w-2/3">
+                                {billFrom.gstNumber}
+                              </span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">Aadhar:</span>
+                              <span className="w-2/3">{billFrom.aadhaar}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">
+                                PAN Number:
+                              </span>
+                              <span className="w-2/3">{billFrom.panno}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">State:</span>
+                              <span className="w-2/3">{billFrom.state}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Bill To */}
             <div className="w-full sm:w-1/2">
               <div className="flex flex-col mb-4">
-              <h2 className="print\\:right-align text-xl font-semibold text-gray-800 mb-2 flex items-center">
-              Bill To
+                <h2 className="print\\:right-align text-xl font-semibold text-gray-800 mb-2 flex items-center">
+                  Bill To
                   <button
                     onClick={() => setopenModal(true)}
                     className=" print:hidden ml-3 text-white bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
@@ -1226,60 +1244,61 @@ const Invoice = () => {
                   ))}
                 </select>
 
-              {/* Displaying selected customer's details */}
-{billTo.name && (
-  <div className="mt-4 text-gray-600">
-    <div className="print\\:right-align">
-      <div className="flex flex-wrap">
-        <div className="w-full sm:w-1/2">
-          <div className="mb-4">
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Name:</span>
-              <span className="w-2/3">{billTo.name}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Email:</span>
-              <span className="w-2/3">{billTo.email}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Phone:</span>
-              <span className="w-2/3">{billTo.phone}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Address:</span>
-              <span className="w-2/3">{billTo.address}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">City:</span>
-              <span className="w-2/3">{billTo.city}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">State:</span>
-              <span className="w-2/3">{billTo.state}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Zip Code:</span>
-              <span className="w-2/3">{billTo.zip}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">GST No:</span>
-              <span className="w-2/3">{billTo.gst}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">Aadhaar No:</span>
-              <span className="w-2/3">{billTo.aadhaar}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="font-bold w-1/3">PAN No:</span>
-              <span className="w-2/3">{billTo.panno}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
+                {/* Displaying selected customer's details */}
+                {billTo.name && (
+                  <div className="mt-4 text-gray-600">
+                    <div className="print\\:right-align">
+                      <div className="flex flex-wrap">
+                        <div className="w-full sm:w-1/2">
+                          <div className="mb-4">
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">Name:</span>
+                              <span className="w-2/3">{billTo.name}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">Email:</span>
+                              <span className="w-2/3">{billTo.email}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">Phone:</span>
+                              <span className="w-2/3">{billTo.phone}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">Address:</span>
+                              <span className="w-2/3">{billTo.address}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">City:</span>
+                              <span className="w-2/3">{billTo.city}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">State:</span>
+                              <span className="w-2/3">{billTo.state}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">Zip Code:</span>
+                              <span className="w-2/3">{billTo.zip}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">GST No:</span>
+                              <span className="w-2/3">{billTo.gst}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">
+                                Aadhaar No:
+                              </span>
+                              <span className="w-2/3">{billTo.aadhaar}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
+                              <span className="font-bold w-1/3">PAN No:</span>
+                              <span className="w-2/3">{billTo.panno}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1642,16 +1661,16 @@ const Invoice = () => {
             />
           </div>
           <div className="mt-6 signature-right-align w-full sm:w-1/2">
-  <label className="signature-right-align block text-xl font-semibold text-gray-800 mb-2">
-    Signature
-  </label>
-  <textarea
-    value={signature}
-    onChange={(e) => setSignature(e.target.value)}
-    rows="3"
-    className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-  />
-</div>
+            <label className="signature-right-align block text-xl font-semibold text-gray-800 mb-2">
+              Signature
+            </label>
+            <textarea
+              value={signature}
+              onChange={(e) => setSignature(e.target.value)}
+              rows="3"
+              className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
         </div>
         <div>
           {/* Submit Button */}
@@ -1675,70 +1694,76 @@ const Invoice = () => {
             </button>
           </div>
 
-           {/* Popup Modal */}
-      {isPopupOpen && (
-        <div
-          className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
-          onClick={handleDismissPopup}
-        >
-          <div
-            className="bg-white p-8 rounded-md shadow-lg w-1/3 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close Icon */}
-            <button
+          {/* Popup Modal */}
+          {isPopupOpen && (
+            <div
+              className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50"
               onClick={handleDismissPopup}
-              className="absolute top-2 right-4 text-2xl text-gray-600 hover:text-gray-900"
             >
-              <FontAwesomeIcon icon={faCircleXmark} />
-            </button>
-
-            <h2 className="text-2xl font-semibold text-center mb-4 text-red-600">
-              Do you want to Save invoice?
-            </h2>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col items-center space-y-4">
-              {/* Toggle Button */}
-              <button
-                onClick={handleToggleMode}
-                className="relative w-80 h-12 rounded-md overflow-hidden border-2 border-gray-300 shadow-lg"
+              <div
+                className="bg-white p-8 rounded-md shadow-lg w-1/3 relative"
+                onClick={(e) => e.stopPropagation()}
               >
-                {/* Paid Section */}
-                <div
-                  className={`absolute inset-y-0 left-0 w-1/2 flex items-center justify-center ${
-                    isLightMode ? "bg-green-600 text-black" : "bg-gray-200 text-gray-500"
-                  }`}
+                {/* Close Icon */}
+                <button
+                  onClick={handleDismissPopup}
+                  className="absolute top-2 right-4 text-2xl text-gray-600 hover:text-gray-900"
                 >
-                  Paid
+                  <FontAwesomeIcon icon={faCircleXmark} />
+                </button>
+
+                <h2 className="text-2xl font-semibold text-center mb-4 text-red-600">
+                  Do you want to Save invoice?
+                </h2>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col items-center space-y-4">
+                  {/* Toggle Button */}
+                  <button
+                    onClick={handleToggleMode}
+                    className="relative w-80 h-12 rounded-md overflow-hidden border-2 border-gray-300 shadow-lg"
+                  >
+                    {/* Paid Section */}
+                    <div
+                      className={`absolute inset-y-0 left-0 w-1/2 flex items-center justify-center ${
+                        isLightMode
+                          ? "bg-green-600 text-black"
+                          : "bg-gray-200 text-gray-500"
+                      }`}
+                    >
+                      Paid
+                    </div>
+
+                    {/* Unpaid Section */}
+                    <div
+                      className={`absolute inset-y-0 right-0 w-1/2 flex items-center justify-center ${
+                        !isLightMode
+                          ? "bg-red-600 text-white"
+                          : "bg-gray-200 text-gray-500"
+                      }`}
+                    >
+                      Unpaid
+                    </div>
+                  </button>
+
+                  {/* Error Message */}
+                  {errorMessage && (
+                    <div className="text-red-500 text-sm mt-2">
+                      {errorMessage}
+                    </div>
+                  )}
+
+                  {/* Submit Button */}
+                  <button
+                    onClick={handleActionConfirm}
+                    className="bg-blue-400 text-white px-8 py-3 text-lg font-semibold rounded-md w-80"
+                  >
+                    Submit
+                  </button>
                 </div>
-
-                {/* Unpaid Section */}
-                <div
-                  className={`absolute inset-y-0 right-0 w-1/2 flex items-center justify-center ${
-                    !isLightMode ? "bg-red-600 text-white" : "bg-gray-200 text-gray-500"
-                  }`}
-                >
-                  Unpaid
-                </div>
-              </button>
-
-              {/* Error Message */}
-              {errorMessage && (
-                <div className="text-red-500 text-sm mt-2">{errorMessage}</div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                onClick={handleActionConfirm}
-                className="bg-blue-400 text-white px-8 py-3 text-lg font-semibold rounded-md w-80"
-              >
-                Submit
-              </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
         </div>
         {/* Invoice Footer */}
       </div>
