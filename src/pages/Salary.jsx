@@ -136,6 +136,7 @@ const Salary = () => {
     }
   };
 
+  
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white rounded-lg shadow-lg">
       <div className="flex items-center mb-6">
