@@ -100,8 +100,13 @@ const AttendanceTable = () => {
     setFilteredEmployees(updatedEmployees); // Update the state with the new employee list
   };
   
+
   const saveAttendance = async () => {
     try {
+      // Get the current date and format it as needed
+      const currentDate = new Date();
+      const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}.${(currentDate.getMonth() + 1).toString().padStart(2, '0')}.${currentDate.getFullYear()}`;
+  
       // Prepare attendance data
       const attendanceData = filteredEmployees.map((employee) => ({
         id: employee.id,
@@ -112,7 +117,7 @@ const AttendanceTable = () => {
         dob: employee.dob,
         photo: employee.photo,
         status: attendance[employee.id] || employee.attendance || "Absent",
-        date: formattedDate, // Original date in dd.mm.yyyy format
+        date: formattedDate, // Use the formatted date
       }));
   
       // Extract current month and year in the desired format
@@ -120,25 +125,35 @@ const AttendanceTable = () => {
       const options = { month: 'short', year: 'numeric' };
       const currentMonthYear = dateObj.toLocaleDateString('en-US', options);
   
+      // Format the current date as 'YYYY-MM-DD' for storing in Firestore
+      const formattedYearMonth = `${dateObj.getFullYear()}-${dateObj.getMonth() + 1}`; // '2024-7' format
+      const formattedDateISO = `${dateObj.getFullYear()}-${dateObj.getMonth() + 1}-${dateObj.getDate()}`; // '2024-7-26' format
+  
       // Reference for Firestore path
       const attendanceRef = collection(db, "admins", currentUser.email, "attendance");
   
-      const monthDocRef = doc(attendanceRef, currentMonthYear); // "Dec 2024" as a document
-      const dayCollectionRef = collection(monthDocRef, formattedDate); // "04.12.2024" as a subcollection
+      // Define the roles
+      const roles = ["temporary", "permanent", "dailywages"];
   
-      // Save attendance data for the first path (with "data")
-      const dayDocRef = doc(dayCollectionRef, "data"); // Document ID (can be "data" or any identifier)
-      await setDoc(dayDocRef, { employees: attendanceData });
+      // Loop through roles and save attendance data
+      for (let role of roles) {
+        // Filter employees by role
+        const roleAttendanceData = attendanceData.filter((employee) => employee.role.toLowerCase() === role);
   
-      // Save attendance data for the second path (without "data")
-      const dayDocRefNoData = doc(attendanceRef, formattedDate); // Direct path without "data"
-      await setDoc(dayDocRefNoData, { employees: attendanceData }); // Wrap the array in an object with a key
+        // Reference for role-based path
+        const roleDocRef = doc(attendanceRef, role, formattedYearMonth, formattedDateISO); // Path like: "temporary/2024-7/2024-7-26"
+        
+        // Save attendance data for this role
+        if (roleAttendanceData.length > 0) {
+          await setDoc(roleDocRef, { employees: roleAttendanceData });
+        }
+      }
   
       // Show success alert using SweetAlert
       Swal.fire({
         icon: "success",
         title: "Attendance saved successfully!",
-        text: `Attendance for ${currentMonthYear} on ${formattedDate} has been saved in both locations.`,
+        text: `Attendance for ${formattedYearMonth} on ${formattedDateISO} has been saved in respective roles.`,
         confirmButtonText: "OK",
       });
     } catch (error) {
@@ -153,6 +168,7 @@ const AttendanceTable = () => {
       });
     }
   };
+  
   const handleMonthlyFilter = (e) => {
     const isChecked = e.target.checked;
     setMonthlyFilter(isChecked);

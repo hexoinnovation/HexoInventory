@@ -742,7 +742,7 @@ const Invoice = () => {
   //     });
   //   }
   // };
-  
+
   
   const handleActionConfirm = async () => {
     const dataToSave = {
@@ -761,6 +761,8 @@ const Invoice = () => {
       },
       subtotal: calculateSubtotal().toFixed(2),
       total: calculateTotal().toFixed(2),
+      note: note, 
+      signature: signature, 
       createdAt: new Date(),
     };
   
