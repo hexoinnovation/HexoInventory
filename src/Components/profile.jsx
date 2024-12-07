@@ -85,6 +85,7 @@ const MyProfile = () => {
         currentPassword
       );
 
+      
       await reauthenticateWithCredential(user, credential);
 
       await updateEmail(user, emailEdit);
