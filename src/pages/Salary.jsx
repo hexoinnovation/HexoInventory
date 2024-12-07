@@ -1,32 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth ,app} from '../config/firebase';
-import { collection, getDocs, setDoc, doc,getFirestore} from 'firebase/firestore';
+import { db, auth } from '../config/firebase';
+import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMoneyBill, faCheckCircle, faCalendarAlt, faUser } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
-import  DatePicker from "react-datepicker"; // For selecting a date
+
 const Salary = () => {
   const [employees, setEmployees] = useState([]);
   const [filteredEmployees, setFilteredEmployees] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState('daily'); // 'daily', 'weekly', 'monthly'
+  const [roles, setRoles] = useState([]);
   const [selectedRole, setSelectedRole] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [roles, setRoles] = useState(["Permanent","Temporary","Dailywages"]);
+
   const currentUser = auth.currentUser;
   const months = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
   ];
-  const db = getFirestore(app); 
+
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const empDetailsRef = collection(db, 'admins', currentUser.email, 'attendance');
+        const empDetailsRef = collection(db, 'admins', currentUser.email, 'Empdetails');
         const querySnapshot = await getDocs(empDetailsRef);
         const fetchedEmployees = querySnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -46,65 +47,76 @@ const Salary = () => {
     fetchEmployees();
   }, [currentUser]);
 
- 
-const [attendanceData, setAttendanceData] = useState([]); // To store the fetched data
+  const handleRoleChange = (e) => {
+    const role = e.target.value;
+    setSelectedRole(role);
+    filterData(selectedDate, role, selectedFilter); // Reapply filters with updated role
+  };
 
-// Handle date change
-const handleDateChange = (date) => {
-  setSelectedDate(date);
-  fetchAttendanceData(date, selectedFilter, selectedRole);
-};
-const fetchAttendanceData = async () => {
-  setLoading(true);
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
+    filterData(date, selectedRole, selectedFilter); // Reapply filters with updated date
+  };
 
-  // Format the date to match Firestore path
-  const year = selectedDate.getFullYear();
-  const month = (selectedDate.getMonth() + 1).toString().padStart(2, "0");
-  const day = selectedDate.getDate().toString().padStart(2, "0");
+  const handleFilterChange = (filter) => {
+    setSelectedFilter(filter);
+    filterData(selectedDate, selectedRole, filter); // Reapply filters with updated filter
+  };
 
-  // Construct the Firestore document path
-  const datePath = `${year}-${month}-${day}`;
-  const email = "mathu@gmail.com"; // Use dynamic email or fetch from user context
+  const filterData = (date, role, filter) => {
+    if (!date) return; // Don't filter if no date is selected
 
-  const dataRef = db.collection("admins")
-    .doc(email) // Reference to the user's data
-    .collection("attendance")
-    .doc("permanent")
-    .collection(year + "-" + month) // Year-Month folder
-    .doc(datePath); // Specific day document
+    const filtered = employees.filter((employee) => {
+      let match = true;
 
-  try {
-    const snapshot = await dataRef.get();
+      // Filter by role if selected
+      if (role && employee.role !== role) {
+        match = false;
+      }
 
-    if (snapshot.exists) {
-      const data = snapshot.data();
-      // Filter data by selected role if required
-      const filteredData = Object.values(data).filter(
-        (item) => !selectedRole || item.role === selectedRole
-      );
-      setAttendanceData(filteredData);
-    } else {
-      setAttendanceData([]);
-    }
-  } catch (error) {
-    console.error("Error fetching attendance data: ", error);
-    setAttendanceData([]);
-  }
+      // Filter by the selected filter (daily, weekly, monthly)
+      const employeeDate = new Date(employee.date);
+      const selectedDateObj = new Date(date);
+      
+      switch (filter) {
+        case 'daily':
+          if (employeeDate.toDateString() !== selectedDateObj.toDateString()) {
+            match = false;
+          }
+          break;
+        case 'weekly':
+          const startOfWeek = selectedDateObj.getDate() - selectedDateObj.getDay(); // Get Sunday of the current week
+          const endOfWeek = startOfWeek + 6; // Saturday
+          selectedDateObj.setDate(startOfWeek);
+          const weekStart = new Date(selectedDateObj);
+          const weekEnd = new Date(selectedDateObj.setDate(endOfWeek));
 
-  setLoading(false);
-};
+          if (employeeDate < weekStart || employeeDate > weekEnd) {
+            match = false;
+          }
+          break;
+        case 'monthly':
+          const monthStart = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth(), 1); // Start of the month
+          const monthEnd = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth() + 1, 0); // End of the month
+          if (employeeDate < monthStart || employeeDate > monthEnd) {
+            match = false;
+          }
+          break;
+        default:
+          break;
+      }
+
+      return match;
+    });
+
+    setFilteredEmployees(filtered);
+  };
 
   const handleViewSalary = (employee) => {
     setSelectedEmployee(employee);
     setModalVisible(true);
   };
-  const handleFilterChange = (value) => {
-    setSelectedFilter(value);
-  };
 
-  const handleRoleChange = (value) => {
-    setSelectedRole(value);
-  };
   const handleMarkAsPaid = async () => {
     try {
       const paidStatusRef = doc(db, 'admins', currentUser.email, 'salary_paid', selectedEmployee.id);
@@ -124,10 +136,7 @@ const fetchAttendanceData = async () => {
     }
   };
 
-  useEffect(() => {
-    fetchAttendanceData();
-  }, [selectedFilter, selectedRole, selectedDate]);
-
+  
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white rounded-lg shadow-lg">
       <div className="flex items-center mb-6">
@@ -135,49 +144,47 @@ const fetchAttendanceData = async () => {
         <h1 className="text-3xl font-semibold text-gray-700">Payroll Management System</h1>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Select Date:</label>
-        <DatePicker
-          selected={selectedDate}
-          onChange={(date) => setSelectedDate(date)}
-          dateFormat="yyyy-MM-dd"
-          className="p-2 border border-gray-300 rounded-md"
-        />
-      </div>
+      {/* Date Picker and Filter Options */}
+      <div className="flex items-center mb-6">
+        <div className="mr-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Select Date:</label>
+          <input
+            type="date"
+            value={selectedDate ? selectedDate : ''}
+            onChange={(e) => handleDateChange(e.target.value)}
+            className="p-2 border border-gray-300 rounded-md"
+          />
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Select Role:</label>
-        <select
-          value={selectedRole}
-          onChange={(e) => handleRoleChange(e.target.value)}
-          className="p-2 border border-gray-300 rounded-md"
-        >
-          <option value="">All Roles</option>
-          {roles.map((role, index) => (
-            <option key={index} value={role}>
-              {role}
-            </option>
-          ))}
-        </select>
-      </div>
-      {/* Display the filtered attendance data */}
-      <div>
-        <h3 className="font-medium">Attendance Records</h3>
-        {loading ? (
-          <p>Loading...</p>
-        ) : attendanceData.length === 0 ? (
-          <p>No data available for the selected filters.</p>
-        ) : (
-          <ul>
-            {attendanceData.map((data, index) => (
-              <li key={index} className="border-b py-2">
-                <div>Name: {data.employeeName}</div>
-                <div>Attendance Status: {data.attendanceStatus}</div>
-              </li>
+        <div className="mr-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Filter By:</label>
+          <select
+            value={selectedFilter}
+            onChange={(e) => handleFilterChange(e.target.value)}
+            className="p-2 border border-gray-300 rounded-md"
+          >
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Select Role:</label>
+          <select
+            value={selectedRole}
+            onChange={handleRoleChange}
+            className="p-2 border border-gray-300 rounded-md"
+          >
+            <option value="">All Roles</option>
+            {roles.map((role, index) => (
+              <option key={index} value={role}>
+                {role}
+              </option>
             ))}
-          </ul>
-        )}
-         </div>
+          </select>
+        </div>
+      </div>
 
       {/* Filtered Employee Table */}
       <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
@@ -272,4 +279,5 @@ const fetchAttendanceData = async () => {
     </div>
   );
 };
+
 export default Salary;
