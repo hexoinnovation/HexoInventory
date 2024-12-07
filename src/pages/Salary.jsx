@@ -27,7 +27,7 @@ const Salary = () => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const empDetailsRef = collection(db, 'admins', currentUser.email, 'Empdetails');
+        const empDetailsRef = collection(db, 'admins', currentUser.email, 'attendance');
         const querySnapshot = await getDocs(empDetailsRef);
         const fetchedEmployees = querySnapshot.docs.map((doc) => ({
           id: doc.id,
