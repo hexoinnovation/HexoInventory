@@ -23,7 +23,7 @@ const ReportTabs = () => {
   // Fetch products on component mount or when user changes
   useEffect(() => {
     const fetchProducts = async () => {
-      if (!user) return;
+      if (!currentUser) return;
       
       try {
         const userDocRef = doc(db, "admins", curentUser.email);
