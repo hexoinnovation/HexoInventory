@@ -21,6 +21,7 @@ import {
 import Shop from "./pages/Account";
 import Attendence from "./pages/Attendence";
 import Salary from "./pages/Salary";
+import Report from "./pages/Report";
 import BusinessDetails from "./pages/BusinessDetails";
 import CustomerDetails from "./pages/CustomerDetails";
 import Dashboard from "./pages/Dashboard";
@@ -195,6 +196,10 @@ const App = () => {
                  <Route
                 path="/salary"
                 element={isAuthenticated ? <Salary /> : <Navigate to="/" />}
+              />
+               <Route
+                path="/report"
+                element={isAuthenticated ? <Report /> : <Navigate to="/" />}
               />
               <Route path="/notifications" element={<Notifications />} />
             </Routes>

@@ -26,6 +26,7 @@ const App = () => {
     state: "",
     country: "",
   });
+  const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
   const [user, setUser] = useState(null);
     // Fetch user and employee data
     useEffect(() => {
@@ -134,7 +135,9 @@ const App = () => {
           gender: '',
           contact: '',
           email: '',
-          role:'',
+          role: '',
+          salary: '',
+          salaryInterval: '',
           address: '',
           state: '',
           country: '',
@@ -489,20 +492,167 @@ const App = () => {
           ></textarea>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Role</label>
-          <select
-            name="role"
-            value={newEmployee.role}
-            onChange={handleInputChange}
-            className="border border-gray-300 rounded-lg p-3 w-full focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-300 hover:shadow-lg transition duration-300 ease-in-out"
-            required
+  <label className="block text-sm font-medium text-gray-700">Role</label>
+  <select
+    name="role"
+    value={newEmployee.role}
+    onChange={(e) => {
+      handleInputChange(e);
+      const role = e.target.value;
+      if (role) {
+        setIsSalaryModalOpen(true); // Open salary modal
+      }
+    }}
+    className="border border-gray-300 rounded-lg p-3 w-full focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-300 hover:shadow-lg transition duration-300 ease-in-out"
+    required
+  >
+    <option value="">Select Role</option>
+    <option value="Permanent">Permanent</option>
+    <option value="Temporary">Temporary</option>
+    <option value="Dailywages">Daily Wages</option>
+  </select>
+</div>
+
+<div>
+  <label className="block text-sm font-medium text-gray-700">Salary</label>
+  <input
+    type="number"
+    name="salary"
+    value={newEmployee.salary}
+    onChange={handleInputChange}
+    className="border border-gray-300 rounded-lg p-3 w-full focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-300 hover:shadow-lg transition duration-300 ease-in-out"
+    disabled={newEmployee.role !== 'Custom'}
+    required
+  />
+</div>
+{isSalaryModalOpen && (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm z-50">
+    <div
+      className="bg-white rounded-2xl shadow-2xl w-96 p-6 animate-zoomIn"
+      style={{
+        animation: 'zoomIn 0.3s ease-out',
+      }}
+    >
+      <h3 className="text-2xl font-extrabold text-gray-800 text-center mb-4">
+        Set Salary
+      </h3>
+      <p className="text-sm text-gray-900 text-center mb-6">
+        Specify the salary and choose an interval for the employee.
+      </p>
+
+      {/* Salary Input */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-900 mb-2">
+          Amount
+        </label>
+        <input
+          type="number"
+          name="salary"
+          value={newEmployee.salary || ''}
+          onChange={handleInputChange}
+          className="border border-gray-300 rounded-lg p-3 w-full focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all"
+          placeholder="Enter salary amount"
+          required
+        />
+      </div>
+
+      {/* Salary Interval */}
+      <div>
+        <label className="block text-sm font-medium text-gray-900 mb-2">
+          Salary Interval
+        </label>
+        <div className="flex gap-4 justify-between">
+          <label
+            className={`flex items-center gap-2 cursor-pointer ${
+              newEmployee.salaryInterval === 'Per Month' ? 'text-purple-600 font-bold' : 'text-gray-600'
+            }`}
           >
-            <option value="">Select Role</option>
-            <option value="Permanent">Permanent</option>
-            <option value="Temporary">Temporary</option>
-            <option value="Dailywages">Daily Wages</option>
-          </select>
+            <input
+              type="radio"
+              name="salaryInterval"
+              value="Per Month"
+              checked={newEmployee.salaryInterval === 'Per Month'}
+              onChange={handleInputChange}
+              className="hidden"
+            />
+            <div
+              className={`w-5 h-5 rounded-full border ${
+                newEmployee.salaryInterval === 'Per Month'
+                  ? 'bg-purple-500 border-purple-500'
+                  : 'border-gray-300'
+              } transition-all`}
+            ></div>
+            <span>Per Month</span>
+          </label>
+
+          <label
+            className={`flex items-center gap-2 cursor-pointer ${
+              newEmployee.salaryInterval === 'Per Week' ? 'text-purple-600 font-bold' : 'text-gray-600'
+            }`}
+          >
+            <input
+              type="radio"
+              name="salaryInterval"
+              value="Per Week"
+              checked={newEmployee.salaryInterval === 'Per Week'}
+              onChange={handleInputChange}
+              className="hidden"
+            />
+            <div
+              className={`w-5 h-5 rounded-full border ${
+                newEmployee.salaryInterval === 'Per Week'
+                  ? 'bg-purple-500 border-purple-500'
+                  : 'border-gray-300'
+              } transition-all`}
+            ></div>
+            <span>Per Week</span>
+          </label>
+
+          <label
+            className={`flex items-center gap-2 cursor-pointer ${
+              newEmployee.salaryInterval === 'Per Day' ? 'text-purple-600 font-bold' : 'text-gray-600'
+            }`}
+          >
+            <input
+              type="radio"
+              name="salaryInterval"
+              value="Per Day"
+              checked={newEmployee.salaryInterval === 'Per Day'}
+              onChange={handleInputChange}
+              className="hidden"
+            />
+            <div
+              className={`w-5 h-5 rounded-full border ${
+                newEmployee.salaryInterval === 'Per Day'
+                  ? 'bg-purple-500 border-purple-500'
+                  : 'border-gray-300'
+              } transition-all`}
+            ></div>
+            <span>Per Day</span>
+          </label>
         </div>
+      </div>
+
+      {/* Buttons */}
+      <div className="flex justify-end mt-8 gap-4">
+        <button
+          onClick={() => setIsSalaryModalOpen(false)}
+          className="px-6 py-2 text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 hover:text-gray-800 transition-all"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => setIsSalaryModalOpen(false)}
+          className="px-6 py-2 text-white bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
         <div>
           <label className="block text-sm font-medium text-gray-700">State</label>
           <input
@@ -513,9 +663,7 @@ const App = () => {
             className="border border-gray-300 rounded-lg p-3 w-full focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-300 hover:shadow-lg transition duration-300 ease-in-out"
             required
           />
-        </div>
-        
-        
+        </div> 
         <div>
           <label className="block text-sm font-medium text-gray-700">Country</label>
           <select
@@ -533,7 +681,6 @@ const App = () => {
             <option value="Japan">Japan</option>
           </select>
         </div>
-
         <div className="flex justify-between">
           <button
             type="button"
@@ -566,6 +713,8 @@ const App = () => {
       <th className="px-4 py-2 text-left">Contact</th>
       <th className="px-4 py-2 text-left">Email</th>
       <th className="px-4 py-2 text-left">Role</th>
+      <th className="px-4 py-2 text-left">Salary</th>
+      <th  className="px-4 py-2 text-left">Salary Interval</th>
       <th className="px-4 py-2 text-left">Address</th>
       <th className="px-4 py-2 text-left">State</th>
       <th className="px-4 py-2 text-left">Country</th>
@@ -596,8 +745,9 @@ const App = () => {
       <td className="px-4 py-2">{employee.contact}</td>
       <td className="px-4 py-2">{employee.email}</td>
       <td className="px-4 py-2">{employee.role}</td>
+      <td className="px-4 py-2">₹{employee.salary}</td>
+        <td className="px-4 py-2">{employee.salaryInterval}</td>
       <td className="px-4 py-2">{employee.address}</td>
-     
       <td className="px-4 py-2">{employee.state}</td>
       <td className="px-4 py-2">{employee.country}</td>
       <td className="px-3 py-2">
@@ -664,89 +814,121 @@ const App = () => {
     />
   </label>
 </div>
-        {/* Editable Fields */}
-        <div>
-          <label className="block font-semibold text-purple-700">Name:</label>
-          <input
-            type="text"
-            value={selectedEmployee?.name || ''}
-            onChange={(e) => handleChange(e, 'name')}
-            className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
-          />
-        </div>
-        <div>
-          <label className="block font-semibold text-purple-700">DOB:</label>
-          <input
-            type="date"
-            value={selectedEmployee?.dob || ''}
-            onChange={(e) => handleChange(e, 'dob')}
-            className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
-          />
-        </div>
-        <div>
-          <label className="block font-semibold text-purple-700">Contact:</label>
-          <input
-            type="tel"
-            value={selectedEmployee?.contact || ''}
-            onChange={(e) => handleChange(e, 'contact')}
-            className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
-          />
-        </div>
-        <div>
-          <label className="block font-semibold text-purple-700">Email:</label>
-          <input
-            type="email"
-            value={selectedEmployee?.email || ''}
-            onChange={(e) => handleChange(e, 'email')}
-            className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
-          />
-        </div>
-        <div>
-          <label className="block font-semibold text-purple-700">Role:</label>
-          <input
-            type="text"
-            value={selectedEmployee?.role || ''}
-            onChange={(e) => handleChange(e, 'role')}
-            className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
-          />
-        </div>
-        <div>
-          <label className="block font-semibold text-purple-700">Address:</label>
-          <input
-            type="text"
-            value={selectedEmployee?.address || ''}
-            onChange={(e) => handleChange(e, 'address')}
-            className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
-          />
-        </div>
-        <div>
-          <label className="block font-semibold text-purple-700">State:</label>
-          <input
-            type="text"
-            value={selectedEmployee?.state || ''}
-            onChange={(e) => handleChange(e, 'state')}
-            className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
-          />
-        </div>
-        <div>
-          <label className="block font-semibold text-purple-700">Country:</label>
-          <input
-            type="text"
-            value={selectedEmployee?.country || ''}
-            onChange={(e) => handleChange(e, 'country')}
-            className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
-          />
-        </div>
+       {/* Editable Fields */}
+<div>
+  <label className="block font-semibold text-purple-700">Name:</label>
+  <input
+    type="text"
+    value={selectedEmployee?.name || ''}
+    onChange={(e) => handleChange(e, 'name')}
+    className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
+  />
+</div>
+<div>
+  <label className="block font-semibold text-purple-700">DOB:</label>
+  <input
+    type="date"
+    value={selectedEmployee?.dob || ''}
+    onChange={(e) => handleChange(e, 'dob')}
+    className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
+  />
+</div>
+<div>
+  <label className="block font-semibold text-purple-700">Contact:</label>
+  <input
+    type="tel"
+    value={selectedEmployee?.contact || ''}
+    onChange={(e) => handleChange(e, 'contact')}
+    className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
+  />
+</div>
+<div>
+  <label className="block font-semibold text-purple-700">Email:</label>
+  <input
+    type="email"
+    value={selectedEmployee?.email || ''}
+    onChange={(e) => handleChange(e, 'email')}
+    className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
+  />
+</div>
+<div>
+  <label className="block font-semibold text-purple-700">Role:</label>
+  <select
+    value={selectedEmployee?.role || ''}
+    onChange={(e) => handleChange(e, 'role')}
+    className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
+  >
+    <option value="">Select Role</option>
+    <option value="Permanent">Permanent</option>
+    <option value="Temporary">Temporary</option>
+    <option value="Dailywages">Daily Wages</option>
+    <option value="Custom">Custom</option>
+  </select>
+</div>
 
-        {/* Save Button */}
-        <div className="flex justify-end mt-6">
-          <button
-            onClick={handleSave}
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-2 rounded-lg hover:from-purple-700 hover:to-indigo-700 transition duration-300"
-          >
-            Save 
-          </button>
-        </div>
+<div>
+  <label className="block font-semibold text-purple-700">Salary:</label>
+  <input
+    type="number"
+    value={selectedEmployee?.salary || ''}
+    onChange={(e) => handleChange(e, 'salary')}
+    className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
+    placeholder="Enter salary amount"
+  />
+</div>
+
+<div>
+  <label className="block font-semibold text-purple-700">Salary Interval:</label>
+  <select
+    value={selectedEmployee?.salaryInterval || ''}
+    onChange={(e) => handleChange(e, 'salaryInterval')}
+    className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
+  >
+    <option value="">Select Interval</option>
+    <option value="Per Month">Per Month</option>
+    <option value="Per Week">Per Week</option>
+    <option value="Per Day">Per Day</option>
+  </select>
+</div>
+
+<div>
+  <label className="block font-semibold text-purple-700">Address:</label>
+  <input
+    type="text"
+    value={selectedEmployee?.address || ''}
+    onChange={(e) => handleChange(e, 'address')}
+    className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
+  />
+</div>
+<div>
+  <label className="block font-semibold text-purple-700">State:</label>
+  <input
+    type="text"
+    value={selectedEmployee?.state || ''}
+    onChange={(e) => handleChange(e, 'state')}
+    className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
+  />
+</div>
+<div>
+  <label className="block font-semibold text-purple-700">Country:</label>
+  <input
+    type="text"
+    value={selectedEmployee?.country || ''}
+    onChange={(e) => handleChange(e, 'country')}
+    className="border-2 border-indigo-500 p-3 w-full rounded-lg focus:ring-2 focus:ring-indigo-500 transition"
+  />
+</div>
+
+{/* Save Button */}
+<div className="flex justify-end mt-6">
+  <button
+    onClick={handleSave}
+    className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-2 rounded-lg hover:from-purple-700 hover:to-indigo-700 transition duration-300"
+  >
+    Save
+  </button>
+</div>
+
       </div>
     </div>
   </div>

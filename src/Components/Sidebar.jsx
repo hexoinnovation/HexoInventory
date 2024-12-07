@@ -219,32 +219,17 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Salary</span>
               </Link>
             </li>
-            <li className={activeLink === "leave-management" ? "active" : ""}>
-              <Link
-                to="/leave-management"
-                onClick={() => handleLinkClick("leave-management")}
-              >
-                <i className="bx bxs-calendar"></i>
-                <span className="text">Leave Management</span>
-              </Link>
-            </li>
-            <li className={activeLink === "training" ? "active" : ""}>
-           
-            </li>
-            <li
-              className={activeLink === "performance-reviews" ? "active" : ""}
-            >
-              <Link
-                to="/performance-reviews"
-                onClick={() => handleLinkClick("performance-reviews")}
-              >
-                <i className="bx bxs-star"></i>
-                <span className="text">Performance Reviews</span>
-              </Link>
-            </li>
+          
+          
           </ul>
         )}
 
+<li>
+          <Link to="/report">
+            <i className="bx bxs-report text-2xl"></i>
+            <span className="text">Report</span>
+          </Link>
+        </li>
         <li className={activeLink === "logout" ? "active" : ""}>
           <Link
             to="#"
