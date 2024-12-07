@@ -1,4 +1,4 @@
-// firebase.js
+// Firebase.js
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -12,13 +12,12 @@ import {
   collection,
   deleteDoc,
   getDocs,
-  
   limit,
   orderBy,
   query,
   getDoc,
 } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Correct import for storage
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // Firebase config
 const firebaseConfig = {
@@ -41,6 +40,7 @@ const storage = getStorage(app); // Firebase Storage
 
 // Export necessary modules
 export {
+  app, // Export the app instance
   auth,
   db,
   storage,
