@@ -160,7 +160,7 @@ const Purchase = () => {
   );
 
   return (
-    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
+    <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Info Boxes */}
       <h1 className="text-5xl font-extrabold text-blue-900 mb-6">
         Purchase Orders
@@ -193,7 +193,7 @@ const Purchase = () => {
       </div>
 
       {/* Filter Panel */}
-      <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
+      <div className="bg-blue-900 p-4 rounded-md shadow-md mb-6">
         <h3 className="text-lg font-semibold mb-4 text-gray-100">Filters</h3>
         <div className="grid grid-cols-6 sm:grid-cols-2 md:grid-cols-3 gap-6">
           <div>
@@ -323,7 +323,7 @@ const Purchase = () => {
       {/* Product Table */}
       <div className="overflow-x-auto bg-white shadow-xl rounded-lg">
         <table className="min-w-full bg-white border border-gray-200 shadow-md">
-          <thead className="bg-gradient-to-r from-blue-700 to-blue-700 text-white">
+          <thead className="bg-gradient-to-r from-blue-900 to-blue-900 text-white">
             <tr>
               <th className="py-3 px-4 text-left">P.No</th>
               <th className="py-3 px-4 text-left">Supplier</th>

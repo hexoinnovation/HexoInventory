@@ -161,7 +161,7 @@ const Sales = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
+    <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       <h1 className="text-5xl font-extrabold text-blue-900 mb-6 flex items-center">
         Sales Management
         <FaShoppingCart className="animate-drift ml-4" />
@@ -203,7 +203,7 @@ const Sales = () => {
       </div>
 
       {/* Filter Section */}
-      <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
+      <div className="bg-blue-900 p-4 rounded-md shadow-md mb-6">
         <h3 className="text-lg font-semibold mb-4 text-gray-100">Filters</h3>
         <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <div>
@@ -268,7 +268,7 @@ const Sales = () => {
       {/* Invoice Table */}
       <div className="w-full mt-5">
         <table className="min-w-full bg-white shadow-md rounded-lg">
-          <thead className="bg-gradient-to-r from-blue-700 to-blue-700 text-white">
+          <thead className="bg-gradient-to-r from-blue-900 to-blue-900 text-white">
             <tr>
               <th className="py-3 px-4 text-left">UID</th>
               <th className="py-3 px-4 text-left">Date</th>

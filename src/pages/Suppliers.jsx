@@ -48,7 +48,7 @@ const Suppliers = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 mt-10">
+    <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Search and Button Section */}
       <div className="flex justify-between mb-4">
         {/* Search Bar */}

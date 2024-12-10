@@ -253,7 +253,7 @@ const ViewAllInvoice = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 bg-white rounded-lg shadow-lg">
+    <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       <h1 className="text-5xl font-extrabold text-blue-700 mb-6 flex items-center">
         All Invoices
         <FaFileInvoice className="ml-4 animate-pulseSpin" />
@@ -276,7 +276,7 @@ const ViewAllInvoice = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
+      <div className="bg-blue-900 p-4 rounded-md shadow-md mb-6">
         <h2 className="text-lg font-bold text-gray-100 mb-4">
           Filter Invoices
         </h2>
@@ -356,7 +356,7 @@ const ViewAllInvoice = () => {
 
       {/* Invoice Table */}
       <table className="min-w-full bg-white rounded-lg shadow-md">
-        <thead className="bg-blue-600 text-white">
+        <thead className="bg-blue-900 text-white">
           <tr>
             <th className="py-3 px-4 text-left ">UID</th>
             <th className="py-3 px-4 text-left ">Client</th>

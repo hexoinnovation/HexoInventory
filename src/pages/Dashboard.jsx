@@ -101,7 +101,7 @@ const Dashboard = () => {
   };
 
   return (
-    <main className="bg-white-600 text-gray-100 min-h-screen p-8">
+    <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       <div className="head-title flex justify-between items-center mb-12 bg-gradient-to-r from-blue-900 to-indigo-800 p-8 rounded-2xl shadow-2xl">
         <div className="left">
           <h1 className="text-5xl font-bold text-white">Dashboard</h1>

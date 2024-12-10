@@ -121,7 +121,7 @@ const ManageCategories = () => {
   const categoriesWithoutImages = totalCategories - categoriesWithImages;
 
   return (
-    <div className="p-8 bg-gradient-to-br from-blue-100 via-white to-gray-100 min-h-screen">
+    <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       <h1 className="text-4xl font-bold text-center text-blue-600 mb-8">
         Manage Categories
       </h1>

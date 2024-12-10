@@ -81,7 +81,7 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <main className="bg-gray-100 text-gray-900 min-h-screen p-8">
+    <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Header Title */}
       <div className="head-title flex justify-between items-center mb-12 bg-gradient-to-r from-blue-800 to-blue-600 p-8 rounded-2xl shadow-2xl">
         <div className="left">

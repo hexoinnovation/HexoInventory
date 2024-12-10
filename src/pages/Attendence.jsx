@@ -1,614 +1,639 @@
 import React, { useState, useEffect } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faDownload, faEdit } from "@fortawesome/free-solid-svg-icons";
-import { faTimes, faFilter } from "@fortawesome/free-solid-svg-icons";
-import { db, auth } from "../config/firebase";
 import {
+  getFirestore,
   collection,
-  doc,
-  getDoc,
+  addDoc,
+  query,
   getDocs,
+  doc,
   updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import Swal from "sweetalert2";
 
-const AttendanceTable = () => {
-  const [employees, setEmployees] = useState([]);
-  const [filteredEmployees, setFilteredEmployees] = useState([]);
-  const [filterDate, setFilterDate] = useState("");
-  const [monthlyFilter, setMonthlyFilter] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [roleFilter, setRoleFilter] = useState("All");
-  const [nameFilter, setNameFilter] = useState("");
-  const [contactFilter, setContactFilter] = useState("");
-  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
-  const [attendanceChanged, setAttendanceChanged] = useState(false);
+const db = getFirestore();
+const auth = getAuth();
+
+const AttendanceApp = () => {
+  const [attendances, setAttendances] = useState([]);
+  const [employees, setEmployees] = useState([]); // Fetch employee details
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedEmployee, setEditedEmployee] = useState(null);
+  const [newAttendance, setNewAttendance] = useState({
+    employeeId: "",
+    date: "",
+    status: "Present",
+  });
+  const [viewAttendance, setViewAttendance] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [user, setUser] = useState(null);
 
-  const currentUser = auth.currentUser;
-  const currentDate = new Date();
-  const formattedDate = `${currentDate
-    .getDate()
-    .toString()
-    .padStart(2, "0")}.${(currentDate.getMonth() + 1)
-    .toString()
-    .padStart(2, "0")}.${currentDate.getFullYear()}`;
+  // Filter States
+  const [statusFilter, setStatusFilter] = useState(""); // Status filter (Present, Absent, On Leave)
+  const [employeeFilter, setEmployeeFilter] = useState(""); // Employee filter (employee name)
+  const [dateFilterStart, setDateFilterStart] = useState(""); // Start date filter
+  const [dateFilterEnd, setDateFilterEnd] = useState(""); // End date filter
 
+  // Fetch user and employee data from Firestore
   useEffect(() => {
-    const fetchEmployees = async () => {
-      if (!currentUser || !currentUser.email) return;
+    const fetchUserAndEmployees = async () => {
+      const currentUser = auth.currentUser;
+      setUser(currentUser);
 
-      try {
-        const empDetailsRef = collection(
-          db,
-          "admins",
-          currentUser.email,
-          "Empdetails"
+      if (currentUser) {
+        // Fetch employee details for assigning attendance
+        const employeeQuery = query(
+          collection(db, "admins", currentUser.email, "Empdetails")
         );
-        const empSnapshot = await getDocs(empDetailsRef);
-        const fetchedEmployees = empSnapshot.docs.map((doc) => ({
+        const employeeSnapshot = await getDocs(employeeQuery);
+        const fetchedEmployees = employeeSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
+        setEmployees(fetchedEmployees);
 
-        const attendanceRef = doc(
-          db,
-          "admins",
-          currentUser.email,
-          "attendance",
-          formattedDate
-        );
-        const attendanceSnap = await getDoc(attendanceRef);
-
-        if (attendanceSnap.exists()) {
-          const attendanceData = attendanceSnap.data();
-          const updatedEmployees = fetchedEmployees.map((employee) => {
-            const attendanceRecord = attendanceData.employees.find(
-              (att) => att.id === employee.id
-            );
-            return {
-              ...employee,
-              attendance: attendanceRecord ? attendanceRecord.status : "Absent",
-            };
-          });
-          setEmployees(updatedEmployees);
-          setFilteredEmployees(updatedEmployees);
-        } else {
-          const defaultAttendance = fetchedEmployees.map((employee) => ({
-            ...employee,
-            attendance: "Absent",
-          }));
-          setEmployees(defaultAttendance);
-          setFilteredEmployees(defaultAttendance);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
+        // Fetch attendance records
+        const attendanceQuery = query(collection(db, "attendance"));
+        const attendanceSnapshot = await getDocs(attendanceQuery);
+        const fetchedAttendances = attendanceSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setAttendances(fetchedAttendances);
       }
     };
 
-    fetchEmployees();
-  }, [currentUser, formattedDate]);
-
-  const handleFilters = () => {
-    let filtered = [...employees];
-
-    if (statusFilter !== "All") {
-      filtered = filtered.filter(
-        (employee) => employee.attendance === statusFilter
-      );
-    }
-
-    if (roleFilter !== "All") {
-      filtered = filtered.filter((employee) => employee.role === roleFilter);
-    }
-
-    if (nameFilter) {
-      filtered = filtered.filter((employee) =>
-        employee.name.toLowerCase().includes(nameFilter.toLowerCase())
-      );
-    }
-
-    if (contactFilter) {
-      filtered = filtered.filter((employee) =>
-        employee.contact.includes(contactFilter)
-      );
-    }
-
-    if (filterDate) {
-      if (monthlyFilter) {
-        const selectedMonth = filterDate.split("-")[1];
-        filtered = filtered.filter(
-          (employee) =>
-            employee.date && employee.date.split(".")[1] === selectedMonth
-        );
-      } else {
-        filtered = filtered.filter(
-          (employee) =>
-            employee.date === filterDate.split("-").reverse().join(".")
-        );
-      }
-    }
-
-    setFilteredEmployees(filtered);
-  };
-
-  useEffect(() => {
-    handleFilters();
-  }, [
-    statusFilter,
-    roleFilter,
-    nameFilter,
-    contactFilter,
-    filterDate,
-    monthlyFilter,
-  ]);
-
-  const toggleAttendance = async (employeeId, currentStatus) => {
-    const newStatus = currentStatus === "Present" ? "Absent" : "Present";
-
-    try {
-      const attendanceRef = doc(
-        db,
-        "admins",
-        currentUser.email,
-        "attendance",
-        formattedDate
-      );
-      const attendanceSnap = await getDoc(attendanceRef);
-
-      if (attendanceSnap.exists()) {
-        const attendanceData = attendanceSnap.data();
-        const updatedEmployees = attendanceData.employees.map((emp) =>
-          emp.id === employeeId ? { ...emp, status: newStatus } : emp
-        );
-
-        await updateDoc(attendanceRef, {
-          employees: updatedEmployees,
-        });
-
-        setEmployees((prevEmployees) =>
-          prevEmployees.map((employee) =>
-            employee.id === employeeId
-              ? { ...employee, attendance: newStatus }
-              : employee
-          )
-        );
-        setFilteredEmployees((prevEmployees) =>
-          prevEmployees.map((employee) =>
-            employee.id === employeeId
-              ? { ...employee, attendance: newStatus }
-              : employee
-          )
-        );
-        setAttendanceChanged(true);
-      }
-    } catch (error) {
-      console.error("Error updating attendance:", error);
-    }
-  };
-  const saveAttendance = async () => {
-    try {
-      const attendanceRef = doc(
-        db,
-        "admins",
-        currentUser.email,
-        "attendance",
-        formattedDate
-      );
-      const attendanceSnap = await getDoc(attendanceRef);
-
-      if (attendanceSnap.exists()) {
-        const attendanceData = attendanceSnap.data();
-        const updatedEmployees = employees.map((employee) => ({
-          ...employee,
-          status: employee.attendance,
-        }));
-
-        await updateDoc(attendanceRef, {
-          employees: updatedEmployees,
-        });
-
-        setAttendanceChanged(false);
-        alert("Attendance saved successfully!");
-      }
-    } catch (error) {
-      console.error("Error saving attendance:", error);
-    }
-  };
-
-  const openModal = (employee) => {
-    setSelectedEmployee(employee);
-    setEditedEmployee(employee);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedEmployee(null);
-    setIsEditing(false);
-  };
+    fetchUserAndEmployees();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setEditedEmployee({
-      ...editedEmployee,
-      [name]: value,
-    });
+    setNewAttendance((prev) => ({ ...prev, [name]: value }));
   };
 
-  const saveEditedEmployee = async () => {
-    try {
-      const employeeRef = doc(
-        db,
-        "admins",
-        currentUser.email,
-        "Empdetails",
-        editedEmployee.id
-      );
-      await updateDoc(employeeRef, {
-        name: editedEmployee.name,
-        dob: editedEmployee.dob,
-        contact: editedEmployee.contact,
-        email: editedEmployee.email,
-        role: editedEmployee.role,
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!user) {
+      Swal.fire({
+        title: "Error!",
+        text: "Please log in to add or update attendance details.",
+        icon: "error",
+        confirmButtonText: "OK",
       });
-      setEmployees((prevEmployees) =>
-        prevEmployees.map((employee) =>
-          employee.id === editedEmployee.id ? editedEmployee : employee
-        )
-      );
-      setIsEditing(false);
-      alert("Employee details updated successfully!");
+      return;
+    }
+
+    try {
+      const attendanceData = {
+        ...newAttendance,
+        employeeId: newAttendance.employeeId,
+      };
+
+      const userDocRef = collection(db, "attendance");
+
+      if (newAttendance.id) {
+        const attendanceDocRef = doc(userDocRef, newAttendance.id);
+        await updateDoc(attendanceDocRef, attendanceData);
+        setAttendances((prev) =>
+          prev.map((att) =>
+            att.id === newAttendance.id ? { ...att, ...attendanceData } : att
+          )
+        );
+        Swal.fire({
+          title: "Updated!",
+          text: "Attendance updated successfully!",
+          icon: "success",
+          showConfirmButton: false,
+          timer: 2000,
+        });
+      } else {
+        const newDocRef = await addDoc(userDocRef, attendanceData);
+        setAttendances((prev) => [
+          ...prev,
+          { id: newDocRef.id, ...attendanceData },
+        ]);
+        Swal.fire({
+          title: "Added!",
+          text: "Attendance added successfully!",
+          icon: "success",
+          showConfirmButton: false,
+          timer: 2000,
+        });
+      }
+
+      setIsModalOpen(false);
+      setNewAttendance({
+        employeeId: "",
+        date: "",
+        status: "Present",
+      });
+      setIsEditMode(false); // Reset edit mode
     } catch (error) {
-      console.error("Error updating employee:", error);
+      console.error("Error adding/updating attendance:", error);
+      Swal.fire({
+        title: "Error!",
+        text: "Failed to add/update attendance. Please try again.",
+        icon: "error",
+        confirmButtonText: "OK",
+      });
     }
   };
 
+  const handleEdit = (attendanceId) => {
+    const attendance = attendances.find((att) => att.id === attendanceId);
+    setNewAttendance(attendance);
+    setIsEditMode(true); // Set to edit mode
+    setIsModalOpen(true); // Open the modal for editing
+  };
+
+  const handleView = (attendanceId) => {
+    const attendance = attendances.find((att) => att.id === attendanceId);
+    setViewAttendance(attendance);
+  };
+
+  const handleDelete = async (attendanceId) => {
+    if (!user) {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "Please log in to delete attendance records.",
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const attendanceDocRef = doc(db, "attendance", attendanceId);
+        await deleteDoc(attendanceDocRef);
+        setAttendances((prev) => prev.filter((att) => att.id !== attendanceId));
+
+        Swal.fire({
+          title: "Deleted!",
+          text: "The attendance record has been deleted.",
+          icon: "success",
+          showConfirmButton: false,
+          timer: 2000,
+        });
+      } catch (error) {
+        console.error("Error deleting attendance:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Failed!",
+          text: "Failed to delete attendance. Please try again.",
+        });
+      }
+    }
+  };
+
+  // Combine Employee and Attendance Data
+  const employeeAttendanceData = attendances.map((attendance) => {
+    const employee = employees.find((emp) => emp.id === attendance.employeeId);
+    return {
+      ...attendance,
+      employeeName: employee ? employee.name : "Unknown",
+      employeeContact: employee ? employee.contact : "N/A",
+      employeeEmail: employee ? employee.email : "N/A",
+    };
+  });
+
+  // Filter Logic
+  const filteredAttendanceData = employeeAttendanceData.filter((attendance) => {
+    // Filter by employee name
+    const matchesEmployee = employeeFilter
+      ? attendance.employeeName
+          .toLowerCase()
+          .includes(employeeFilter.toLowerCase())
+      : true;
+
+    // Filter by status
+    const matchesStatus = statusFilter
+      ? attendance.status === statusFilter
+      : true;
+
+    // Filter by date range
+    const matchesDate =
+      dateFilterStart && dateFilterEnd
+        ? new Date(attendance.date) >= new Date(dateFilterStart) &&
+          new Date(attendance.date) <= new Date(dateFilterEnd)
+        : true;
+
+    return matchesEmployee && matchesStatus && matchesDate;
+  });
+
+  // InfoBox calculations
   const totalEmployees = employees.length;
-  const totalPresent = employees.filter(
-    (employee) => employee.attendance === "Present"
+  const totalPresent = filteredAttendanceData.filter(
+    (att) => att.status === "Present"
   ).length;
-  const totalAbsent = employees.filter(
-    (employee) => employee.attendance === "Absent"
+  const totalAbsent = filteredAttendanceData.filter(
+    (att) => att.status === "Absent"
   ).length;
-  const totalRoles = [...new Set(employees.map((employee) => employee.role))]
-    .length;
+  const totalOnLeave = filteredAttendanceData.filter(
+    (att) => att.status === "On Leave"
+  ).length;
+  const overallAttendancePercentage =
+    totalEmployees > 0 ? ((totalPresent / totalEmployees) * 100).toFixed(2) : 0;
 
   return (
-    <div className="p-6 bg-gradient-to-br from-blue-100 to-indigo-300 min-h-screen">
-      <div className="grid grid-cols-4 gap-8 mb-6">
-        <div className="bg-green-500 text-white p-4 rounded-lg shadow-lg text-center">
-          <h3 className="text-2xl font-bold">{totalEmployees}</h3>
-          <p className="text-sm">Total Employees</p>
+    <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
+      {/* Info Box Section */}
+      <div className="flex space-x-6 mb-6">
+        {/* Total Employees Info Box */}
+        <div className="bg-gradient-to-r from-green-400 to-blue-500 p-6 rounded-lg shadow-lg text-center text-white w-80 transform transition duration-500 ease-in-out hover:scale-105">
+          <h3 className="text-xl font-semibold">Total Employees</h3>
+          <p className="text-4xl font-bold">{totalEmployees}</p>
         </div>
-        <div className="bg-blue-500 text-white p-4 rounded-lg shadow-lg text-center">
-          <h3 className="text-2xl font-bold">{totalPresent}</h3>
-          <p className="text-sm">Total Present</p>
+
+        {/* Total Present Info Box */}
+        <div className="bg-gradient-to-r from-indigo-400 to-purple-500 p-6 rounded-lg shadow-lg text-center text-white w-80 transform transition duration-500 ease-in-out hover:scale-105">
+          <h3 className="text-xl font-semibold">Total Present</h3>
+          <p className="text-4xl font-bold">{totalPresent}</p>
         </div>
-        <div className="bg-red-500 text-white p-4 rounded-lg shadow-lg text-center">
-          <h3 className="text-2xl font-bold">{totalAbsent}</h3>
-          <p className="text-sm">Total Absent</p>
+
+        {/* Total Absent Info Box */}
+        <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-6 rounded-lg shadow-lg text-center text-white w-80 transform transition duration-500 ease-in-out hover:scale-105">
+          <h3 className="text-xl font-semibold">Total Absent</h3>
+          <p className="text-4xl font-bold">{totalAbsent}</p>
         </div>
-        <div className="bg-yellow-500 text-white p-4 rounded-lg shadow-lg text-center">
-          <h3 className="text-2xl font-bold">{totalRoles}</h3>
-          <p className="text-sm">Total Roles</p>
+
+        {/* Total On Leave Info Box */}
+        <div className="bg-gradient-to-r from-pink-400 to-red-500 p-6 rounded-lg shadow-lg text-center text-white w-80 transform transition duration-500 ease-in-out hover:scale-105">
+          <h3 className="text-xl font-semibold">Total On Leave</h3>
+          <p className="text-4xl font-bold">{totalOnLeave}</p>
+        </div>
+
+        {/* Overall Attendance Percentage Info Box */}
+        <div className="bg-gradient-to-r from-teal-400 to-green-500 p-6 rounded-lg shadow-lg text-center text-white w-80 transform transition duration-500 ease-in-out hover:scale-105">
+          <h3 className="text-xl font-semibold">Overall Attendance (%)</h3>
+          <p className="text-4xl font-bold">{overallAttendancePercentage}%</p>
         </div>
       </div>
+{/* Filter Section */}
+<div className="bg-blue-900 p-4 rounded-md shadow-md mb-6">
+  <h3 className="text-lg font-semibold mb-4 text-gray-100">Filters</h3>
+  <div className="grid grid-cols-4 gap-6">
+    {/* Filter by Employee Name */}
+    <div className="flex flex-col">
+      <label className="text-sm font-medium text-gray-100 mb-2">
+        Filter by Employee
+      </label>
+      <input
+        type="text"
+        value={employeeFilter}
+        onChange={(e) => setEmployeeFilter(e.target.value)}
+        placeholder="Search Employee..."
+        className="w-full py-3 pl-4 pr-4 border-2 border-blue-300 rounded-lg shadow-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 ease-in-out"
+      />
+    </div>
 
-      <div className="grid grid-cols-12 gap-8">
-        <div className="col-span-9 bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-2xl font-semibold text-blue-700 mb-4 text-left">
-            Attendance for {formattedDate}
-          </h2>
-          <table className="w-full text-left border-separate border-spacing-0 text-gray-700 font-semibold">
-            <thead className="bg-indigo-300">
+    {/* Filter by Status */}
+    <div className="flex flex-col">
+      <label className="text-sm font-medium text-gray-100 mb-2">
+        Filter by Status
+      </label>
+      <select
+        className="w-full py-3 pl-4 pr-4 border-2 border-blue-300 rounded-lg shadow-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 ease-in-out"
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value)}
+      >
+        <option value="">All Status</option>
+        <option value="Present">Present</option>
+        <option value="Absent">Absent</option>
+        <option value="On Leave">On Leave</option>
+      </select>
+    </div>
+
+    {/* Filter by Date Range */}
+    <div className="flex flex-col">
+      <label className="text-sm font-medium text-gray-100 mb-2">
+        Filter by Date
+      </label>
+      <div className="flex gap-2">
+        <input
+          type="date"
+          value={dateFilterStart}
+          onChange={(e) => setDateFilterStart(e.target.value)}
+          className="w-full py-3 pl-4 pr-4 border-2 border-blue-300 rounded-lg shadow-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 ease-in-out"
+        />
+        <input
+          type="date"
+          value={dateFilterEnd}
+          onChange={(e) => setDateFilterEnd(e.target.value)}
+          className="w-full py-3 pl-4 pr-4 border-2 border-blue-300 rounded-lg shadow-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 ease-in-out"
+        />
+      </div>
+    </div>
+
+    {/* Reset Button */}
+    <div className="flex flex-col justify-center items-center">
+      <button
+        type="button"
+        onClick={() => {
+          // Reset all filters
+          setEmployeeFilter("");
+          setStatusFilter("");
+          setDateFilterStart("");
+          setDateFilterEnd("");
+        }}
+        className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 w-half sm:w-auto md:w-auto lg:w-auto mt-6"
+      >
+        Reset Filter
+      </button>
+    </div>
+  </div>
+</div>
+
+      {/* Add New Attendance Button */}
+      <div className="mb-6">
+        <button
+          onClick={() => setIsModalOpen(true)} // Open modal to add new attendance
+          className="bg-gradient-to-r from-blue-900 to-blue-900 text-white px-6 py-3 rounded-lg shadow-md hover:from-blue-600 hover:to-blue-600"
+        >
+          Add New Attendance
+        </button>
+      </div>
+
+      {/* Employee and Attendance Table Section */}
+      <div className="overflow-x-auto shadow-xl rounded-xl border border-gray-200 mt-6">
+        <table className="min-w-full table-auto mt-4">
+          <thead className="bg-gradient-to-r from-blue-900 to-blue-900 text-white">
+            <tr>
+              <th className="px-20 py-2 text-left">Employee Name</th>
+              <th className="px-4 py-2 text-left">Employee Contact</th>
+              <th className="px-4 py-2 text-left">Employee Email</th>
+              <th className="px-4 py-2 text-left">Date</th>
+              <th className="px-4 py-2 text-left">Status</th>
+              <th className="px-3 py-2 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredAttendanceData.length === 0 ? (
               <tr>
-                <th className="px-6 py-4 border-b-2 border-gray-200">
-                  Employee
-                </th>
-
-                <th className="px-6 py-4 border-b-2 border-gray-200">
-                  Contact
-                </th>
-                <th className="px-6 py-4 border-b-2 border-gray-200">Role</th>
-                <th className="px-6 py-4 border-b-2 border-gray-200">Email</th>
-                <th className="px-6 py-4 border-b-2 border-gray-200">Status</th>
-                <th className="px-6 py-4 border-b-2 border-gray-200">View</th>
+                <td
+                  colSpan="6"
+                  className="text-center py-4 text-red-500 font-semibold"
+                >
+                  No Attendance Records Found
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filteredEmployees.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="7"
-                    className="text-center py-4 text-red-500 font-semibold"
-                  >
-                    No Employee Found
+            ) : (
+              filteredAttendanceData.map((attendance) => (
+                <tr key={attendance.id} className="border-b">
+                  <td className="px-4 py-2">{attendance.employeeName}</td>
+                  <td className="px-4 py-2">{attendance.employeeContact}</td>
+                  <td className="px-4 py-2">{attendance.employeeEmail}</td>
+                  <td className="px-4 py-2">{attendance.date}</td>
+                  <td className="px-4 py-2">{attendance.status}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex space-x-1">
+                      <button
+                        className="text-blue-500 hover:text-blue-700 p-2 rounded-full transition duration-200"
+                        onClick={() => handleView(attendance.id)}
+                      >
+                        <i className="fas fa-eye"></i>
+                      </button>
+                      <button
+                        className="text-blue-500 hover:text-blue-700 p-2 rounded-full transition duration-200"
+                        onClick={() => handleEdit(attendance.id)}
+                      >
+                        <i className="fas fa-pencil-alt"></i>
+                      </button>
+                      <button
+                        className="text-red-500 hover:text-red-700 p-2 rounded-full transition duration-200"
+                        onClick={() => handleDelete(attendance.id)}
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                filteredEmployees.map((employee) => (
-                  <tr key={employee.id} className="hover:bg-blue-100">
-                    <td className="px-6 py-4 flex items-center gap-3">
-                      <img
-                        src={employee.photo}
-                        alt={employee.name}
-                        className="rounded-full w-12 h-12"
-                      />
-                      {employee.name}
-                    </td>
-
-                    <td className="px-6 py-4">{employee.contact}</td>
-                    <td className="px-6 py-4">{employee.role}</td>
-                    <td className="px-6 py-4">{employee.email}</td>
-                    <td className="px-6 py-4">
-                      <label className="inline-flex relative items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={employee.attendance === "Present"}
-                          onChange={() =>
-                            toggleAttendance(employee.id, employee.attendance)
-                          }
-                          className="sr-only"
-                        />
-                        <span
-                          className={`w-11 h-6 rounded-full transition-colors duration-100 ${
-                            employee.attendance === "Present"
-                              ? "bg-green-500"
-                              : "bg-red-500"
-                          }`}
-                        >
-                          <span
-                            className={`${
-                              employee.attendance === "Present"
-                                ? "translate-x-5"
-                                : "translate-x-0"
-                            } inline-block w-5 h-5 bg-white rounded-full transform transition-all`}
-                          />
-                        </span>
-                      </label>
-                    </td>
-                    <td className="px-6 py-4">
-                      <button
-                        onClick={() => openModal(employee)}
-                        className="bg-indigo-500 text-white py-2 px-4 rounded-lg hover:bg-indigo-600 transition-all duration-200"
-                      >
-                        <FontAwesomeIcon icon={faEye} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-
-          {attendanceChanged && (
-            <div className="mt-6 text-right">
-              <button
-                onClick={saveAttendance}
-                className="bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-600 transition duration-200"
-              >
-                Save Attendance
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="col-span-3">
-          <button
-            onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
-            className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 transition duration-200"
-          >
-            <FontAwesomeIcon icon={faFilter} />
-            {isFilterMenuOpen ? "Hide Filters" : "Show Filters"}
-          </button>
-
-          {isFilterMenuOpen && (
-            <div className="bg-white p-6 mt-4 rounded-lg shadow-lg">
-              <h2 className="text-xl font-semibold text-indigo-600 mb-4">
-                Filters
-              </h2>
-              <div className="mb-4">
-                <label className="block mb-2 text-gray-700 font-semibold">
-                  Status
-                </label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-4 py-2 rounded-md border-2 border-indigo-300"
-                >
-                  <option value="All">All</option>
-                  <option value="Present">Present</option>
-                  <option value="Absent">Absent</option>
-                </select>
-              </div>
-              <div className="mb-4">
-                <label className="block mb-2 text-gray-700 font-semibold">
-                  Role
-                </label>
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="w-full px-4 py-2 rounded-md border-2 border-indigo-300"
-                >
-                  <option value="All">All</option>
-                  <option value="Permanent">Permanent</option>
-                  <option value="Temporary">Temporary</option>
-                  <option value="Dailywages">Daily Wages</option>
-                </select>
-              </div>
-              <div className="mb-4">
-                <label className="block mb-2 text-gray-700 font-semibold">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Search by name"
-                  value={nameFilter}
-                  onChange={(e) => setNameFilter(e.target.value)}
-                  className="w-full px-4 py-2 rounded-md border-2 border-indigo-300"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block mb-2 text-gray-700 font-semibold">
-                  Contact
-                </label>
-                <input
-                  type="text"
-                  placeholder="Search by contact"
-                  value={contactFilter}
-                  onChange={(e) => setContactFilter(e.target.value)}
-                  className="w-full px-4 py-2 rounded-md border-2 border-indigo-300"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block mb-2 text-gray-700 font-semibold">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={filterDate.split(".").reverse().join("-") || ""}
-                  onChange={(e) =>
-                    setFilterDate(e.target.value.split("-").reverse().join("."))
-                  }
-                  className="w-full px-4 py-2 rounded-md border-2 border-indigo-300"
-                />
-                <div className="flex items-center gap-2 mt-2">
-                  <input
-                    type="checkbox"
-                    id="monthlyFilter"
-                    checked={monthlyFilter}
-                    onChange={(e) => setMonthlyFilter(e.target.checked)}
-                    className="form-checkbox h-5 w-5 text-indigo-600"
-                  />
-                  <label htmlFor="monthlyFilter" className="text-gray-700">
-                    Filter by Month
-                  </label>
-                </div>
-              </div>
-              <button
-                onClick={handleFilters}
-                className="w-full bg-indigo-600 text-white py-2 rounded-md font-semibold hover:bg-indigo-700 transition duration-200"
-              >
-                Apply Filters
-              </button>
-            </div>
-          )}
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
-      {isModalOpen && selectedEmployee && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-blue-100 p-9 rounded-lg shadow-lg max-w-lg w-full">
-            <div className="flex flex-col items-center">
-              <img
-                src={selectedEmployee.photo}
-                alt={selectedEmployee.name}
-                className="rounded-full w-24 h-20 mb-4"
-              />
-              <h3 className="text-3xl font-semibold mb-2">
-                {selectedEmployee.name}
-              </h3>
-              <p className="text-lg font-semibold text-gray-500 mb-4">
-                {selectedEmployee.role}
+      {/* View Attendance Modal */}
+      {viewAttendance && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50 z-50">
+          <div className="bg-blue-900 p-6 rounded-xl shadow-lg w-full max-w-2xl sm:max-w-xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-100">
+                Attendance Details
+              </h2>
+              <button
+                onClick={() => setViewAttendance(null)}
+                className="text-red-500 hover:text-blue-500 text-4xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <p className="text-gray-100">
+                <strong>Employee:</strong> {viewAttendance.employeeName}
+              </p>
+              <p className="text-gray-100">
+                <strong>Date:</strong> {viewAttendance.date}
+              </p>
+              <p className="text-gray-100">
+                <strong>Status:</strong> {viewAttendance.status}
               </p>
             </div>
 
-            <div className="space-y-4">
-              <p>
-                <strong>DOB:</strong> {selectedEmployee.dob}
-              </p>
-              <p>
-                <strong>Email:</strong> {selectedEmployee.email}
-              </p>
-              <p>
-                <strong>Contact:</strong> {selectedEmployee.contact}
-              </p>
-              <p>
-                <strong>Status:</strong> {selectedEmployee.attendance}
-              </p>
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => setViewAttendance(null)}
+                className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600"
+              >
+                Close
+              </button>
             </div>
-
-            {isEditing ? (
-              <div className="mt-6 space-y-4">
-                <input
-                  type="text"
-                  name="name"
-                  value={editedEmployee.name}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                  placeholder="Edit Name"
-                />
-                <input
-                  type="date"
-                  name="dob"
-                  value={editedEmployee.dob}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                  placeholder="Edit DOB"
-                />
-                <input
-                  type="text"
-                  name="contact"
-                  value={editedEmployee.contact}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                  placeholder="Edit Contact"
-                />
-                <input
-                  type="email"
-                  name="email"
-                  value={editedEmployee.email}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                  placeholder="Edit Email"
-                />
-                <input
-                  type="text"
-                  name="role"
-                  value={editedEmployee.role}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                  placeholder="Edit Role"
-                />
-                <div className="flex justify-around mt-4">
-                  <button
-                    onClick={saveEditedEmployee}
-                    className="bg-blue-500 text-white px-6 py-2 rounded-md font-semibold hover:bg-blue-600"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="bg-gray-500 text-white px-6 py-2 rounded-md font-semibold hover:bg-gray-600"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-6 flex justify-around w-full">
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="bg-yellow-500 text-white px-6 py-2 rounded-md font-semibold hover:bg-yellow-600"
-                >
-                  <FontAwesomeIcon icon={faEdit} /> Edit
-                </button>
-                <button
-                  onClick={closeModal}
-                  className="bg-red-500 text-white px-6 py-2 rounded-md font-semibold hover:bg-red-600"
-                >
-                  <FontAwesomeIcon icon={faTimes} /> Close
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}
+
+      {/* Modal to Add or Edit Attendance */}
+{isModalOpen && (
+  <div className="fixed inset-0 flex items-center justify-center bg-gray-700 bg-opacity-50 z-50">
+    <div className="bg-blue-900 p-5 rounded-xl shadow-lg w-full max-w-3xl">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-100">
+          {isEditMode ? "Edit Attendance" : "Add Attendance"}
+        </h2>
+        <button
+          onClick={() => setIsModalOpen(false)}
+          className="text-red-500 hover:text-blue-500 text-4xl font-bold"
+        >
+          &times;
+        </button>
+      </div>
+
+      <form onSubmit={handleFormSubmit} className="space-y-6">
+        <div className="grid grid-cols-3 sm:grid-cols-2 gap-6">
+          {/* Employee Select */}
+          <div>
+            <label className="block text-sm font-medium text-gray-100">
+              Employee
+            </label>
+            <select
+              name="employeeId"
+              value={newAttendance.employeeId}
+              onChange={handleInputChange}
+              className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              required
+            >
+              <option value="">Select Employee</option>
+              {employees.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date Picker */}
+          <div>
+            <label className="block text-sm font-medium text-gray-100">
+              Date
+            </label>
+            <input
+              type="date"
+              name="date"
+              value={newAttendance.date}
+              onChange={handleInputChange}
+              className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              required
+            />
+          </div>
+
+          {/* Status Select */}
+          <div>
+            <label className="block text-sm font-medium text-gray-100">
+              Status
+            </label>
+            <select
+              name="status"
+              value={newAttendance.status}
+              onChange={handleInputChange}
+              className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              required
+            >
+              <option value="Present">Present</option>
+              <option value="Absent">Absent</option>
+              <option value="On Leave">On Leave</option>
+            </select>
+          </div>
+
+          {/* Time In */}
+          <div>
+            <label className="block text-sm font-medium text-gray-100">
+              Time In
+            </label>
+            <input
+              type="time"
+              name="timeIn"
+              value={newAttendance.timeIn}
+              onChange={handleInputChange}
+              className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
+          </div>
+
+          {/* Time Out */}
+          <div>
+            <label className="block text-sm font-medium text-gray-100">
+              Time Out
+            </label>
+            <input
+              type="time"
+              name="timeOut"
+              value={newAttendance.timeOut}
+              onChange={handleInputChange}
+              className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
+          </div>
+
+          {/* Department (Optional) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-100">
+              Department
+            </label>
+            <input
+              type="text"
+              name="department"
+              value={newAttendance.department}
+              onChange={handleInputChange}
+              className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              placeholder="Enter Department"
+            />
+          </div>
+
+          {/* Reason for Absence (Visible only if Absent) */}
+          {newAttendance.status === "Absent" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-100">
+                Reason for Absence
+              </label>
+              <textarea
+                name="reason"
+                value={newAttendance.reason}
+                onChange={handleInputChange}
+                className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="Enter reason for absence"
+              />
+            </div>
+          )}
+
+          {/* Comments */}
+          <div>
+            <label className="block text-sm font-medium text-gray-100">
+              Comments
+            </label>
+            <textarea
+              name="comments"
+              value={newAttendance.comments}
+              onChange={handleInputChange}
+              className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              placeholder="Additional comments"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-between mt-6">
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(false)}
+            className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
+          >
+            {isEditMode ? "Update Attendance" : "Add Attendance"}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+       
     </div>
   );
 };
 
-export default AttendanceTable;
+export default AttendanceApp;

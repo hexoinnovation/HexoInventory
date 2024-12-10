@@ -204,7 +204,8 @@ const MyProfile = () => {
   if (loading) return <div className="text-center">Loading...</div>;
 
   return (
-    <div className="container mx-auto p-9 mt-3 bg-gradient-to-r from-blue-300 via-white to-blue-200 rounded-lg shadow-xl">
+    <div className="p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
+     <div class="text-center text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl">
       <h2 className="text-4xl font-bold text-blue-700 mb-6 text-center">
         My Profile
       </h2>
@@ -243,7 +244,7 @@ const MyProfile = () => {
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-          <div className="grid grid-cols-4 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
                 <PersonIcon /> Name
@@ -390,6 +391,7 @@ const MyProfile = () => {
       </button>
         </div>
       </div>
+    </div>
     </div>
   );
 };

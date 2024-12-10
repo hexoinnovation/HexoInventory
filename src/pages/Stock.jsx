@@ -213,7 +213,7 @@ const Stocks = () => {
   const [filteredInvoiceData, setFilteredInvoiceData] = useState([]);
 
   return (
-    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
+    <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       <h1 className="text-5xl font-extrabold text-blue-900 mb-6 flex items-center">
         Stock Management{" "}
         <FaChartLine className="text-5xl ml-5 text-blue-900 animate-neon" />
@@ -237,7 +237,7 @@ const Stocks = () => {
       </div>
 
       {/* Filter Panel */}
-      <div className="bg-blue-700 p-4 rounded-md shadow-md mb-6">
+      <div className="bg-blue-900 p-4 rounded-md shadow-md mb-6">
         <h2 className="text-2xl font-semibold text-gray-100">Filters</h2>
         <div className="flex flex-wrap gap-4">
           <input
@@ -293,7 +293,7 @@ const Stocks = () => {
       {/* Product List */}
       <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
         <table className="min-w-full table-auto">
-          <thead className="bg-blue-700 text-white">
+          <thead className="bg-blue-900 text-white">
             <tr>
               <th className="py-3 px-4 text-left ">P.No</th>
               <th className="py-3 px-4 text-left">Product Name</th>

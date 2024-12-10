@@ -260,7 +260,7 @@ const CustomerDetails = () => {
   ).length;
 
   return (
-    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
+    <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       <h1 className="text-5xl font-bold text-blue-900 mb-6">
         Customer Details
         <FontAwesomeIcon icon={faUsers} className=" animate-pulseSlow ml-4 text-blue-900" />
@@ -288,7 +288,7 @@ const CustomerDetails = () => {
       >
         Add Customer
       </button>
-      <div className="grid grid-cols-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-2 p-2 bg-gradient-to-r from-blue-700 via-blue to-blue-700 rounded-lg shadow-lg">
+      <div className="grid grid-cols-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-2 p-2 bg-gradient-to-r from-blue-900 via-blue to-blue-900 rounded-lg shadow-lg">
         <div className="col-span-full">
           <label
             className="block text-lg font-semibold text-gray-100 mb-0"
@@ -320,7 +320,7 @@ const CustomerDetails = () => {
 
       <div className="w-full mt-5">
         <table className="min-w-full bg-white shadow-md rounded-lg">
-          <thead className="bg-gradient-to-r from-blue-600 to-blue-600 text-white">
+          <thead className="bg-gradient-to-r from-blue-900 to-blue-900 text-white">
             <tr>
               <th className="py-3 px-4 text-left">Name</th>
               <th className="py-3 px-4 text-left">Email</th>

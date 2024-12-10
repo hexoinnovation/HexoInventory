@@ -1,196 +1,290 @@
-import { useState } from "react";
-import { FaRegChartBar } from "react-icons/fa"; // Icon for the report
-import { FaShoppingCart, FaChartLine, FaStore, FaUsers, FaFileInvoice } from "react-icons/fa"; // More icons for tabs
-import {  useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { FaShoppingCart, FaStore, FaUsers, FaDownload, FaFileInvoice, FaClipboardList } from "react-icons/fa";
+import { collection, getDocs } from "firebase/firestore";
+import { db, auth } from "../config/firebase"; // Assuming you have your firebase setup
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
-import { AiOutlineEdit, AiOutlineDelete } from "react-icons/ai";
-import { doc, collection, getDocs } from "firebase/firestore";
-import { db,auth } from "../config/firebase"; // Assuming you have your firebase setup
+// Reusable Table Component
+const DataTable = ({ fields, data }) => (
+  <table className="min-w-full table-auto border-collapse">
+    <thead className="bg-blue-900 text-white">
+      <tr>
+        {fields.map((field) => (
+          <th key={field} className="py-3 px-4 text-left border-b">{field.charAt(0).toUpperCase() + field.slice(1)}</th>
+        ))}
+      </tr>
+    </thead>
+    <tbody>
+      {data.map((item, index) => (
+        <tr key={index} className="hover:bg-gray-100 transition duration-300">
+          {fields.map((field) => (
+            <td key={field} className="py-3 px-4 border-b">{item[field]}</td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+);
+
 const ReportTabs = () => {
   const [activeTab, setActiveTab] = useState("purchase");
+  const [data, setData] = useState({
+    purchase: [],
+    sales: [],
+    stock: [],
+    invoices: [],
+    orders: [],
+    hrm: [],
+    attendance: [],
+    salary: [],
+    employeeDetails: [],
+    businessDetails: [],
+    customerDetails: [],
+  });
+  const [filteredData, setFilteredData] = useState([]);
+  const [filters, setFilters] = useState({
+    searchQuery: "",
+    startDate: "",
+    endDate: "",
+    category: ""
+  });
+  const [pagination, setPagination] = useState({ currentPage: 1, itemsPerPage: 10 });
+  const currentUser = auth.currentUser;
+
+  // Report Fields Configuration
+  const customFields = {
+    purchase: ["no", "sname", "phone", "pname", "categories", "price"],
+    sales: ["saleId", "customer", "amount", "date", "paymentStatus"],
+    stock: ["itemName", "quantity", "restockLevel"],
+    invoices: ["invoiceId", "amount", "paymentStatus", "date"],
+    orders: ["orderId", "product", "quantity", "status", "totalPrice"],
+    attendance: ["employeeId", "name", "date", "status"],
+    salary: ["employeeId", "name", "salaryAmount", "paymentDate"],
+    employeeDetails: ["employeeId", "name", "contact", "address", "dob"],
+    businessDetails: ["businessId", "name", "contact", "email", "registrationDate"],
+    customerDetails: ["customerId", "name", "contact", "address", "email"],
+  };
+
+  // Fetch data from Firestore
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!currentUser) return;
+
+      const collections = [
+        "Purchase", "Sales", "Purchase", "Invoices", "Orders", "attendance", "salary", "Empdetails", "Businesses", "Customers"
+      ];
+      const newData = {};
+
+      try {
+        for (const collectionName of collections) {
+          const collectionRef = collection(db, "admins", currentUser.email, collectionName);
+          const snapshot = await getDocs(collectionRef);
+          newData[collectionName.toLowerCase()] = snapshot.docs.map((doc) => doc.data());
+        }
+        setData(newData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
+  }, [currentUser]);
+
+  // Apply filters to the data
+  useEffect(() => {
+    const filterData = () => {
+      const { searchQuery, startDate, endDate, category } = filters;
+      const activeData = data[activeTab];
+
+      if (!activeData) return;
+
+      const filtered = activeData.filter(item => {
+        const matchesSearch = JSON.stringify(item).toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesDateRange =
+          (!startDate || new Date(item.date) >= new Date(startDate)) &&
+          (!endDate || new Date(item.date) <= new Date(endDate));
+        const matchesCategory = !category || item.category === category;
+
+        return matchesSearch && matchesDateRange && matchesCategory;
+      });
+
+      setFilteredData(filtered);
+    };
+
+    filterData();
+  }, [filters, data, activeTab]);
 
   // Handle tab change
   const handleTabChange = (tab) => {
     setActiveTab(tab);
+    setPagination({ currentPage: 1, itemsPerPage: 10 });
+    setFilters({
+      searchQuery: "",
+      startDate: "",
+      endDate: "",
+      category: ""
+    });
   };
-  const [products, setProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [newProduct, setNewProduct] = useState(null);
-  const [editMode, setEditMode] = useState(false);
-  const currentUser = auth.currentUser;
-  
-  // Fetch products on component mount or when user changes
-  useEffect(() => {
-    const fetchProducts = async () => {
-      if (!currentUser) return;
-      
-      try {
-        const userDocRef = doc(db, "admins", curentUser.email);
-        const productsRef = collection(userDocRef, "Purchase");
-        const productSnapshot = await getDocs(productsRef);
-        const productList = productSnapshot.docs.map((doc) => doc.data());
-        setProducts(productList);
-      } catch (error) {
-        console.error("Error fetching products: ", error);
-      }
-    };
 
-    fetchProducts();
-  }, [currentUser]);
-  
-  // Filter the products based on active tab
-  useEffect(() => {
-    if (activeTab === "purchase") {
-      setFilteredProducts(products); // Only set products for the purchase tab
-    }
-  }, [activeTab, products]);
-  const handleRemoveProduct = (productPhone) => {
-    // Logic to remove product from firestore (example)
-    console.log("Removing product with phone:", productPhone);
+  // Pagination logic
+  const indexOfLastItem = pagination.currentPage * pagination.itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - pagination.itemsPerPage;
+  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredData.length / pagination.itemsPerPage);
+
+  const handlePageChange = (pageNum) => {
+    setPagination({ ...pagination, currentPage: pageNum });
   };
+
+  // Reset all filters
+  const resetFilters = () => {
+    setFilters({
+      searchQuery: "",
+      startDate: "",
+      endDate: "",
+      category: ""
+    });
+  };
+
+  // Export filtered data to Excel
+  const exportToExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(filteredData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Report");
+    XLSX.writeFile(wb, "report.xlsx");
+  };
+
+  // Export filtered data to PDF
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const tableColumns = Object.keys(filteredData[0]);
+    const tableRows = filteredData.map(item => Object.values(item));
+
+    doc.autoTable({
+      head: [tableColumns],
+      body: tableRows,
+    });
+
+    doc.save("report.pdf");
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-indigo-300 p-6 text-gray-900 font-sans">
+    <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Header */}
-      <div className="flex items-center space-x-3 mb-8">
-        <FaRegChartBar className="text-4xl animate-pulse text-indigo-600" />
-        <h1 className="text-5xl font-extrabold tracking-wide text-gray-800">
-          Reports Dashboard
-        </h1>
+      <div className="flex items-center space-x-3 mb-8 p-6 sm:p-8 bg-gradient-to-r from-blue-900 to-blue-900">
+        <FaShoppingCart className="text-4xl text-white" />
+        <h1 className="text-3xl font-extrabold text-white">Reports Dashboard</h1>
       </div>
 
-      {/* Tab navigation */}
-      <div className="flex justify-start space-x-6 mb-8">
-        <button
-          onClick={() => handleTabChange("purchase")}
-          className={`flex items-center px-6 py-4 rounded-lg font-semibold transition-all ${
-            activeTab === "purchase"
-              ? "bg-green-500 text-white"
-              : "bg-gray-200 hover:bg-opacity-80 hover:text-white"
-          }`}
-        >
-          <FaShoppingCart className="mr-3 text-2xl" />
-          <span className="text-lg">Purchase</span>
-        </button>
-      
-        <Tab
-          label="Sales"
-          icon={<FaChartLine />}
-          isActive={activeTab === "sales"}
-          onClick={() => handleTabChange("sales")}
-          color="bg-blue-500"
-        />
-        <Tab
-          label="Stocks"
-          icon={<FaStore />}
-          isActive={activeTab === "stocks"}
-          onClick={() => handleTabChange("stocks")}
-          color="bg-yellow-500"
-        />
-        <Tab
-          label="Invoices"
-          icon={<FaFileInvoice />}
-          isActive={activeTab === "invoices"}
-          onClick={() => handleTabChange("invoices")}
-          color="bg-purple-500"
-        />
-        <Tab
-          label="Customer"
-          icon={<FaUsers />}
-          isActive={activeTab === "customer"}
-          onClick={() => handleTabChange("customer")}
-          color="bg-indigo-500"
-        />
-        <Tab
-          label="Business"
-          icon={<FaStore />}
-          isActive={activeTab === "business"}
-          onClick={() => handleTabChange("business")}
-          color="bg-pink-500"
-        />
-       
-      </div>
+      {/* Main Content */}
+      <div className="flex flex-grow">
+        {/* Sidebar */}
+        <div className="w-64 bg-white shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-6">Reports</h2>
+          <div className="space-y-4">
+            {["purchase", "sales", "stock", "invoices", "orders", "hrm", "attendance", "salary", "employeeDetails", "businessDetails", "customerDetails"].map((tab) => (
+              <button
+                key={tab}
+                className={`flex items-center px-6 py-3 w-full text-lg rounded-lg hover:bg-indigo-100 ${
+                  activeTab === tab ? "bg-blue-900 text-white" : "text-gray-800"
+                }`}
+                onClick={() => handleTabChange(tab)}
+              >
+                <span className="mr-3 text-xl">
+                  {tab === "purchase" ? <FaShoppingCart /> :
+                  tab === "sales" ? <FaStore /> :
+                  tab === "employeeDetails" ? <FaUsers /> : <FaClipboardList />}
+                </span>
+                <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
-      {/* Content based on active tab */}
-      <div className="p-4 mt-6 bg-white rounded-lg shadow-lg">
-        {/* Product Table */}
- {activeTab === "purchase" && (
-    <div className="overflow-x-auto bg-white shadow-xl rounded-lg">
-      <table className="min-w-full bg-white border border-gray-200 shadow-md">
-        <thead className="bg-gradient-to-r from-blue-700 to-blue-700 text-white">
-          <tr>
-            <th className="py-3 px-4 text-left">P.No</th>
-            <th className="py-3 px-4 text-left">Supplier</th>
-            <th className="py-3 px-4 text-left">Phone</th>
-            <th className="py-3 px-4 text-left">Address</th>
-            <th className="py-3 px-4 text-left">Product Name</th>
-            <th className="py-3 px-4 text-left">Existing Stock</th>
-            <th className="py-3 px-4 text-left">Unit Price</th>
-            <th className="py-3 px-4 text-left">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredProducts.map((product) => (
-            <tr
-              key={product.phone}
-              className="hover:bg-yellow-100 transition duration-300"
+        {/* Report Content */}
+        <div className="flex-grow p-6 bg-white shadow-md rounded-lg">
+          {/* Filters */}
+          <div className="flex items-center justify-between mb-6 space-x-4">
+            <div className="flex items-center space-x-4 flex-grow">
+              <input
+                type="text"
+                placeholder="Search records"
+                value={filters.searchQuery}
+                onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+                className="p-2 border border-gray-300 rounded-md w-full sm:w-1/3"
+              />
+              <input
+                type="date"
+                name="start"
+                value={filters.startDate}
+                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                className="ml-4 p-2 border border-gray-300 rounded-md"
+              />
+              <span className="mx-2">to</span>
+              <input
+                type="date"
+                name="end"
+                value={filters.endDate}
+                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                className="p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <button
+              onClick={resetFilters}
+              className="px-6 py-2 bg-red-700 text-white rounded-md hover:bg-gray-600"
             >
-              <td className="py-3 px-4">{product.no}</td>
-              <td className="py-3 px-4">{product.sname}</td>
-              <td className="py-3 px-4">{product.phone}</td>
-              <td className="py-3 px-4">{product.add}</td>
-              <td className="py-3 px-4">{product.pname}</td>
-              <td className="py-3 px-4 text-left">{product.estock}</td>
-              <td className="py-3 px-4">{product.price}</td>
-              <td className="py-3 px-4">
-                <button
-                  onClick={() => {
-                    setShowModal(true);
-                    setEditMode(true);
-                    setNewProduct(product);
-                  }}
-                  className="text-blue-500 hover:text-blue-700"
-                >
-                  <AiOutlineEdit />
-                </button>
-                <button
-                  onClick={() => handleRemoveProduct(product.phone)}
-                  className="text-red-500 hover:text-red-700 ml-4"
-                >
-                  <AiOutlineDelete />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )}
-        {activeTab === "sales" && <p className="text-lg text-gray-700">Sales Content</p>}
-        {activeTab === "stocks" && <p className="text-lg text-gray-700">Stocks Content</p>}
-        {activeTab === "invoices" && <p className="text-lg text-gray-700">Invoices Content</p>}
-        {activeTab === "customer" && <p className="text-lg text-gray-700">Customer Content</p>}
-        {activeTab === "business" && <p className="text-lg text-gray-700">Business Content</p>}
-    
+              Reset Filters
+            </button>
+          </div>
+
+          {/* Download Buttons */}
+          <div className="flex space-x-4 mb-6">
+            <button
+              onClick={exportToExcel}
+              className="px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center"
+            >
+              <FaDownload className="mr-2" /> Download Excel
+            </button>
+            <button
+              onClick={exportToPDF}
+              className="px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 flex items-center"
+            >
+              <FaDownload className="mr-2" /> Download PDF
+            </button>
+          </div>
+
+          {/* Data Display */}
+          <div className="overflow-x-auto bg-white shadow-xl rounded-lg mb-6">
+            {filteredData.length > 0 ? (
+              <DataTable fields={customFields[activeTab]} data={currentItems} />
+            ) : (
+              <p>No data available for this tab.</p>
+            )}
+          </div>
+
+          {/* Pagination */}
+          <div className="flex justify-between items-center mt-6">
+            <button
+              onClick={() => handlePageChange(pagination.currentPage - 1)}
+              disabled={pagination.currentPage === 1}
+              className="px-4 py-2 bg-blue-900 text-white rounded-md"
+            >
+              Previous
+            </button>
+            <span className="mx-4">{pagination.currentPage} of {totalPages}</span>
+            <button
+              onClick={() => handlePageChange(pagination.currentPage + 1)}
+              disabled={pagination.currentPage === totalPages}
+              className="px-4 py-2 bg-blue-900 text-white rounded-md"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  );
-};
-
-// Tab component to reuse for each tab with icon
-const Tab = ({ label, icon, isActive, onClick, color }) => {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center px-6 py-4 text-black rounded-lg font-semibold transition-all hover:transform hover:scale-105 ${
-        isActive
-          ? `${color} shadow-lg scale-110`
-          : "bg-gray-300 hover:bg-opacity-80 "
-      }`}
-    >
-      <span className="mr-3 text-2xl">{icon}</span>
-      <span className="text-lg">{label}</span>
-    </button>
   );
 };
 

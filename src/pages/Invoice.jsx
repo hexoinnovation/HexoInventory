@@ -803,18 +803,18 @@ const Invoice = () => {
   // };
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gradient-to-r from-indigo-200 via-blue-100 to-green-100 p-8">
+    <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       <div
         id="invoiceContainers"
-        className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8 border-2 border-indigo-600"
+        className="bg-white shadow-xl rounded-lg w-full sm:w-3/4 lg:w-2/3 p-8 border-2 border-blue-900"
       >
-        <h1 className="text-4xl font-bold text-center text-indigo-700 mb-6">
+        <h1 className="text-4xl font-bold text-center text-blue-900 mb-6">
           Invoice Generator
         </h1>
         {/* Invoice Header */}
         <div className="flex flex-col sm:flex-row justify-between mb-6">
           <div className="w-full sm:w-1/3 mb-4 sm:mb-0">
-            <h2 className="text-xl font-semibold text-gray-800">
+            <h2 className="text-xl font-semibold text-blue-900">
               Invoice Details
             </h2>
             <div className="text-blue-600">Invoice No: {invoiceNumber}</div>
@@ -829,7 +829,7 @@ const Invoice = () => {
                 <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center">
                   Bill From
                   <button
-                    className="ml-3 text-white bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg print:hidden"
+                    className="ml-3 text-white bg-blue-900 hover:bg-blue-900 rounded-full w-8 h-8 flex items-center justify-center shadow-lg print:hidden"
                     onClick={() => setShowModal(true)}
                     aria-label="Add"
                   >
@@ -1178,7 +1178,7 @@ const Invoice = () => {
                   Bill To
                   <button
                     onClick={() => setopenModal(true)}
-                    className=" print:hidden ml-3 text-white bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
+                    className=" print:hidden ml-3 text-white bg-blue-900 hover:bg-blue-900 rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
                     aria-label="Add Customer"
                   >
                     <span className=" print:hidden text-3xl font-bold">+</span>
@@ -1307,7 +1307,7 @@ const Invoice = () => {
         {/* Product Table */}
         <div className="overflow-x-auto mb-6">
           <table className="min-w-full table-auto">
-            <thead className="bg-indigo-100">
+            <thead className="bg-blue-900 text-gray-100">
               <tr>
                 <th className="px-4 py-2 text-left">Description</th>
                 <th className="px-4 py-2 text-left">HSN Code</th>
@@ -1326,7 +1326,7 @@ const Invoice = () => {
                       type="text"
                       value={product.description}
                       onChange={(e) => handleDescriptionChange(index, e)}
-                      className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       placeholder="Type to search products"
                     />
                     {/* Suggestions Dropdown */}
@@ -1354,7 +1354,7 @@ const Invoice = () => {
                       onChange={(e) =>
                         handleProductChange(index, "hsnCode", e.target.value)
                       }
-                      className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </td>
                   {/* Quantity Field */}
@@ -1369,7 +1369,7 @@ const Invoice = () => {
                           parseFloat(e.target.value)
                         )
                       }
-                      className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </td>
                   {/* Rate Field */}
@@ -1384,7 +1384,7 @@ const Invoice = () => {
                           parseFloat(e.target.value)
                         )
                       }
-                      className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-2 border-2 border-indigo-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </td>
                   {/* Total Field */}
@@ -1412,7 +1412,7 @@ const Invoice = () => {
         <div className="flex justify-between items-center mb-6">
           <button
             onClick={handleAddProduct}
-            className=" print:hidden bg-blue-600 text-white px-6 py-2 rounded-md"
+            className=" print:hidden bg-blue-900 text-white px-6 py-2 rounded-md"
           >
             Add Product
           </button>
@@ -1420,7 +1420,7 @@ const Invoice = () => {
 
         <div className="text-right print\\:right-align ">
           {/* Subtotal (Always Visible) */}
-          <div className="text-xl font-semibold text-blue-600 mb-2">
+          <div className="text-xl font-semibold text-blue-900 mb-2">
             Subtotal: ₹{calculateSubtotal().toFixed(2)}
           </div>
 
@@ -1462,14 +1462,14 @@ const Invoice = () => {
         <div className="flex justify-start items-center space-x-4 mb-6">
           <button
             onClick={handleOpenModal}
-            className=" print:hidden bg-blue-600 text-white px-6 py-2 rounded-md"
+            className=" print:hidden bg-blue-900 text-white px-6 py-2 rounded-md"
           >
             Shipping & Payment Method
           </button>
 
           <button
             onClick={() => setIsCategoryModalOpen(true)}
-            className="print:hidden bg-blue-600 text-white px-6 py-2 rounded-md"
+            className="print:hidden bg-blue-900 text-white px-6 py-2 rounded-md"
           >
             Select Tax Values
           </button>
@@ -1528,14 +1528,14 @@ const Invoice = () => {
               <div className="flex justify-between">
                 <button
                   onClick={handleSubmit}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-md"
+                  className="bg-blue-900 text-white px-6 py-2 rounded-md"
                 >
                   Submit
                 </button>
 
                 <button
                   onClick={handleCloseModal}
-                  className="bg-gray-400 text-white px-6 py-2 rounded-md"
+                  className="bg-blue-900 text-white px-6 py-2 rounded-md"
                 >
                   Close
                 </button>
@@ -1678,7 +1678,7 @@ const Invoice = () => {
             {/* Print Page Button aligned to the left */}
             <button
               onClick={handlePrint}
-              className="bg-blue-600 text-white px-8 py-3 text-lg font-semibold rounded-md mb-4 flex items-center print:hidden "
+              className="bg-blue-900 text-white px-8 py-3 text-lg font-semibold rounded-md mb-4 flex items-center print:hidden "
             >
               <FontAwesomeIcon icon={faPrint} className="mr-2" />{" "}
               {/* Print icon with margin */}
@@ -1688,7 +1688,7 @@ const Invoice = () => {
             {/* Submit Button aligned to the right */}
             <button
               onClick={handleOpenPopup}
-              className="print:hidden bg-blue-600 text-white px-8 py-4 text-xl font-semibold rounded-md"
+              className="print:hidden bg-blue-900 text-white px-8 py-4 text-xl font-semibold rounded-md"
             >
               Submit
             </button>

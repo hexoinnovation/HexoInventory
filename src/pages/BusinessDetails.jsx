@@ -193,7 +193,8 @@ const BusinessDetails = () => {
   const totalStates = new Set(businesses.map((b) => b.state)).size;
 
   return (
-    <div className="container mx-auto p-6 mt-5 bg-gradient-to-r from-blue-100 via-white to-blue-100 rounded-lg shadow-xl">
+    
+    <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       <h1 className="text-5xl font-bold text-blue-900 mb-6">
         Business Details
         <FontAwesomeIcon icon={faBriefcase} className=" animate-wiggle ml-4" />
@@ -201,7 +202,7 @@ const BusinessDetails = () => {
 
       {/* Info Boxes */}
       <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        <div className="p-6 rounded-lg bg-gradient-to-r from-blue-900 to-blue-400 text-white shadow-lg">
+        <div className="p-6 rounded-lg bg-gradient-to-r from-blue-700 to-blue-700 text-white shadow-lg">
           <h3 className="text-lg font-semibold">Total Businesses</h3>
           <p className="text-4xl font-bold">{totalBusinesses}</p>
         </div>
@@ -218,13 +219,13 @@ const BusinessDetails = () => {
       {/* Add Business Button */}
       <button
         onClick={() => setShowModal(true)}
-        className="bg-blue-900 text-white py-2 px-4 rounded-lg mb-4 hover:bg-blue-600"
+        className="bg-blue-900 text-white py-2 px-4 rounded-lg mb-4 hover:bg-blue-900"
       >
         Add Business
       </button>
 
       {/* Filters */}
-      <div className="bg-blue-700 p-4 mb-6 rounded-lg shadow-md">
+      <div className="bg-blue-900 p-4 mb-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-4 text-gray-100">
           Filter Businesses
         </h2>
@@ -254,7 +255,7 @@ const BusinessDetails = () => {
       {/* Business Table */}
       <div className="w-full mt-5">
         <table className="min-w-full bg-white shadow-md rounded-lg">
-          <thead className="bg-blue-600 text-white">
+          <thead className="bg-blue-900 text-white">
             <tr>
               <th className="py-3 px-4 text-left">Business Name</th>
               <th className="py-3 px-4 text-left">Registration Number</th>
