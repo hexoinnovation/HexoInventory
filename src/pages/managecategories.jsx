@@ -142,8 +142,8 @@ const ManageCategories = () => {
       </div>
 
       {/* Two-Column Layout */}
-      <div className="grid grid-cols-2 lg:grid-cols-2 gap-8">
-        {/* Category Form */}
+      <div className="grid grid-cols-[30%,70%] lg:grid-cols-[30%,70%] gap-8">
+      {/* Category Form */}
         <div className="bg-white p-6 rounded-lg shadow-lg">
           <h2 className="text-2xl font-semibold text-blue-500 mb-4">
             {editCategoryId ? "Edit Category" : "Add Category"}
