@@ -56,15 +56,15 @@ const ReportTabs = () => {
   // Report Fields Configuration
   const customFields = {
     purchase: ["no", "sname", "phone", "pname", "categories", "price"],
-    sales: ["saleId", "customer", "amount", "date", "paymentStatus"],
-    stock: ["itemName", "quantity", "restockLevel"],
+    sales: ["no", "pname", "phone", "categories", "sales", "price"],
+    stock: ["no", "pname", "phone", "categories", "estock", "price"],
     invoices: ["invoiceNumber", "total", "paymentStatus", "invoiceDate"],
     orders: ["orderId", "product", "quantity", "status", "totalPrice"],
     attendance: ["employeeId", "name", "date", "status"],
     salary: ["employeeId", "name", "salaryAmount", "paymentDate"],
-    employeeDetails: ["employeeId", "name", "contact", "address", "dob"],
-    businessDetails: ["businessId", "name", "contact", "email", "registrationDate"],
-    customerDetails: ["customerId", "name", "contact", "address", "email"],
+    employeeDetails: ["photo", "id", "name", "contact", "dob", "gender", "role", "salary", "salaryInterval"],
+    businessDetails: ["businessName", "registrationNumber", "contactNumber", "email", "gstNumber", "aadhaar", "city"],
+    customerDetails: ["name", "city", "phone", "aadhaar", "email", "panno"],
   };
 
   // Fetch data from Firestore
@@ -73,8 +73,7 @@ const ReportTabs = () => {
       if (!currentUser) return;
 
       const collections = [
-        "Purchase", "Sales", "Purchase", "Invoices", "Orders", "attendance", "salary", "Empdetails", "Businesses", "Customers"
-      ];
+        "Purchase", "Purchase", "Purchase", "Invoices", "Orders", "attendance", "salary", "Empdetails", "Businesses", "Customers"];
       const newData = {};
 
       try {
@@ -184,7 +183,7 @@ const ReportTabs = () => {
         <div className="w-64 bg-white shadow-md p-6">
           <h2 className="text-xl font-semibold mb-6">Reports</h2>
           <div className="space-y-4">
-            {["purchase", "sales", "stock", "invoices", "orders", "hrm", "attendance", "salary", "employeeDetails", "businessDetails", "customerDetails"].map((tab) => (
+            {["purchase", "sales", "stock", "invoices", "orders", "attendance", "salary", "employeeDetails", "businessDetails", "customerDetails"].map((tab) => (
               <button
                 key={tab}
                 className={`flex items-center px-6 py-3 w-full text-lg rounded-lg hover:bg-indigo-100 ${
