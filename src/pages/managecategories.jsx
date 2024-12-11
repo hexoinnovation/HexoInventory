@@ -29,8 +29,7 @@ const ManageCategories = () => {
 
   const categoriesCollection = collection(
     db,
-    "users",
-    currentUser.email,
+   
     "categories"
   );
 

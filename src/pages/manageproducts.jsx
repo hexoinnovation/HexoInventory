@@ -15,17 +15,32 @@ import { useAuth } from "../Authcontext";
 const ManageProducts = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [newCategory, setNewCategory] = useState([]);
+   const [category, setCategory] = useState([]);
+  // const [newProduct, setNewProduct] = useState({
+  //   name: "",
+  //   price: "",
+  //   image: "",
+  //   category: "",
+  //   description: "",
+  //   stock: "",
+  //   discount: "",
+  //   sku: "",
+  //   color: "",  // New field for color
+  //   rating: 0,
+  //   supplier: "",
+  //   warranty: "",
+  // });
   const [newProduct, setNewProduct] = useState({
-    name: "",
-    price: "",
-    image: "",
-    category: "",
-    description: "",
-    stock: "",
-    discount: "",
-    sku: "",
-    supplier: "",
-    warranty: "",
+    name: '',
+    description: '',
+    color: '#000000',
+    rating: 1,
+    price: '',
+    category: '',
+    stock: '',
+    discount: '',
+    image: null,
   });
   const [editProductId, setEditProductId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
@@ -37,15 +52,13 @@ const ManageProducts = () => {
 
   const productsCollection = collection(
     db,
-    "users",
-    currentUser.email,
+   
     "products"
   );
 
   const categoriesCollection = collection(
     db,
-    "users",
-    currentUser.email,
+   
     "categories"
   );
 
@@ -95,8 +108,7 @@ const ManageProducts = () => {
     try {
       const productDoc = doc(
         db,
-        "users",
-        currentUser.email,
+      
         "products",
         editProductId
       );
@@ -114,7 +126,7 @@ const ManageProducts = () => {
 
   const handleDeleteProduct = async (id) => {
     try {
-      const productDoc = doc(db, "users", currentUser.email, "products", id);
+      const productDoc = doc(db, "products", id);
       await deleteDoc(productDoc);
       setProducts((prevProducts) =>
         prevProducts.filter((product) => product.id !== id)
@@ -132,16 +144,15 @@ const ManageProducts = () => {
 
   const resetForm = () => {
     setNewProduct({
-      name: "",
-      price: "",
-      image: "",
-      category: "",
-      description: "",
-      stock: "",
-      discount: "",
-      sku: "",
-      supplier: "",
-      warranty: "",
+      name: '',
+      description: '',
+      color: '#000000',
+      rating: 1,
+      price: '',
+      category: '',
+      stock: '',
+      discount: '',
+      image: null,
     });
     setEditProductId(null);
     setPreviewImage(null);
@@ -200,78 +211,118 @@ const ManageProducts = () => {
             {editProductId ? "Edit Product" : "Add Product"}
           </h2>
           <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="Product Name"
-              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-              value={newProduct.name}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, name: e.target.value })
-              }
-            />
-            <input
-              type="number"
-              placeholder="Price"
-              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-              value={newProduct.price}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, price: e.target.value })
-              }
-            />
-            <select
-              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-              value={newProduct.category}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, category: e.target.value })
-              }
-            >
-              <option value="">Select Category</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.name}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-            <textarea
-              placeholder="Description"
-              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 h-24"
-              value={newProduct.description}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, description: e.target.value })
-              }
-            ></textarea>
-            <input
-              type="number"
-              placeholder="Stock Quantity"
-              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-              value={newProduct.stock}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, stock: e.target.value })
-              }
-            />
-            <input
-              type="number"
-              placeholder="Discount (%)"
-              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-              value={newProduct.discount}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, discount: e.target.value })
-              }
-            />
-            <input
-              type="file"
-              accept="image/*"
-              className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-              onChange={handleImageUpload}
-            />
-            {previewImage && (
-              <img
-                src={previewImage}
-                alt="Preview"
-                className="w-32 h-32 object-cover rounded mt-4"
-              />
-            )}
+          <input
+            type="text"
+            placeholder="Product Name"
+            className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+            value={newProduct.name}
+            onChange={(e) =>
+              setNewProduct({ ...newProduct, name: e.target.value })
+            }
+          />
+          <textarea
+            placeholder="Description"
+            className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 h-24"
+            value={newProduct.description}
+            onChange={(e) =>
+              setNewProduct({ ...newProduct, description: e.target.value })
+            }
+          ></textarea>
+
+          <input
+            type="color"
+            className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+            value={newProduct.color}
+            onChange={(e) =>
+              setNewProduct({ ...newProduct, color: e.target.value })
+            }
+          />
+
+          <div className="flex items-center space-x-2">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <svg
+                key={star}
+                xmlns="http://www.w3.org/2000/svg"
+                fill={newProduct.rating >= star ? '#ffcc00' : 'none'}
+                viewBox="0 0 24 24"
+                stroke="#ffcc00"
+                width="24"
+                height="24"
+                onClick={() =>
+                  setNewProduct({ ...newProduct, rating: star })
+                }
+                className="cursor-pointer"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 17.27l6.18 3.73-1.64-7.03 5.46-4.73-7.19-.62L12 2 9.19 8.62l-7.19.62 5.46 4.73-1.64 7.03L12 17.27z"
+                />
+              </svg>
+            ))}
           </div>
+
+          <input
+            type="number"
+            placeholder="Price"
+            className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+            value={newProduct.price}
+            onChange={(e) =>
+              setNewProduct({ ...newProduct, price: e.target.value })
+            }
+          />
+
+          <select
+            className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+            value={newProduct.category}
+            onChange={(e) =>
+              setNewProduct({ ...newProduct, category: e.target.value })
+            }
+          >
+            <option value="">Select Category</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.name}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+
+          <input
+            type="number"
+            placeholder="Stock Quantity"
+            className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+            value={newProduct.stock}
+            onChange={(e) =>
+              setNewProduct({ ...newProduct, stock: e.target.value })
+            }
+          />
+
+          <input
+            type="number"
+            placeholder="Discount (%)"
+            className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+            value={newProduct.discount}
+            onChange={(e) =>
+              setNewProduct({ ...newProduct, discount: e.target.value })
+            }
+          />
+
+          <input
+            type="file"
+            accept="image/*"
+            className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+            onChange={handleImageUpload}
+          />
+
+          {previewImage && (
+            <img
+              src={previewImage}
+              alt="Preview"
+              className="w-32 h-32 object-cover rounded mt-4"
+            />
+          )}
+        </div>
           <div className="mt-4 flex justify-between">
             <button
               className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-6 py-2 rounded-lg hover:from-blue-600 hover:to-blue-800 transition-all duration-200"
@@ -293,56 +344,89 @@ const ManageProducts = () => {
           <h2 className="text-2xl font-semibold text-blue-500 mb-4">
             Product List
           </h2>
-          <table className="table-auto w-full border-collapse border border-gray-300">
-            <thead>
-              <tr className="bg-blue-100 text-blue-700">
-                <th className="border p-3">Image</th>
-                <th className="border p-3">Name</th>
-                <th className="border p-3">Category</th>
-                <th className="border p-3">Price</th>
-                <th className="border p-3">Stock</th>
-                <th className="border p-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="text-center p-4 text-gray-500">
-                    No products available.
-                  </td>
-                </tr>
-              ) : (
-                products.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="border p-3">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                    </td>
-                    <td className="border p-3">{product.name}</td>
-                    <td className="border p-3">{product.category}</td>
-                    <td className="border p-3">${product.price}</td>
-                    <td className="border p-3">{product.stock}</td>
-                    <td className="border p-3 flex justify-around">
-                      <FontAwesomeIcon
-                        icon={faEdit}
-                        className="text-yellow-500 cursor-pointer hover:scale-110 transition-transform duration-200"
-                        onClick={() => handleEditProduct(product)}
-                      />
-                      <FontAwesomeIcon
-                        icon={faTrash}
-                        className="text-red-500 cursor-pointer hover:scale-110 transition-transform duration-200"
-                        onClick={() => handleDeleteProduct(product.id)}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+          <div className="overflow-x-auto">
+  <table className="table-auto w-full border-collapse border border-gray-300">
+    <thead>
+      <tr className="bg-blue-100 text-blue-700">
+        <th className="border p-3">Image</th>
+        <th className="border p-3">Name</th>
+        <th className="border p-3">Category</th>
+        <th className="border p-3">Description</th>
+        <th className="border p-3">Color</th>
+        <th className="border p-3">Rating</th>
+        <th className="border p-3">Price</th>
+        <th className="border p-3">Stock</th>
+        <th className="border p-3">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {products.length === 0 ? (
+        <tr>
+          <td colSpan="6" className="text-center p-4 text-gray-500">
+            No products available.
+          </td>
+        </tr>
+      ) : (
+        products.map((product) => (
+          <tr key={product.id} className="hover:bg-gray-50">
+            <td className="border p-3">
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-16 h-16 object-cover rounded"
+              />
+            </td>
+            <td className="border p-3">{product.name}</td>
+            <td className="border p-3">{product.category}</td>
+            <td className="border p-3">{product.description}</td>
+            <td className="border p-3">
+              <div
+                className="w-8 h-8"
+                style={{ backgroundColor: product.color }}
+              ></div>
+            </td>
+            <td className="border p-3">
+              {Array.from({ length: 5 }, (_, index) => (
+                <svg
+                  key={index}
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill={index < product.rating ? "#ffcc00" : "none"}
+                  viewBox="0 0 24 24"
+                  stroke="#ffcc00"
+                  width="24"
+                  height="24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 17.27l6.18 3.73-1.64-7.03 5.46-4.73-7.19-.62L12 2 9.19 8.62l-7.19.62 5.46 4.73-1.64 7.03L12 17.27z"
+                  />
+                </svg>
+              ))}
+            </td>
+            <td className="border p-3">${product.price}</td>
+            <td className="border p-3">{product.stock}</td>
+            <td className="border p-3 flex justify-around">
+              <FontAwesomeIcon
+                icon={faEdit}
+                className="text-yellow-500 cursor-pointer hover:scale-110 transition-transform duration-200"
+                onClick={() => handleEditProduct(product)}
+              />
+              <FontAwesomeIcon
+                icon={faTrash}
+                className="text-red-500 cursor-pointer hover:scale-110 transition-transform duration-200"
+                onClick={() => handleDeleteProduct(product.id)}
+              />
+            </td>
+          </tr>
+        ))
+      )}
+    </tbody>
+  </table>
+</div>
+          </div>
+        
       </div>
     </div>
   );
