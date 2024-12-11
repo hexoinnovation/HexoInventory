@@ -135,10 +135,10 @@ const ManageOrders = () => {
       {loading && <div>Loading orders...</div>}
 
       {/* Two-Column Layout */}
-      <div className="grid grid-cols-2 md:grid-cols-2 gap-8">
-        {/* Order Form Column */}
-        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-          <h2 className="text-2xl font-semibold text-blue-500 mb-4">
+      <div className="grid grid-cols-[30%,70%] lg:grid-cols-[30%,70%] gap-8">
+      {/* Order Form Column */}
+      <div className="bg-white p-6 rounded-lg shadow-lg">
+      <h2 className="text-2xl font-semibold text-blue-500 mb-4">
             {editOrderId ? "Edit Order" : "Add New Order"}
           </h2>
           <div className="space-y-4">

@@ -224,11 +224,11 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
           </ul>
         )}
 
-<li>
+ <li className="cursor-pointer" >
           <Link to="/report">
             <i className="bx bxs-report text-2xl"></i>
-            <span className="text">Report</span>
-          </Link>
+            <span className="ml-2 font-extrabold text-yellow-100">Reports</span>     
+                 </Link>
         </li>
         <li className={activeLink === "logout" ? "active" : ""}>
           <Link
