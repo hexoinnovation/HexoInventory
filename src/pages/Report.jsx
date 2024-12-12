@@ -58,7 +58,7 @@ const ReportTabs = () => {
     purchase: ["no", "sname", "phone", "pname", "categories", "price"],
     sales: ["saleId", "customer", "amount", "date", "paymentStatus"],
     stock: ["itemName", "quantity", "restockLevel"],
-    invoices: ["invoiceId", "amount", "paymentStatus", "date"],
+    invoices: ["invoiceNumber", "total", "paymentStatus", "invoiceDate"],
     orders: ["orderId", "product", "quantity", "status", "totalPrice"],
     attendance: ["employeeId", "name", "date", "status"],
     salary: ["employeeId", "name", "salaryAmount", "paymentDate"],
