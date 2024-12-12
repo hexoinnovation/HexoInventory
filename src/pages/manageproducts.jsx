@@ -44,7 +44,7 @@ const ManageProducts = () => {
   });
   const [editProductId, setEditProductId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
-  // const { currentUser } = useAuth();
+  const { currentUser } = useAuth();
 
   if (!currentUser) {
     return <p>Loading...</p>;
