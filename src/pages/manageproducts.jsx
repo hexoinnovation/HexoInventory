@@ -44,7 +44,7 @@ const ManageProducts = () => {
   });
   const [editProductId, setEditProductId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
-  const { currentUser } = useAuth();
+  // const { currentUser } = useAuth();
 
   if (!currentUser) {
     return <p>Loading...</p>;
@@ -237,32 +237,6 @@ const ManageProducts = () => {
           setNewProduct({ ...newProduct, color: e.target.value })
         }
       />
-
-      <div className="flex items-center space-x-2">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <svg
-            key={star}
-            xmlns="http://www.w3.org/2000/svg"
-            fill={newProduct.rating >= star ? '#ffcc00' : 'none'}
-            viewBox="0 0 24 24"
-            stroke="#ffcc00"
-            width="24"
-            height="24"
-            onClick={() =>
-              setNewProduct({ ...newProduct, rating: star })
-            }
-            className="cursor-pointer"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M12 17.27l6.18 3.73-1.64-7.03 5.46-4.73-7.19-.62L12 2 9.19 8.62l-7.19.62 5.46 4.73-1.64 7.03L12 17.27z"
-            />
-          </svg>
-        ))}
-      </div>
-
       <input
         type="number"
         placeholder="Price"
@@ -272,7 +246,6 @@ const ManageProducts = () => {
           setNewProduct({ ...newProduct, price: e.target.value })
         }
       />
-
       <select
         className="w-full border border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
         value={newProduct.category}
@@ -338,9 +311,6 @@ const ManageProducts = () => {
       </button>
     </div>
   </div>
-
-  
-
         {/* Product List */}
         <div className="bg-white p-6 rounded-lg shadow-lg">
           <h2 className="text-2xl font-semibold text-blue-500 mb-4">
@@ -355,7 +325,7 @@ const ManageProducts = () => {
         <th className="border p-3">Category</th>
         <th className="border p-3">Description</th>
         <th className="border p-3">Color</th>
-        <th className="border p-3">Rating</th>
+      
         <th className="border p-3">Price</th>
         <th className="border p-3">Stock</th>
         <th className="border p-3">Actions</th>
@@ -387,26 +357,7 @@ const ManageProducts = () => {
                 style={{ backgroundColor: product.color }}
               ></div>
             </td>
-            <td className="border p-3">
-              {Array.from({ length: 5 }, (_, index) => (
-                <svg
-                  key={index}
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill={index < product.rating ? "#ffcc00" : "none"}
-                  viewBox="0 0 24 24"
-                  stroke="#ffcc00"
-                  width="24"
-                  height="24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 17.27l6.18 3.73-1.64-7.03 5.46-4.73-7.19-.62L12 2 9.19 8.62l-7.19.62 5.46 4.73-1.64 7.03L12 17.27z"
-                  />
-                </svg>
-              ))}
-            </td>
+          
             <td className="border p-3">${product.price}</td>
             <td className="border p-3">{product.stock}</td>
             <td className="border p-3 flex justify-around">
