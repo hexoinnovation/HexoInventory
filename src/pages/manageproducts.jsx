@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { db } from "../config/firebase";
 import {
   collection,
+  setDoc,
   getDocs,
   addDoc,
   updateDoc,
@@ -17,6 +18,7 @@ const ManageProducts = () => {
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState([]);
    const [category, setCategory] = useState([]);
+   const [productCategory, setProductCategory] = useState('');
   // const [newProduct, setNewProduct] = useState({
   //   name: "",
   //   price: "",
@@ -94,16 +96,32 @@ const ManageProducts = () => {
     }
   };
 
-  const handleAddProduct = async () => {
-    try {
-      const newDoc = await addDoc(productsCollection, newProduct);
-      setProducts([...products, { ...newProduct, id: newDoc.id }]);
-      resetForm();
-    } catch (error) {
-      console.error("Error adding product: ", error);
-    }
-  };
 
+
+const handleAddProduct = async () => {
+  try {
+    // Generate the custom document ID
+    const docId = `${productCategory}-${Date.now()}`; // Using timestamp for uniqueness
+    const newDocRef = doc(productsCollection, docId); // Reference with custom ID
+
+    // Save the product data with the custom ID
+    await setDoc(newDocRef, {
+      ...newProduct,
+      Category: productCategory,
+    });
+
+    // Update the local state
+    setProducts([
+      ...products,
+      { ...newProduct, id: docId, Category: productCategory }
+    ]);
+
+    // Reset the form
+    resetForm();
+  } catch (error) {
+    console.error("Error adding product: ", error);
+  }
+};
   const handleUpdateProduct = async () => {
     try {
       const productDoc = doc(
@@ -260,7 +278,30 @@ const ManageProducts = () => {
           </option>
         ))}
       </select>
+      <div>
+          <label>Category:</label>
+          <div>
+            <input
+              type="radio"
+              id="bestProduct"
+              name="productCategory"
+              value="best_product"
+              checked={productCategory === 'best_product'}
+              onChange={() => setProductCategory('best_product')}
+            />
+            <label htmlFor="bestProduct">Best Product</label>
 
+            <input
+              type="radio"
+              id="offerProduct"
+              name="productCategory"
+              value="offer_product"
+              checked={productCategory === 'offer_product'}
+              onChange={() => setProductCategory('offer_product')}
+            />
+            <label htmlFor="offerProduct">Offer Product</label>
+          </div>
+        </div>
       <input
         type="number"
         placeholder="Stock Quantity"
@@ -379,7 +420,6 @@ const ManageProducts = () => {
   </table>
 </div>
           </div>
-        
       </div>
     </div>
   );
