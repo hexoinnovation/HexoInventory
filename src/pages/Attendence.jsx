@@ -20,9 +20,11 @@ const AttendanceApp = () => {
   const [employees, setEmployees] = useState([]); // Fetch employee details
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newAttendance, setNewAttendance] = useState({
-    employeeId: "",
-    date: "",
-    status: "Present",
+    employeeName: "",
+        employeeContact:"",
+        employeeEmail:"",
+        date: "",
+        status: "Present",
   });
   const [viewAttendance, setViewAttendance] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -37,32 +39,62 @@ const AttendanceApp = () => {
   // Fetch user and employee data from Firestore
   useEffect(() => {
     const fetchUserAndEmployees = async () => {
-      const currentUser = auth.currentUser;
-      setUser(currentUser);
-
-      if (currentUser) {
-        // Fetch employee details for assigning attendance
-        const employeeQuery = query(
-          collection(db, "admins", currentUser.email, "Empdetails")
-        );
-        const employeeSnapshot = await getDocs(employeeQuery);
-        const fetchedEmployees = employeeSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setEmployees(fetchedEmployees);
-
-        // Fetch attendance records
-        const attendanceQuery = query(collection(db, "attendance"));
-        const attendanceSnapshot = await getDocs(attendanceQuery);
-        const fetchedAttendances = attendanceSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setAttendances(fetchedAttendances);
+      try {
+        const currentUser = auth.currentUser;
+        setUser(currentUser);
+  
+        if (currentUser) {
+          // Fetch employee details for assigning attendance
+          const employeeQuery = query(
+            collection(db, "admins", currentUser.email, "Empdetails")
+          );
+          const employeeSnapshot = await getDocs(employeeQuery);
+          const fetchedEmployees = employeeSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setEmployees(fetchedEmployees);
+  
+          // Fetch attendance records
+          const attendanceCollectionRef = collection(
+            db,
+            "admins",
+            currentUser.email,
+            "attendance"
+          );
+          const attendanceSnapshot = await getDocs(attendanceCollectionRef);
+          const fetchedAttendances = [];
+  
+          // Iterate over each attendance document to fetch its subcollections
+          for (const doc of attendanceSnapshot.docs) {
+            const attendanceDoc = { id: doc.id, ...doc.data() };
+  
+            // Fetch subcollection (e.g., dynamically named by date)
+            const subcollectionQuery = collection(attendanceCollectionRef, doc.id, "<SUBCOLLECTION_NAME>"); // Replace <SUBCOLLECTION_NAME> with actual logic if dynamic
+            const subcollectionSnapshot = await getDocs(subcollectionQuery);
+  
+            // Add subcollection data to the fetched attendance record
+            attendanceDoc.subcollectionData = subcollectionSnapshot.docs.map((subDoc) => ({
+              id: subDoc.id,
+              ...subDoc.data(),
+            }));
+  
+            fetchedAttendances.push(attendanceDoc);
+          }
+  
+          setAttendances(fetchedAttendances);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        Swal.fire({
+          title: "Error!",
+          text: "Failed to fetch attendance and employee details. Please try again.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
       }
     };
-
+  
     fetchUserAndEmployees();
   }, []);
 
@@ -90,7 +122,7 @@ const AttendanceApp = () => {
         employeeId: newAttendance.employeeId,
       };
 
-      const userDocRef = collection(db, "attendance");
+      const userDocRef = collection(db, "admins", user.email, "attendance");
 
       if (newAttendance.id) {
         const attendanceDocRef = doc(userDocRef, newAttendance.id);
@@ -124,7 +156,9 @@ const AttendanceApp = () => {
 
       setIsModalOpen(false);
       setNewAttendance({
-        employeeId: "",
+        employeeName: "",
+        employeeContact:"",
+        employeeEmail:"",
         date: "",
         status: "Present",
       });
@@ -202,9 +236,9 @@ const AttendanceApp = () => {
     const employee = employees.find((emp) => emp.id === attendance.employeeId);
     return {
       ...attendance,
-      employeeName: employee ? employee.name : "Unknown",
-      employeeContact: employee ? employee.contact : "N/A",
-      employeeEmail: employee ? employee.email : "N/A",
+      employeeName: employee ? employee.name : "employeeName",
+      employeeContact: employee ? employee.contact : "employeeContact/A",
+      employeeEmail: employee ? employee.email : "employeeEmail",
     };
   });
 
@@ -370,7 +404,7 @@ const AttendanceApp = () => {
         <table className="min-w-full table-auto mt-4">
           <thead className="bg-gradient-to-r from-blue-900 to-blue-900 text-white">
             <tr>
-              <th className="px-20 py-2 text-left">Employee Name</th>
+              <th className="px-4 py-2 text-left">Employee Name</th>
               <th className="px-4 py-2 text-left">Employee Contact</th>
               <th className="px-4 py-2 text-left">Employee Email</th>
               <th className="px-4 py-2 text-left">Date</th>
