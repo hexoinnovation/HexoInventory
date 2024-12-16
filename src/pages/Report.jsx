@@ -39,9 +39,9 @@ const ReportTabs = () => {
     hrm: [],
     attendance: [],
     salary: [],
-    employeeDetails: [],
-    businessDetails: [],
-    customerDetails: [],
+    empdetails: [],
+    businesses: [],
+    customers: [],
   });
   const [filteredData, setFilteredData] = useState([]);
   const [filters, setFilters] = useState({
@@ -55,16 +55,16 @@ const ReportTabs = () => {
 
   // Report Fields Configuration
   const customFields = {
-    purchase: ["no", "sname", "phone", "pname", "categories", "price"],
-    sales: ["no", "pname", "phone", "categories", "sales", "price"],
-    stock: ["no", "pname", "phone", "categories", "estock", "price"],
+    purchase: ["no", "sname", "phone", "pname",  "price"],
+    sales: ["no", "pname", "phone",  "sales", "price"],
+    stock: ["no", "pname", "phone",  "estock", "price"],
     invoices: ["invoiceNumber", "total", "paymentStatus", "invoiceDate"],
     orders: ["orderId", "product", "quantity", "status", "totalPrice"],
-    attendance: ["employeeId", "name", "date", "status"],
+    attendance: ["employeeName", "employeeContact", "employeeEmail", "date","status"],
     salary: ["employeeId", "name", "salaryAmount", "paymentDate"],
-    employeeDetails: ["photo", "id", "name", "contact", "dob", "gender", "role", "salary", "salaryInterval"],
-    businessDetails: ["businessName", "registrationNumber", "contactNumber", "email", "gstNumber", "aadhaar", "city"],
-    customerDetails: ["name", "city", "phone", "aadhaar", "email", "panno"],
+    empdetails: ["name", "contact", "dob", "gender", "role", "salary", "salaryInterval"],
+    businesses: ["businessName", "registrationNumber", "contactNumber",  "gstNumber", "city","state"],
+    customers: ["name", "city", "phone", "aadhaar", "email", "panno"],
   };
 
   // Fetch data from Firestore
@@ -183,7 +183,7 @@ const ReportTabs = () => {
         <div className="w-64 bg-white shadow-md p-6">
           <h2 className="text-xl font-semibold mb-6">Reports</h2>
           <div className="space-y-4">
-            {["purchase", "sales", "stock", "invoices", "orders", "attendance", "salary", "employeeDetails", "businessDetails", "customerDetails"].map((tab) => (
+            {["purchase", "sales", "stock", "invoices", "orders", "attendance", "salary", "empdetails", "businesses", "customers"].map((tab) => (
               <button
                 key={tab}
                 className={`flex items-center px-6 py-3 w-full text-lg rounded-lg hover:bg-indigo-100 ${
@@ -194,7 +194,7 @@ const ReportTabs = () => {
                 <span className="mr-3 text-xl">
                   {tab === "purchase" ? <FaShoppingCart /> :
                   tab === "sales" ? <FaStore /> :
-                  tab === "employeeDetails" ? <FaUsers /> : <FaClipboardList />}
+                  tab === "empdetails" ? <FaUsers /> : <FaClipboardList />}
                 </span>
                 <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
               </button>
