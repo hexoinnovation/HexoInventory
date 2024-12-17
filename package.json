@@ -25,6 +25,7 @@
     "axios": "^1.7.7",
     "chart.js": "^4.4.7",
     "date-fns": "^4.1.0",
+    "emailjs-com": "^3.2.0",
     "firebase": "^11.0.2",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.10.2",

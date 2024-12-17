@@ -141,6 +141,7 @@ const App = () => {
                   isAuthenticated ? <CustomerDetails /> : <Navigate to="/" />
                 }
               />
+              
               <Route
                 path="/BusinessDetails"
                 element={
