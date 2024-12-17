@@ -175,3 +175,5 @@ const InventoryControl = () => {
 };
 
 export default InventoryControl;
+
+
