@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot,  getDocs} from "firebase/firestore";
 import { db } from "../config/firebase"; // Import Firestore instance
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
@@ -79,6 +79,21 @@ const InventoryControl = () => {
       },
     ],
   };
+
+  // Fetch total products from Firestore
+  useEffect(() => {
+    const fetchTotalProducts = async () => {
+      try {
+        const productsCollectionRef = collection(db, "products"); // Replace "products" with your collection name
+        const querySnapshot = await getDocs(productsCollectionRef);
+        setTotalProducts(querySnapshot.size); // Total number of documents in the collection
+      } catch (error) {
+        console.error("Error fetching total products:", error.message);
+      }
+    };
+
+    fetchTotalProducts();
+  }, []);
 
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
