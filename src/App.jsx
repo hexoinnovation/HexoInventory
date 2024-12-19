@@ -38,6 +38,8 @@ import Ecomdashboard from "./pages/ecomdashboard";
 import Notifications from "./Components/Notifications"; // Example page component
 import { AuthProvider } from "./authContext";
 import Profile from "./Components/profile";
+import Hrmdashboard from "./pages/hrmdashboard";
+import Invoicedashboard from "./pages/invoicedashboard";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -139,6 +141,7 @@ const App = () => {
                   isAuthenticated ? <CustomerDetails /> : <Navigate to="/" />
                 }
               />
+              
               <Route
                 path="/BusinessDetails"
                 element={
@@ -171,6 +174,18 @@ const App = () => {
                 path="/ecomdashboard"
                 element={
                   isAuthenticated ? <Ecomdashboard /> : <Navigate to="/" />
+                }
+              />
+              <Route
+                path="/hrmdashboard"
+                element={
+                  isAuthenticated ? <Hrmdashboard /> : <Navigate to="/" />
+                }
+              />
+              <Route
+                path="/invoicedashboard"
+                element={
+                  isAuthenticated ? <Invoicedashboard /> : <Navigate to="/" />
                 }
               />
               <Route

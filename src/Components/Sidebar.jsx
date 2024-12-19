@@ -43,28 +43,24 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
       </div>
 
       <ul className="side-menu print:hidden">
-        <div className="dash">
-          <li className={activeLink === "Dashboard" ? "active" : ""}>
-            <Link to="/" onClick={() => handleLinkClick("Dashboard")}>
-              <i className="bx bxs-dashboard"></i>
-              <span className="text">Dashboard</span>
-            </Link>
-          </li>
-        </div>
-
+        {/* Inventory Menu */}
         <li className="cursor-pointer" onClick={toggleInventoryDropdown}>
           <div className="label">
             <i className="bx bxs-package"></i>
             <span className="ml-2 font-extrabold">Inventory Menu</span>
             <i
-              className={`bx ml-auto ${
-                isInventoryDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"
-              }`}
+              className={`bx ml-auto ${isInventoryDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"}`}
             ></i>
           </div>
         </li>
         {isInventoryDropdownOpen && (
           <ul className="ml-4 space-y-2 mt-2">
+            <li className={activeLink === "Dashboard" ? "active" : ""}>
+              <Link to="/" onClick={() => handleLinkClick("Dashboard")}>
+                <i className="bx bxs-dashboard"></i>
+                <span className="text">Dashboard</span>
+              </Link>
+            </li>
             <li className={activeLink === "purchase" ? "active" : ""}>
               <Link to="/purchase" onClick={() => handleLinkClick("purchase")}>
                 <i className="bx bxs-cart"></i>
@@ -86,19 +82,24 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
           </ul>
         )}
 
+        {/* Invoice Menu */}
         <li className="cursor-pointer" onClick={toggleInvoiceDropdown}>
           <div className="label">
             <i className="bx bxs-file"></i>
             <span className="ml-2 font-extrabold">Invoice Menu</span>
             <i
-              className={`bx ml-auto ${
-                isInvoiceDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"
-              }`}
+              className={`bx ml-auto ${isInvoiceDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"}`}
             ></i>
           </div>
         </li>
         {isInvoiceDropdownOpen && (
           <ul className="ml-4 space-y-2 mt-2">
+            <li className={activeLink === "Dashboard" ? "active" : ""}>
+              <Link to="/invoicedashboard" onClick={() => handleLinkClick("Dashboard")}>
+                <i className="bx bxs-dashboard"></i>
+                <span className="text">Dashboard</span>
+              </Link>
+            </li>
             <li className={activeLink === "invoice" ? "active" : ""}>
               <Link to="/invoice" onClick={() => handleLinkClick("invoice")}>
                 <i className="bx bxs-file"></i>
@@ -106,28 +107,19 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
               </Link>
             </li>
             <li className={activeLink === "CustomerDetails" ? "active" : ""}>
-              <Link
-                to="/CustomerDetails"
-                onClick={() => handleLinkClick("CustomerDetails")}
-              >
+              <Link to="/CustomerDetails" onClick={() => handleLinkClick("CustomerDetails")}>
                 <i className="bx bxs-user"></i>
                 <span className="text">Customer-Details</span>
               </Link>
             </li>
             <li className={activeLink === "BusinessDetails" ? "active" : ""}>
-              <Link
-                to="/BusinessDetails"
-                onClick={() => handleLinkClick("BusinessDetails")}
-              >
+              <Link to="/BusinessDetails" onClick={() => handleLinkClick("BusinessDetails")}>
                 <i className="bx bxs-briefcase"></i>
                 <span className="text">Business Details</span>
               </Link>
             </li>
             <li className={activeLink === "viewAllInvoice" ? "active" : ""}>
-              <Link
-                to="/viewAllInvoice"
-                onClick={() => handleLinkClick("viewAllInvoice")}
-              >
+              <Link to="/viewAllInvoice" onClick={() => handleLinkClick("viewAllInvoice")}>
                 <i className="bx bxs-file"></i>
                 <span className="text">All Invoices</span>
               </Link>
@@ -135,43 +127,32 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
           </ul>
         )}
 
-        {/* Enhanced Ecommerce Admin Panel */}
+        {/* Ecommerce Admin Panel */}
         <li className="cursor-pointer" onClick={toggleEcommerceDropdown}>
           <div className="label">
             <i className="bx bxs-store-alt"></i>
             <span className="ml-2 font-extrabold">Ecommerce Admin Panel</span>
             <i
-              className={`bx ml-auto ${
-                isEcommerceDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"
-              }`}
+              className={`bx ml-auto ${isEcommerceDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"}`}
             ></i>
           </div>
         </li>
         {isEcommerceDropdownOpen && (
           <ul className="ml-4 space-y-2 mt-2">
             <li className={activeLink === "dashboard" ? "active" : ""}>
-              <Link
-                to="/ecomdashboard"
-                onClick={() => handleLinkClick("dashboard")}
-              >
+              <Link to="/ecomdashboard" onClick={() => handleLinkClick("dashboard")}>
                 <i className="bx bxs-dashboard"></i>
                 <span className="text">Dashboard</span>
               </Link>
             </li>
             <li className={activeLink === "manage-products" ? "active" : ""}>
-              <Link
-                to="/manageproducts"
-                onClick={() => handleLinkClick("manage-products")}
-              >
+              <Link to="/manageproducts" onClick={() => handleLinkClick("manage-products")}>
                 <i className="bx bxs-box"></i>
                 <span className="text">Manage Products</span>
               </Link>
             </li>
             <li className={activeLink === "manage-categories" ? "active" : ""}>
-              <Link
-                to="/managecategories"
-                onClick={() => handleLinkClick("manage-categories")}
-              >
+              <Link to="/managecategories" onClick={() => handleLinkClick("manage-categories")}>
                 <i className="bx bxs-category"></i>
                 <span className="text">Manage Categories</span>
               </Link>
@@ -185,19 +166,24 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
           </ul>
         )}
 
+        {/* HRM Section */}
         <li className="cursor-pointer" onClick={toggleHRMDropdown}>
           <div className="label">
             <i className="bx bxs-user-detail"></i>
             <span className="ml-2 font-extrabold">HRM Section</span>
             <i
-              className={`bx ml-auto ${
-                isHRMDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"
-              }`}
+              className={`bx ml-auto ${isHRMDropdownOpen ? "bx-chevron-up" : "bx-chevron-down"}`}
             ></i>
           </div>
         </li>
         {isHRMDropdownOpen && (
           <ul className="ml-4 space-y-2 mt-2">
+            <li className={activeLink === "hrmdashboard" ? "active" : ""}>
+              <Link to="/hrmdashboard" onClick={() => handleLinkClick("hrmdashboard")}>
+                <i className="bx bxs-dashboard"></i>
+                <span className="text">Dashboard</span>
+              </Link>
+            </li>
             <li className={activeLink === "employee" ? "active" : ""}>
               <Link to="/employee" onClick={() => handleLinkClick("employee")}>
                 <i className="bx bxs-user"></i>
@@ -205,10 +191,7 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
               </Link>
             </li>
             <li className={activeLink === "attendence" ? "active" : ""}>
-              <Link
-                to="/attendence"
-                onClick={() => handleLinkClick("attendence")}
-              >
+              <Link to="/attendence" onClick={() => handleLinkClick("attendence")}>
                 <i className="bx bxs-check-circle"></i>
                 <span className="text">Attendance</span>
               </Link>
@@ -219,17 +202,18 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Salary</span>
               </Link>
             </li>
-          
-          
           </ul>
         )}
 
- <li className="cursor-pointer" >
+        {/* Reports */}
+        <li className="cursor-pointer">
           <Link to="/report">
             <i className="bx bxs-report text-2xl"></i>
-            <span className="ml-2 font-extrabold text-yellow-100">Reports</span>     
-                 </Link>
+            <span className="ml-2 font-extrabold text-yellow-100">Reports</span>
+          </Link>
         </li>
+
+        {/* Logout */}
         <li className={activeLink === "logout" ? "active" : ""}>
           <Link
             to="#"
@@ -244,6 +228,7 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
           </Link>
         </li>
 
+        {/* Help */}
         <li>
           <Link to="/help">
             <i className="bx bxs-help-circle"></i>

@@ -1,25 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  AiOutlineMail,
-  AiOutlineAppstore,
-  AiOutlineFullscreen,
-  AiOutlineFullscreenExit,
-} from "react-icons/ai";
-import {
-  FaBell,
-  FaSearch,
-  FaUserCircle,
-  FaTasks,
-  FaQuestionCircle,
-} from "react-icons/fa";
-import { RiLogoutCircleRLine, RiHistoryLine } from "react-icons/ri";
+import { FaBell, FaUserCircle, FaCog } from "react-icons/fa";
+import { AiOutlineMail, AiOutlineFullscreen, AiOutlineFullscreenExit } from "react-icons/ai";
+import { RiLogoutCircleRLine } from "react-icons/ri";
 
 const Navbar = ({ handleMenuClick }) => {
-  const [activeDropdown, setActiveDropdown] = useState(""); // Keeps track of active dropdown
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false); // Profile menu controlled separately
-  const [isFullScreen, setIsFullScreen] = useState(false); // Full-screen toggle state
+  const [activeDropdown, setActiveDropdown] = useState(""); // Active dropdown state
+  const [isFullScreen, setIsFullScreen] = useState(false); // Fullscreen toggle state
+  const [currentDateTime, setCurrentDateTime] = useState(new Date().toLocaleString()); // Date & Time state
+  const [activeLink, setActiveLink] = useState(""); // Active link state
   const navigate = useNavigate();
 
   const notifications = [
@@ -32,20 +21,14 @@ const Navbar = ({ handleMenuClick }) => {
     { id: 2, subject: "System downtime notice", time: "1 hour ago" },
   ];
 
-  const toggleSearch = () => setIsSearchVisible(!isSearchVisible);
+  // Update date and time every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentDateTime(new Date().toLocaleString());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const handleNavigation = (path) => {
-    setIsProfileMenuOpen(false); // Close the profile menu after navigation
-    navigate(path);
-  };
-
-  const handleLogout = () => {
-    alert("You have been logged out.");
-    setIsProfileMenuOpen(false); // Close the profile menu after logout
-    navigate("/login");
-  };
-
-  // Full-Screen Toggle
   const toggleFullScreen = () => {
     if (!isFullScreen) {
       if (document.documentElement.requestFullscreen) {
@@ -71,9 +54,18 @@ const Navbar = ({ handleMenuClick }) => {
     setIsFullScreen(!isFullScreen);
   };
 
+  const handleNavigation = (path, linkName) => {
+    setActiveLink(linkName); // Set the active link
+    navigate(path);
+  };
+
+  const handleLogout = () => {
+    alert("You have been logged out.");
+    navigate("/login");
+  };
+
   return (
     <nav className="bg-gray-800 text-white p-4 flex justify-between items-center shadow-md">
-      {/* Menu Icon */}
       <div className="flex items-center">
         <i
           className="bx bx-menu text-white cursor-pointer lg:hidden"
@@ -82,7 +74,6 @@ const Navbar = ({ handleMenuClick }) => {
         <div className="text-2xl font-bold ml-4 lg:ml-0">Admin</div>
       </div>
 
-      {/* Navbar Links */}
       <div className="flex space-x-6 items-center">
         {/* Full-Screen Control */}
         <button
@@ -95,23 +86,6 @@ const Navbar = ({ handleMenuClick }) => {
             <AiOutlineFullscreen size={24} />
           )}
         </button>
-
-        {/* Search */}
-        <button
-          onClick={toggleSearch}
-          className="p-3 rounded-full hover:bg-gray-700"
-        >
-          <FaSearch size={24} />
-        </button>
-        {isSearchVisible && (
-          <div className="relative ml-4">
-            <input
-              type="text"
-              placeholder="Search..."
-              className="bg-gray-700 text-white p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        )}
 
         {/* Notifications */}
         <div
@@ -170,10 +144,7 @@ const Navbar = ({ handleMenuClick }) => {
               </div>
               <div className="h-60 overflow-y-auto">
                 {mails.map((mail) => (
-                  <div
-                    key={mail.id}
-                    className="p-4 border-b hover:bg-gray-200 cursor-pointer"
-                  >
+                  <div key={mail.id} className="p-4 border-b hover:bg-gray-200 cursor-pointer">
                     <p className="font-medium">{mail.subject}</p>
                     <span className="text-xs text-gray-500">{mail.time}</span>
                   </div>
@@ -183,34 +154,31 @@ const Navbar = ({ handleMenuClick }) => {
           )}
         </div>
 
-        {/* Profile (Click-Based Dropdown) */}
+        
+
+        {/* Profile as Direct Link */}
         <div className="relative">
           <button
-            onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+            onClick={() => handleNavigation("/profile", "Profile")}
             className="p-3 rounded-full hover:bg-gray-700"
           >
             <FaUserCircle size={24} />
           </button>
-          {isProfileMenuOpen && (
-            <div className="absolute right-0 mt-2 bg-white text-black rounded-lg shadow-lg w-48 z-50">
-              <ul className="p-2">
-                <li
-                  className="py-2 px-4 hover:bg-gray-200 cursor-pointer"
-                  onClick={() => handleNavigation("/profile")}
-                >
-                  My Profile
-                </li>
-
-                <li
-                  className="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center"
-                  onClick={handleLogout}
-                >
-                  <RiLogoutCircleRLine className="mr-2" /> Logout
-                </li>
-              </ul>
-            </div>
-          )}
         </div>
+
+        {/* Date and Time Display (in Two Rows) */}
+        <div className="text-lg text-white ml-4 flex flex-col items-center">
+          <p>{new Date().toLocaleDateString()}</p>
+          <p>{new Date().toLocaleTimeString()}</p>
+        </div>
+
+        {/* Logout Button */}
+        <button
+          onClick={handleLogout}
+          className="p-3 rounded-full hover:bg-red-700 text-red-500"
+        >
+          <RiLogoutCircleRLine size={24} />
+        </button>
       </div>
     </nav>
   );
