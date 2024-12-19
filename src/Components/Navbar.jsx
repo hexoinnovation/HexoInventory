@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { FaBell, FaUserCircle, FaCog } from "react-icons/fa";
 import { AiOutlineMail, AiOutlineFullscreen, AiOutlineFullscreenExit } from "react-icons/ai";
 import { RiLogoutCircleRLine } from "react-icons/ri";
+import { Link } from "react-router-dom";
 
 const Navbar = ({ handleMenuClick }) => {
   const [activeDropdown, setActiveDropdown] = useState(""); // Active dropdown state
   const [isFullScreen, setIsFullScreen] = useState(false); // Fullscreen toggle state
   const [currentDateTime, setCurrentDateTime] = useState(new Date().toLocaleString()); // Date & Time state
-  const [activeLink, setActiveLink] = useState(""); // Active link state
+  // const [activeLink, setActiveLink] = useState(""); // Active link state
+  const [activeLink, setActiveLink] = useState("Dashboard");
   const navigate = useNavigate();
 
   const notifications = [
@@ -59,10 +61,23 @@ const Navbar = ({ handleMenuClick }) => {
     navigate(path);
   };
 
-  const handleLogout = () => {
-    alert("You have been logged out.");
-    navigate("/login");
+  const handleLinkClick = (link) => {
+    setActiveLink(link);
   };
+
+  const handleLogout = () => {
+    const auth = getAuth();
+    signOut(auth)
+      .then(() => {
+        toast.success("Logged out successfully!");
+        navigate("/login");
+      })
+      .catch((error) => {
+        console.error("Error during logout:", error);
+        toast.error("Error logging out. Please try again.");
+      });
+  };
+
 
   return (
     <nav className="bg-gray-800 text-white p-4 flex justify-between items-center shadow-md">
@@ -172,13 +187,27 @@ const Navbar = ({ handleMenuClick }) => {
           <p>{new Date().toLocaleTimeString()}</p>
         </div>
 
-        {/* Logout Button */}
-        <button
-          onClick={handleLogout}
-          className="p-3 rounded-full hover:bg-red-700 text-red-500"
-        >
-          <RiLogoutCircleRLine size={24} />
-        </button>
+         {/* Logout */}
+         <li className={activeLink === "logout" ? "active" : ""}>
+  <Link
+    to="#"
+    onClick={() => {
+      handleLogout();
+      handleLinkClick("logout");
+    }}
+    style={{
+      color: "red",
+      fontWeight: "bold",
+      marginTop: "5px", // Fixed typo: "marginToptop" to "marginTop"
+    }}
+    className="flex items-center"
+  >
+    {/* Logout Icon */}
+    <RiLogoutCircleRLine size={24} className="mr-2 hover:text-red-700 transition duration-200" />
+    {/* Text */}
+    <span className="p-3 rounded-full text-red-500"></span>
+  </Link>
+</li>
       </div>
     </nav>
   );
