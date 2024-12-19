@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { db } from "../config/firebase"; // Firebase setup file
+import { db} from "../config/firebase"; // Firebase setup file
 import {
   collection,
   getDocs,
@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { getAuth } from "firebase/auth"; // Import getAuth
 
 const ManageOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -104,6 +105,30 @@ const ManageOrders = () => {
   const completedOrders = orders.filter(
     (order) => order.status === "Completed"
   ).length;
+
+
+  const auth = getAuth();
+  const userEmail = auth.currentUser?.email;
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const userDocRef = doc(db, "users", userEmail);
+        const cartCollectionRef = collection(userDocRef, "Cart order");
+  
+        const querySnapshot = await getDocs(cartCollectionRef);
+        const fetchedOrders = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+  
+        setOrders(fetchedOrders);
+      } catch (error) {
+        console.error("Error fetching orders:", error.message);
+      }
+    };
+  
+    fetchOrders();
+  }, [userEmail]);
 
   return (
     <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
@@ -210,15 +235,43 @@ const ManageOrders = () => {
           </h2>
           <table className="table-auto w-full border-collapse border border-gray-300">
             <thead>
-              <tr className="bg-blue-100 text-blue-700">
-                <th className="border p-3">Order ID</th>
-                <th className="border p-3">Customer Name</th>
-                <th className="border p-3">Status</th>
-                <th className="border p-3">Total Amount</th>
-                <th className="border p-3">Date</th>
-                <th className="border p-3">Actions</th>
-              </tr>
+            <tr className="bg-blue-100 text-blue-700">
+          <th className="border p-3">Order ID</th>
+          <th className="border p-3">Items</th>
+          <th className="border p-3">Payment Method</th>
+          <th className="border p-3">Final Total</th>
+          <th className="border p-3">Order Date</th>
+          <th className="border p-3">Actions</th>
+        </tr>
             </thead>
+            <tbody>
+        {orders.map((order) => (
+          <tr key={order.id} className="text-gray-800 dark:text-white">
+            <td className="border p-3">{order.id}</td>
+            <td className="border p-3">{order.totalItems}</td>
+            <td className="border p-3">{order.paymentMethod}</td>
+            <td className="border p-3">₹{order.finalTotal}</td>
+            <td className="border p-3">
+              {new Date(order.orderDate).toLocaleDateString()}
+            </td>
+            <td className="border p-3 flex justify-around">
+                      <FontAwesomeIcon
+                        icon={faEdit}
+                        className="text-yellow-500 cursor-pointer"
+                        onClick={() => {
+                          setEditOrderId(order.id);
+                          setNewOrder(order);
+                        }}
+                      />
+                      <FontAwesomeIcon
+                        icon={faTrash}
+                        className="text-red-500 cursor-pointer"
+                        onClick={() => handleDeleteOrder(order.id)}
+                      />
+                    </td>
+          </tr>
+        ))}
+      </tbody>
             <tbody>
               {orders.length === 0 ? (
                 <tr>
