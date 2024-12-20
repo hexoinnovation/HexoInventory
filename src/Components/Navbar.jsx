@@ -169,8 +169,6 @@ const Navbar = ({ handleMenuClick }) => {
           )}
         </div>
 
-        
-
         {/* Profile as Direct Link */}
         <div className="relative">
           <button

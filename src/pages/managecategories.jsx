@@ -32,7 +32,7 @@ const ManageCategories = () => {
    
     "categories"
   );
-
+ 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
