@@ -95,6 +95,12 @@ const ManageProducts = (currentUser) => {
       reader.readAsDataURL(file);
     }
   };
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  // Function to handle dropdown option clicks
+const handleCategorySelect = (category) => {
+  setSelectedCategory(category); // Store the selected category
+  console.log("Selected category:", category);
+};
   const handleAddProduct = async () => {
     try {
       // Reference to the collection where products are stored
