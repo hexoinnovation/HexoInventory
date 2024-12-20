@@ -18,7 +18,7 @@ const ManageProducts = (currentUser) => {
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState([]);
    const [category, setCategory] = useState([]);
-   const [productCategory, setProductCategory] = useState('');
+   const [productoffers, setProductoffers] = useState('');
   // const [newProduct, setNewProduct] = useState({
   //   name: "",
   //   price: "",
@@ -95,33 +95,30 @@ const ManageProducts = (currentUser) => {
       reader.readAsDataURL(file);
     }
   };
-
-
-
-const handleAddProduct = async () => {
-  try {
-    // Generate the custom document ID
-    const docId = `${productCategory}-${Date.now()}`; // Using timestamp for uniqueness
-    const newDocRef = doc(productsCollection, docId); // Reference with custom ID
-
-    // Save the product data with the custom ID
-    await setDoc(newDocRef, {
-      ...newProduct,
-      Category: productCategory,
-    });
-
-    // Update the local state
-    setProducts([
-      ...products,
-      { ...newProduct, id: docId, Category: productCategory }
-    ]);
-
-    // Reset the form
-    resetForm();
-  } catch (error) {
-    console.error("Error adding product: ", error);
-  }
-};
+  const handleAddProduct = async () => {
+    try {
+      // Reference to the collection where products are stored
+      const productsCollectionRef = collection(db, "products"); // Replace "products" with your Firestore collection name
+  
+      // Save the product data with an auto-generated document ID
+      const docRef = await addDoc(productsCollectionRef, {
+        ...newProduct, 
+        offers: productoffers,// Include all the product data from your form or state
+        createdAt: new Date().toISOString(), // Optionally add a timestamp for record-keeping
+      });
+  
+      console.log("Product added with ID: ", docRef.id); // Log the auto-generated document ID
+  
+      // Update the local state (if needed)
+      setProducts([...products, { ...newProduct, id: docRef.id }]);
+  
+      // Reset the form
+      resetForm();
+    } catch (error) {
+      console.error("Error adding product: ", error);
+    }
+  };
+  
   const handleUpdateProduct = async () => {
     try {
       const productDoc = doc(
@@ -284,20 +281,20 @@ const handleAddProduct = async () => {
             <input
               type="radio"
               id="bestProduct"
-              name="productCategory"
+              name="productoffers"
               value="best_product"
-              checked={productCategory === 'best_product'}
-              onChange={() => setProductCategory('best_product')}
+              checked={productoffers === 'best_product'}
+              onChange={() => setProductoffers('best_product')}
             />
             <label htmlFor="bestProduct">Best Product</label>
 
             <input
               type="radio"
               id="offerProduct"
-              name="productCategory"
+              name="productoffers"
               value="offer_product"
-              checked={productCategory === 'offer_product'}
-              onChange={() => setProductCategory('offer_product')}
+              checked={productoffers === 'offer_product'}
+              onChange={() => setProductoffers('offer_product')}
             />
             <label htmlFor="offerProduct">Offer Product</label>
           </div>
