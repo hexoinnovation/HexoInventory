@@ -10,9 +10,9 @@ import {
 } from "firebase/firestore";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { useAuth } from "../Authcontext";
+// import { useAuth } from "../Authcontext";
 
-const ManageCategories = () => {
+const ManageCategories = (currentUser) => {
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState({
     name: "",
@@ -21,7 +21,7 @@ const ManageCategories = () => {
   });
   const [editCategoryId, setEditCategoryId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
-  const { currentUser } = useAuth();
+  // const { currentUser } = useAuth();
 
   if (!currentUser) {
     return <p>Loading...</p>;

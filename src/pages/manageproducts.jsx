@@ -11,9 +11,9 @@ import {
 } from "firebase/firestore";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { useAuth } from "../Authcontext";
+//import { useAuth } from "../Authcontext";
 
-const ManageProducts = () => {
+const ManageProducts = (currentUser) => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState([]);
@@ -46,7 +46,7 @@ const ManageProducts = () => {
   });
   const [editProductId, setEditProductId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
-  const { currentUser } = useAuth();
+  //const { currentUser } = useAuth();
 
   if (!currentUser) {
     return <p>Loading...</p>;
