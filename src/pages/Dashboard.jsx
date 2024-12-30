@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
-import { collection, onSnapshot,  getDocs} from "firebase/firestore";
+import { doc,collection, onSnapshot,  getDocs} from "firebase/firestore";
 import { db } from "../config/firebase"; // Import Firestore instance
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
@@ -25,7 +26,6 @@ const InfoBox = ({ title, value, description, color }) => {
 
 const InventoryControl = () => {
   const [inventory, setInventory] = useState([]);
-  const [totalProducts, setTotalProducts] = useState(0);
   const [lowStockProducts, setLowStockProducts] = useState(0);
   const [inStockProducts, setInStockProducts] = useState(0);
 
@@ -80,20 +80,72 @@ const InventoryControl = () => {
     ],
   };
 
-  // Fetch total products from Firestore
+  const [user, setUser] = useState(null); // To store the user object
+  const [totalProducts, setTotalProducts] = useState(0); // State for total products count
+
+
+   // Fetch the user on mount and whenever the authentication state changes
+   useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser); // Set the user if logged in
+    });
+
+    return () => unsubscribe(); // Cleanup the subscription
+  }, []);
+
+  // Fetch total products count from Firestore
   useEffect(() => {
     const fetchTotalProducts = async () => {
       try {
-        const productsCollectionRef = collection(db, "products"); // Replace "products" with your collection name
-        const querySnapshot = await getDocs(productsCollectionRef);
-        setTotalProducts(querySnapshot.size); // Total number of documents in the collection
+        if (!user) return; // Ensure user is defined before fetching data
+        
+        // Reference to the admin document in 'admins' collection using the user's email
+        const userDocRef = doc(db, "admins", user.email);
+        
+        // Reference to the 'Purchase' sub-collection for the specific admin
+        const productsRef = collection(userDocRef, "Purchase");
+        
+        // Fetch all documents from the 'Purchase' collection
+        const querySnapshot = await getDocs(productsRef);
+
+        // Set the total products count
+        setTotalProducts(querySnapshot.size); // 'size' gives the count of documents
       } catch (error) {
-        console.error("Error fetching total products:", error.message);
+        console.error("Error fetching products: ", error);
       }
     };
 
-    fetchTotalProducts();
-  }, []);
+    fetchTotalProducts(); // Call the function to fetch the total products count
+  }, [user]);
+ 
+  const [invoiceCount, setInvoiceCount] = useState(0);
+  
+  const auth = getAuth(); // Firebase Authentication instance
+
+  // Fetch invoice count data when the component mounts or the user changes
+  useEffect(() => {
+    const fetchInvoiceCount = async () => {
+      try {
+        const user = auth.currentUser; // Get the current user
+        if (!user) return; // If no user, skip fetching
+
+        const invoicesRef = collection(db, "admins", user.email, "Invoices");
+
+        // Fetch all invoice documents from the Invoices subcollection
+        const querySnapshot = await getDocs(invoicesRef);
+
+        // Count the number of documents (invoices) retrieved
+        const count = querySnapshot.size;
+
+        setInvoiceCount(count); // Set the calculated invoice count
+      } catch (error) {
+        console.error("Error fetching invoice count: ", error);
+      }
+    };
+
+    fetchInvoiceCount(); // Call the function to fetch data
+  }, [auth.currentUser]); // Re-run this effect if the user changes (e.g., login/logout)
 
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
@@ -119,30 +171,30 @@ const InventoryControl = () => {
       <ul className="box-info grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
         {/* Total Products Info Box */}
         <li>
-          <InfoBox
-            title="Total Products"
-            value={totalProducts}
-            description="Total Products in Inventory"
-            color="from-blue-600 via-blue-700 to-blue-800"
-          />
-        </li>
+            <InfoBox
+              title="Total Products"
+              value={totalProducts} // Displaying the total count here
+              description="Total Products in Inventory"
+              color="from-blue-600 via-blue-700 to-blue-800"
+            />
+          </li>
 
-        {/* Low Stock Info Box */}
+        {/*In Stock Info Box */}
         <li>
           <InfoBox
-            title="Low Stock"
-            value={lowStockProducts}
-            description="Products with Low Stock"
+            title="Total Stock"
+            value={totalProducts}
+            description="Total Stock in Inventory"
             color="from-red-600 via-red-700 to-red-800"
           />
         </li>
 
-        {/* In Stock Info Box */}
-        <li>
+        {/* In Sales  Info Box */}
+       <li>
           <InfoBox
-            title="In Stock"
-            value={inStockProducts}
-            description="Products Available in Stock"
+            title="Total Sales"
+            value={invoiceCount}
+            description="Total Sales in Inventory"
             color="from-green-600 via-green-700 to-green-800"
           />
         </li>

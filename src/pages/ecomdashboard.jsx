@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
 import { useState, useEffect } from "react";
+import { collection, getDocs } from "firebase/firestore"; // Firestore functions for querying
+import { db } from "../config/firebase";
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
@@ -65,20 +67,73 @@ const Dashboard = () => {
     // Simulated fetch
     const fetchOrders = async () => {
       const fakeOrders = [
-        { id: 1, customer: "John Doe", total: "$200", status: "Shipped" },
-        { id: 2, customer: "Jane Smith", total: "$350", status: "Pending" },
-        { id: 3, customer: "Sara Lee", total: "$120", status: "Shipped" },
-        {
-          id: 4,
-          customer: "Robert Brown",
-          total: "$500",
-          status: "Processing",
-        },
+        // { id: 1, customer: "John Doe", total: "$200", status: "Shipped" },
+        // { id: 2, customer: "Jane Smith", total: "$350", status: "Pending" },
+        // { id: 3, customer: "Sara Lee", total: "$120", status: "Shipped" },
+        // {
+        //   id: 4,
+        //   customer: "Robert Brown",
+        //   total: "$500",
+        //   status: "Processing",
+        // },
       ];
       setOrders(fakeOrders);
     };
     fetchOrders();
   }, []);
+
+ const [productsInStock, setProductsInStock] = useState(0);
+
+ useEffect(() => {
+  const fetchProductsInStock = async () => {
+    // Reference to the collection where products are stored
+    const productsCollectionRef = collection(db, "products");
+
+    try {
+      // Fetch all product documents from Firestore
+      const querySnapshot = await getDocs(productsCollectionRef);
+
+      // Calculate the number of products in stock (assuming each product has a 'stock' field)
+      const inStockCount = querySnapshot.docs.reduce(
+        (acc, doc) => {
+          const product = doc.data();
+          return acc + (parseInt(product.stock, 10) > 0 ? 1 : 0);
+        },
+        0
+      );
+
+      // Update the state with the count of products in stock
+      setProductsInStock(inStockCount);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
+
+  fetchProductsInStock(); // Call the function to fetch products count
+}, []);
+
+
+const [categoriesInStock, setCategoriesInStock] = useState(0); // State for the category count
+
+ // Fetch categories count from Firestore
+ useEffect(() => {
+  const fetchCategoriesCount = async () => {
+    try {
+      // Reference to the 'categories' collection in Firestore
+      const categoriesCollectionRef = collection(db, "categories");
+
+      // Fetch all category documents from Firestore
+      const querySnapshot = await getDocs(categoriesCollectionRef);
+
+      // Set the category count
+      setCategoriesInStock(querySnapshot.size); // 'size' gives the count of documents
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  fetchCategoriesCount(); // Call the function to fetch the categories count
+}, []);
 
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
@@ -115,18 +170,8 @@ const Dashboard = () => {
 
       {/* Info Boxes for E-commerce Stats */}
       <ul className="box-info grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
-        {/* Total Sales Info Box */}
-        <li>
-          <InfoBox
-            title="Total Sales"
-            value="1,250"
-            description="Total Sales Month"
-            color="from-blue-600 via-blue-700 to-blue-800"
-          />
-        </li>
-
-        {/* Orders Info Box */}
-        <li>
+         {/* Orders Info Box */}
+         <li>
           <InfoBox
             title="Total Orders"
             value="1,200"
@@ -134,16 +179,24 @@ const Dashboard = () => {
             color="from-orange-600 via-orange-700 to-orange-800"
           />
         </li>
-
-        {/* Products Info Box */}
+        {/* Total Products Info Box  */}
         <li>
-          <InfoBox
-            title="Products Stock"
-            value="2,300"
-            description="Total Products Available"
-            color="from-green-600 via-green-700 to-green-800"
-          />
-        </li>
+            <InfoBox
+              title="Products in Stock"
+              value={productsInStock}
+              description="Total Products Available"
+              color="from-green-600 via-green-700 to-green-800"
+            />
+          </li>
+        {/* Total Categories Info Box */}
+        <li>
+            <InfoBox
+              title="Categories in Stock"
+              value={categoriesInStock} // Displaying the dynamic count here
+              description="Total Categories Available"
+              color="from-blue-600 via-blue-700 to-blue-800"
+            />
+          </li>
       </ul>
 
       {/* Layout with Two Columns: Pie Chart and Orders Table */}
@@ -157,16 +210,17 @@ const Dashboard = () => {
             <thead className="bg-blue-900">
               <tr>
                 <th className="px-6 py-4 text-left text-white">Order ID</th>
-                <th className="px-6 py-4 text-left text-white">Customer</th>
-                <th className="px-6 py-4 text-left text-white">Total</th>
-                <th className="px-6 py-4 text-left text-white">Status</th>
+                <th className="px-6 py-4 text-left text-white">Order Date</th>
+                {/* <th className="px-6 py-4 text-left text-white">Customer</th> */}
+                <th className="px-6 py-4 text-left text-white">Final Total</th>
+                <th className="px-6 py-4 text-left text-white">Payment Method</th>
               </tr>
             </thead>
             <tbody>
               {orders.map((order) => (
                 <tr key={order.id}>
                   <td className="px-6 py-4">{order.id}</td>
-                  <td className="px-6 py-4">{order.customer}</td>
+                  {/* <td className="px-6 py-4">{order.customer}</td> */}
                   <td className="px-6 py-4">{order.total}</td>
                   <td className="px-6 py-4">{order.status}</td>
                 </tr>
