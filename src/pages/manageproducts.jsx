@@ -216,7 +216,7 @@ const handleCategorySelect = (category) => {
         </div>
         <div className="bg-yellow-500 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
           <h2 className="text-lg font-semibold">Average Price</h2>
-          <p className="text-3xl font-bold">${averagePrice}</p>
+          <p className="text-3xl font-bold">₹{averagePrice}</p>
         </div>
         <div className="bg-pink-500 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
           <h2 className="text-lg font-semibold">Products with Discounts</h2>

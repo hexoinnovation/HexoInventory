@@ -119,7 +119,7 @@ const Dashboard = () => {
         <li>
           <InfoBox
             title="Total Sales"
-            value="$12,500"
+            value="1,250"
             description="Total Sales Month"
             color="from-blue-600 via-blue-700 to-blue-800"
           />

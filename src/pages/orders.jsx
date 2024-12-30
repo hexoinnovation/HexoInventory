@@ -144,7 +144,7 @@ const ManageOrders = () => {
         </div>
         <div className="bg-green-500 text-white p-4 rounded-lg shadow-md">
           <h2 className="text-lg font-semibold">Total Revenue</h2>
-          <p className="text-3xl font-bold">${totalRevenue}</p>
+          <p className="text-3xl font-bold">₹{totalRevenue}</p>
         </div>
         <div className="bg-yellow-500 text-white p-4 rounded-lg shadow-md">
           <h2 className="text-lg font-semibold">Pending Orders</h2>
@@ -285,7 +285,7 @@ const ManageOrders = () => {
                     <td className="border p-3">{order.orderId}</td>
                     <td className="border p-3">{order.customerName}</td>
                     <td className="border p-3">{order.status}</td>
-                    <td className="border p-3">${order.totalAmount}</td>
+                    <td className="border p-3">₹{order.totalAmount}</td>
                     <td className="border p-3">{order.date}</td>
                     <td className="border p-3 flex justify-around">
                       <FontAwesomeIcon
