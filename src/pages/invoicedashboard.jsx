@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
 import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../config/firebase"; // Import Firestore instance
+import { db, auth } from "../config/firebase"; // Firestore and Auth configuration
+import { useAuthState } from "react-firebase-hooks/auth"; // Firebase auth hook for user
+
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
-// Info Box component for displaying stats
+// InfoBox Component
 const InfoBox = ({ title, value, description, color }) => {
   return (
     <div
@@ -21,56 +23,58 @@ const InfoBox = ({ title, value, description, color }) => {
 };
 
 const InvoiceControl = () => {
+  const [user] = useAuthState(auth); // Get the current authenticated user
   const [invoices, setInvoices] = useState([]);
   const [totalInvoices, setTotalInvoices] = useState(0);
-  const [paidInvoices, setPaidInvoices] = useState(0);
-  const [unpaidInvoices, setUnpaidInvoices] = useState(0);
+  const [paidCount, setPaidCount] = useState(0);
+  const [unpaidCount, setUnpaidCount] = useState(0);
 
-  // Fetch data from Firestore on mount
   useEffect(() => {
+    if (!user) return; // Ensure user is logged in before proceeding
 
-    const unsubscribe = onSnapshot(collection(db, "Invoices"), (snapshot) => {
-      const invoiceData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+    const fetchInvoices = () => {
+      const invoicesRef = collection(db, "admins", user.email, "Invoices");
+      const unsubscribe = onSnapshot(invoicesRef, (snapshot) => {
+        const invoiceData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
 
-      // Set the invoice data
-      setInvoices(invoiceData);
+        setInvoices(invoiceData);
 
-      // Calculate total invoices, paid invoices, and unpaid invoices
-      const total = invoiceData.length;
-      const paid = invoiceData.filter((item) => item.status === "Paid").length;
-      const unpaid = invoiceData.filter((item) => item.status === "Unpaid").length;
+        // Calculate counts
+        const total = invoiceData.length;
+        const paid = invoiceData.filter((invoice) => invoice.paymentStatus === "Paid").length;
+        const unpaid = invoiceData.filter((invoice) => invoice.paymentStatus === "Unpaid").length;
 
-      setTotalInvoices(total);
-      setPaidInvoices(paid);
-      setUnpaidInvoices(unpaid);
-    });
+        setTotalInvoices(total);
+        setPaidCount(paid);
+        setUnpaidCount(unpaid);
+      });
 
-    // Cleanup the subscription when the component unmounts
-    return () => unsubscribe();
-  }, []);
+      return () => unsubscribe();
+    };
 
-  // Pie chart data for invoice status distribution
+    fetchInvoices();
+  }, [user]);
+
+  // Chart data
   const invoiceData = {
     labels: ["Paid", "Unpaid"],
     datasets: [
       {
         label: "Invoice Status",
-        data: [paidInvoices, unpaidInvoices],
-        backgroundColor: [
-          "rgba(54, 162, 235, 0.7)",  // Paid (blue)
-          "rgba(255, 99, 132, 0.7)",   // Unpaid (red)
-        ],
-        borderColor: [
-          "rgba(54, 162, 235, 1)",
-          "rgba(255, 99, 132, 1)",
-        ],
+        data: [paidCount, unpaidCount],
+        backgroundColor: ["rgba(54, 162, 235, 0.7)", "rgba(255, 99, 132, 0.7)"],
+        borderColor: ["rgba(54, 162, 235, 1)", "rgba(255, 99, 132, 1)"],
         borderWidth: 1,
       },
     ],
   };
+
+  if (!user) {
+    return <p>Loading... Please log in to view invoices.</p>;
+  }
 
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
@@ -80,21 +84,24 @@ const InvoiceControl = () => {
           <h1 className="text-5xl font-bold text-white">Invoice Dashboard</h1>
           <ul className="breadcrumb flex space-x-3 text-sm text-white-400">
             <li>
-              <a href="#" className="text-white hover:text-blue-400">Dashboard</a>
+              <a href="#" className="text-white hover:text-blue-400">
+                Dashboard
+              </a>
             </li>
             <li>
               <i className="bx bx-chevron-right text-gray-400"></i>
             </li>
             <li>
-              <a href="#" className="text-white hover:text-blue-400">Invoices</a>
+              <a href="#" className="text-white hover:text-blue-400">
+                Invoices
+              </a>
             </li>
           </ul>
         </div>
       </div>
 
-      {/* Info Boxes for Invoice Stats */}
+      {/* Info Boxes for Stats */}
       <ul className="box-info grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
-        {/* Total Invoices Info Box */}
         <li>
           <InfoBox
             title="Total Invoices"
@@ -103,60 +110,62 @@ const InvoiceControl = () => {
             color="from-blue-600 via-blue-700 to-blue-800"
           />
         </li>
-
-        {/* Paid Invoices Info Box */}
         <li>
           <InfoBox
             title="Paid Invoices"
-            value={paidInvoices}
+            value={paidCount}
             description="Invoices Paid"
             color="from-green-600 via-green-700 to-green-800"
           />
         </li>
-
-        {/* Unpaid Invoices Info Box */}
         <li>
           <InfoBox
             title="Unpaid Invoices"
-            value={unpaidInvoices}
+            value={unpaidCount}
             description="Invoices Pending Payment"
             color="from-red-600 via-red-700 to-red-800"
           />
         </li>
       </ul>
 
-      {/* Layout with Two Columns: Pie Chart and Invoice Table */}
+      {/* Layout with Two Columns */}
       <div className="grid grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
-        {/* Left Column: Invoice Table */}
+        {/* Invoice Table */}
         <div className="invoice-table bg-gradient-to-r from-blue-600 to-blue-700 p-8 rounded-2xl shadow-lg">
-          <h3 className="text-xl font-semibold text-gray-100 mb-6">Invoices</h3>
-          <table className="min-w-full table-auto text-gray-100">
-            <thead className="bg-blue-900">
-              <tr>
-                <th className="px-6 py-4 text-left text-white">No</th>
-                <th className="px-6 py-4 text-left text-white">Customer</th>
-                <th className="px-6 py-4 text-left text-white">Amount</th>
-                <th className="px-6 py-4 text-left text-white">Due Date</th>
-                <th className="px-6 py-4 text-left text-white">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map((invoice) => (
-                <tr key={invoice.id}>
-                  <td className="px-6 py-4">{invoice.no}</td>
-                  <td className="px-6 py-4">{invoice.customer}</td>
-                  <td className="px-6 py-4">{invoice.amount}</td>
-                  <td className="px-6 py-4">{invoice.dueDate}</td>
-                  <td className="px-6 py-4">{invoice.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+  <h3 className="text-xl font-semibold text-gray-100 mb-6">Invoices</h3>
+  <table className="min-w-full table-auto text-gray-100">
+    <thead className="bg-blue-900">
+      <tr>
+        <th className="px-6 py-4 text-left text-white">No</th>
+        <th className="px-6 py-4 text-left text-white">Client</th>
+        <th className="px-6 py-4 text-left text-white">Amount</th>
+        <th className="px-6 py-4 text-left text-white">Date</th>
+        <th className="px-6 py-4 text-left text-white">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {invoices.slice(-5).map((invoice, index) => (
+        <tr key={invoice.id}>
+          <td className="px-6 py-4">{index + 1}</td>
+          <td className="py-3 px-4">{invoice.billTo?.name}</td>
+          <td className="py-3 px-4">
+            ₹{(invoice.products || []).reduce((acc, p) => acc + p.total, 0)}
+          </td>
+          <td className="py-3 px-4">
+            {new Date(invoice.invoiceDate).toLocaleDateString()}
+          </td>
+          <td className="px-6 py-4">{invoice.paymentStatus}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
 
-        {/* Right Column: Pie Chart */}
+        {/* Pie Chart */}
         <div className="chart-container bg-gradient-to-r from-white-900 via-white-700 to-white-800 p-8 rounded-2xl shadow-lg">
-          <h3 className="text-xl font-semibold text-gray-700 mb-6">Invoice Status Distribution</h3>
+          <h3 className="text-xl font-semibold text-gray-700 mb-6">
+            Invoice Status Distribution
+          </h3>
           <div className="w-full max-w-xs mx-auto">
             <Pie data={invoiceData} />
           </div>
