@@ -26,126 +26,169 @@ const InfoBox = ({ title, value, description, color }) => {
 
 const InventoryControl = () => {
   const [inventory, setInventory] = useState([]);
-  const [lowStockProducts, setLowStockProducts] = useState(0);
-  const [inStockProducts, setInStockProducts] = useState(0);
+  const [user, setUser] = useState(null);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalStock, setTotalStock] = useState(0);
+  const [invoiceCount, setInvoiceCount] = useState(0);
 
-  // Fetch data from Firestore on mount
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "Purchase"), (snapshot) => {
-      const inventoryData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+    const fetchTotalProducts = async () => {
+      try {
+        if (!user) return; // Ensure the user is authenticated
+        
+        // Reference to the admin's "Purchase" collection
+        const userDocRef = doc(db, "admins", user.email);
+        const productsRef = collection(userDocRef, "Purchase");
+  
+        // Fetch documents from the collection
+        const snapshot = await getDocs(productsRef);
+        
+        // Set the count of products in totalProducts state
+        setTotalProducts(snapshot.size);
+        console.log("Total Products count fetched: ", snapshot.size); // Debugging
+      } catch (error) {
+        console.error("Error fetching total products: ", error);
+      }
+    };
+  
+    fetchTotalProducts();
+  }, [user]);
 
-      // Set the inventory data
-      setInventory(inventoryData);
-
-      // Calculate total products, low stock products, and in-stock products
-      const total = inventoryData.length;
-      const lowStock = inventoryData.filter((item) => item.Purchase <= 50).length;
-      const inStock = inventoryData.filter((item) => item.Purchase > 50).length;
-
-      setTotalProducts(total);
-      setLowStockProducts(lowStock);
-      setInStockProducts(inStock);
+  // Fetch user data for auth and total products count
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
     });
-
-    // Cleanup the subscription when the component unmounts
     return () => unsubscribe();
   }, []);
 
-  // Pie chart data
+  useEffect(() => {
+    const fetchInvoiceCount = async () => {
+      try {
+        const user = getAuth().currentUser;
+        if (!user) return;
+
+        const invoicesRef = collection(db, "admins", user.email, "Invoices");
+        const querySnapshot = await getDocs(invoicesRef);
+        setInvoiceCount(querySnapshot.size);
+      } catch (error) {
+        console.error("Error fetching invoice count: ", error);
+      }
+    };
+
+    fetchInvoiceCount();
+  }, [getAuth().currentUser]);
+
+  useEffect(() => {
+    const fetchTotalStock = async () => {
+      try {
+        if (!user) return;
+        const userDocRef = doc(db, "admins", user.email);
+        const productsRef = collection(userDocRef, "Purchase");
+        const snapshot = await getDocs(productsRef);
+        const stockTotal = snapshot.docs.reduce((acc, doc) => {
+          const data = doc.data();
+          return acc + (parseInt(data.estock, 10) || 0);
+        }, 0);
+        setTotalStock(stockTotal);
+      } catch (error) {
+        console.error("Error fetching total stock:", error);
+      }
+    };
+
+    fetchTotalStock();
+  }, [user]);
+
+  // Pie chart data based on dynamic counts
   const stockData = {
-    labels: ["Electronics", "Fashion", "Home", "Toys", "Beauty"],
+    labels: ["Total Products", "Total Stock", "Total Sales"],
     datasets: [
       {
-        label: "Stock Quantity",
-        data: [500, 300, 400, 250, 200],
+        label: "Inventory Distribution",
+        data: [totalProducts, totalStock, invoiceCount],
         backgroundColor: [
           "rgba(54, 162, 235, 0.7)",
           "rgba(255, 99, 132, 0.7)",
-          "rgba(255, 159, 64, 0.7)",
-          "rgba(75, 192, 192, 0.7)",
-          "rgba(153, 102, 255, 0.7)",
+          "rgba(153,102,255,0.7)",
         ],
         borderColor: [
           "rgba(54, 162, 235, 1)",
           "rgba(255, 99, 132, 1)",
-          "rgba(255, 159, 64, 1)",
-          "rgba(75, 192, 192, 1)",
-          "rgba(153, 102, 255, 1)",
+          "rgba(153,102,255,1)",
         ],
         borderWidth: 1,
       },
     ],
   };
 
-  const [user, setUser] = useState(null); // To store the user object
-  const [totalProducts, setTotalProducts] = useState(0); // State for total products count
 
-
-   // Fetch the user on mount and whenever the authentication state changes
-   useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser); // Set the user if logged in
-    });
-
-    return () => unsubscribe(); // Cleanup the subscription
-  }, []);
-
-  // Fetch total products count from Firestore
+ // Fetch data from Firestore
   useEffect(() => {
-    const fetchTotalProducts = async () => {
+    const fetchData = async () => {
+      if (!user) return;
+
       try {
-        if (!user) return; // Ensure user is defined before fetching data
-        
-        // Reference to the admin document in 'admins' collection using the user's email
         const userDocRef = doc(db, "admins", user.email);
-        
-        // Reference to the 'Purchase' sub-collection for the specific admin
-        const productsRef = collection(userDocRef, "Purchase");
-        
-        // Fetch all documents from the 'Purchase' collection
-        const querySnapshot = await getDocs(productsRef);
+        const invoiceRef = collection(userDocRef, "Invoices");
+        const invoiceSnapshot = await getDocs(invoiceRef);
 
-        // Set the total products count
-        setTotalProducts(querySnapshot.size); // 'size' gives the count of documents
+        const invoices = invoiceSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        setInvoiceData(invoices);
       } catch (error) {
-        console.error("Error fetching products: ", error);
+        console.error("Error fetching invoices: ", error);
       }
     };
 
-    fetchTotalProducts(); // Call the function to fetch the total products count
+    fetchData();
   }, [user]);
- 
-  const [invoiceCount, setInvoiceCount] = useState(0);
-  
-  const auth = getAuth(); // Firebase Authentication instance
 
-  // Fetch invoice count data when the component mounts or the user changes
-  useEffect(() => {
-    const fetchInvoiceCount = async () => {
-      try {
-        const user = auth.currentUser; // Get the current user
-        if (!user) return; // If no user, skip fetching
+const [filters, setFilters] = useState({
+    Bno: "",
+    cname: "",
+    pname: "",
+    fromDate: "",
+    toDate: "",
+    status: "",
+  });
+const [invoiceData, setInvoiceData] = useState([]);
+  const filteredInvoiceData = invoiceData.filter((invoice) => {
+    const invoiceDate = new Date(invoice.invoiceDate);
+    const fromDate = filters.fromDate ? new Date(filters.fromDate) : null;
+    const toDate = filters.toDate ? new Date(filters.toDate) : null;
 
-        const invoicesRef = collection(db, "admins", user.email, "Invoices");
+    const isDateInRange =
+      (!fromDate || invoiceDate >= fromDate) &&
+      (!toDate || invoiceDate <= toDate);
 
-        // Fetch all invoice documents from the Invoices subcollection
-        const querySnapshot = await getDocs(invoicesRef);
+    const matchesInvoiceNumber = invoice.invoiceNumber
+      .toString()
+      .includes(filters.Bno);
+    const matchesCustomerName = invoice.billTo?.name
+      .toLowerCase()
+      .includes(filters.cname.toLowerCase());
+    const matchesProductName = invoice.products
+      .map((product) => product.description)
+      .join(", ")
+      .toLowerCase()
+      .includes(filters.pname.toLowerCase());
+    const matchesStatus =
+      !filters.status ||
+      invoice.status.toLowerCase() === filters.status.toLowerCase();
 
-        // Count the number of documents (invoices) retrieved
-        const count = querySnapshot.size;
+    return (
+      isDateInRange &&
+      matchesInvoiceNumber &&
+      matchesCustomerName &&
+      matchesProductName &&
+      matchesStatus
+    );
+  });
 
-        setInvoiceCount(count); // Set the calculated invoice count
-      } catch (error) {
-        console.error("Error fetching invoice count: ", error);
-      }
-    };
-
-    fetchInvoiceCount(); // Call the function to fetch data
-  }, [auth.currentUser]); // Re-run this effect if the user changes (e.g., login/logout)
 
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
@@ -169,28 +212,23 @@ const InventoryControl = () => {
 
       {/* Info Boxes for Inventory Stats */}
       <ul className="box-info grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
-        {/* Total Products Info Box */}
         <li>
-            <InfoBox
-              title="Total Products"
-              value={totalProducts} // Displaying the total count here
-              description="Total Products in Inventory"
-              color="from-blue-600 via-blue-700 to-blue-800"
-            />
-          </li>
-
-        {/*In Stock Info Box */}
+          <InfoBox
+            title="Total Products"
+            value={totalProducts}
+            description="Total Products in Inventory"
+            color="from-blue-600 via-blue-700 to-blue-800"
+          />
+        </li>
         <li>
           <InfoBox
             title="Total Stock"
-            value={totalProducts}
+            value={totalStock}
             description="Total Stock in Inventory"
             color="from-red-600 via-red-700 to-red-800"
           />
         </li>
-
-        {/* In Sales  Info Box */}
-       <li>
+        <li>
           <InfoBox
             title="Total Sales"
             value={invoiceCount}
@@ -202,31 +240,57 @@ const InventoryControl = () => {
 
       {/* Layout with Two Columns: Pie Chart and Inventory Table */}
       <div className="grid grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
-        {/* Left Column: Inventory Table */}
         <div className="inventory-table bg-gradient-to-r from-blue-600 to-blue-700 p-8 rounded-2xl shadow-lg">
           <h3 className="text-xl font-semibold text-gray-100 mb-6">Inventory</h3>
           <table className="min-w-full table-auto text-gray-100">
             <thead className="bg-blue-900">
-              <tr>
-                <th className="px-6 py-4 text-left text-white">No</th>
-                <th className="px-6 py-4 text-left text-white">Product</th>
-                <th className="px-6 py-4 text-left text-white">Stock</th>
-                <th className="px-6 py-4 text-left text-white">Price</th>
-                <th className="px-6 py-4 text-left text-white">Sales</th>
-              </tr>
+            <tr>
+      <th className="py-3 px-4 text-left">UID</th>
+      <th className="py-3 px-4 text-left">Date</th>
+      {/* <th className="py-3 px-4 text-left">Client</th> */}
+      <th className="py-3 px-4 text-left">Product Name</th>
+      <th className="py-3 px-4 text-left">Sales</th>
+      <th className="py-3 px-4 text-left">Total Amount</th>
+      {/* <th className="py-3 px-4 text-left">Actions</th> */}
+    </tr>
             </thead>
             <tbody>
-              {inventory.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-6 py-4">{item.no}</td>
-                  <td className="px-6 py-4">{item.pname}</td>
-                  <td className="px-6 py-4">{item.estock}</td>
-                  <td className="px-6 py-4">{item.price}</td>
-                  <td className="px-6 py-4">{item.sales}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    {filteredInvoiceData.map((invoice) => (
+      <tr key={invoice.id} className="hover:bg-black-100">
+        <td className="py-3 px-4">{invoice.invoiceNumber}</td>
+        <td className="py-3 px-4">
+          {new Date(invoice.invoiceDate).toLocaleDateString()}
+        </td>
+        {/* <td className="py-3 px-4">{invoice.billTo?.name || "N/A"}</td> */}
+        <td className="py-3 px-4">
+          {(invoice.products || [])
+            .map((product) => product.description || "N/A")
+            .join(", ")}
+        </td>
+        <td className="py-3 px-4">
+          {(invoice.products || []).reduce(
+            (acc, product) => acc + (product.quantity || 0),
+            0
+          )}
+        </td>
+        <td className="py-3 px-4">
+          ₹{(invoice.products || []).reduce(
+            (acc, p) => acc + p.total,
+            0
+          )}
+        </td>
+        {/* <td className="py-3 px-4">
+          <button
+            onClick={() => handleViewInvoice(invoice.invoiceNumber)}
+            className="bg-blue-900 text-white py-1 px-3 rounded-md"
+          >
+            View
+          </button>
+        </td> */}
+      </tr>
+    ))}
+  </tbody>
+</table>
         </div>
 
         {/* Right Column: Pie Chart */}
