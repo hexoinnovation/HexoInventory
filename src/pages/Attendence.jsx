@@ -105,7 +105,7 @@ const AttendanceApp = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (!user) {
       Swal.fire({
         title: "Error!",
@@ -115,16 +115,35 @@ const AttendanceApp = () => {
       });
       return;
     }
-
+  
     try {
+      // Fetch employee details based on selected employeeId
+      const selectedEmployee = employees.find(
+        (employee) => employee.id === newAttendance.employeeId
+      );
+  
+      if (!selectedEmployee) {
+        Swal.fire({
+          title: "Error!",
+          text: "Invalid employee selected.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
+        return;
+      }
+  
       const attendanceData = {
         ...newAttendance,
         employeeId: newAttendance.employeeId,
+        employeeName: selectedEmployee.name,
+        employeeContact: selectedEmployee.contact,
+        employeeEmail: selectedEmployee.email,
       };
-
+  
       const userDocRef = collection(db, "admins", user.email, "attendance");
-
+  
       if (newAttendance.id) {
+        // Update existing attendance
         const attendanceDocRef = doc(userDocRef, newAttendance.id);
         await updateDoc(attendanceDocRef, attendanceData);
         setAttendances((prev) =>
@@ -140,6 +159,7 @@ const AttendanceApp = () => {
           timer: 2000,
         });
       } else {
+        // Add new attendance
         const newDocRef = await addDoc(userDocRef, attendanceData);
         setAttendances((prev) => [
           ...prev,
@@ -153,16 +173,19 @@ const AttendanceApp = () => {
           timer: 2000,
         });
       }
-
+  
+      // Reset form and state
       setIsModalOpen(false);
       setNewAttendance({
         employeeName: "",
-        employeeContact:"",
-        employeeEmail:"",
+        employeeContact: "",
+        employeeEmail: "",
         date: "",
         status: "Present",
+        timeIn: "",
+        timeOut: "",
       });
-      setIsEditMode(false); // Reset edit mode
+      setIsEditMode(false);
     } catch (error) {
       console.error("Error adding/updating attendance:", error);
       Swal.fire({
@@ -173,7 +196,7 @@ const AttendanceApp = () => {
       });
     }
   };
-
+  
   const handleEdit = (attendanceId) => {
     const attendance = attendances.find((att) => att.id === attendanceId);
     setNewAttendance(attendance);
@@ -195,7 +218,7 @@ const AttendanceApp = () => {
       });
       return;
     }
-
+  
     const result = await Swal.fire({
       title: "Are you sure?",
       text: "You won't be able to revert this!",
@@ -206,13 +229,24 @@ const AttendanceApp = () => {
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "Cancel",
     });
-
+  
     if (result.isConfirmed) {
       try {
-        const attendanceDocRef = doc(db, "attendance", attendanceId);
+        // Reference the specific document to delete
+        const attendanceDocRef = doc(
+          db,
+          "admins",
+          user.email,
+          "attendance",
+          attendanceId
+        );
+  
+        // Delete the document
         await deleteDoc(attendanceDocRef);
+  
+        // Update the state to remove the deleted attendance
         setAttendances((prev) => prev.filter((att) => att.id !== attendanceId));
-
+  
         Swal.fire({
           title: "Deleted!",
           text: "The attendance record has been deleted.",
@@ -230,7 +264,7 @@ const AttendanceApp = () => {
       }
     }
   };
-
+  
   // Combine Employee and Attendance Data
   const employeeAttendanceData = attendances.map((attendance) => {
     const employee = employees.find((emp) => emp.id === attendance.employeeId);
@@ -474,7 +508,7 @@ const AttendanceApp = () => {
                 &times;
               </button>
             </div>
-
+ 
             <div className="space-y-6">
               <p className="text-gray-100">
                 <strong>Employee:</strong> {viewAttendance.employeeName}

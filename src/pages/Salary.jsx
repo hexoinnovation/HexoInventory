@@ -50,13 +50,18 @@ const SalaryApp = () => {
   const [totalOnLeave, setTotalOnLeave] = useState(0);
   const [overallAttendancePercentage, setOverallAttendancePercentage] = useState(0);
 
-  // Fetch user, employee, and attendance data from Firestore
   useEffect(() => {
     const fetchUserAndEmployees = async () => {
-      const currentUser = auth.currentUser;
-      setUser(currentUser);
-
-      if (currentUser) {
+      try {
+        const currentUser = auth.currentUser;
+  
+        if (!currentUser) {
+          console.error("No user is logged in.");
+          return;
+        }
+  
+        setUser(currentUser);
+  
         // Fetch employee details
         const employeeQuery = query(
           collection(db, "admins", currentUser.email, "Empdetails")
@@ -68,32 +73,45 @@ const SalaryApp = () => {
         }));
         setEmployees(fetchedEmployees);
         setTotalEmployees(fetchedEmployees.length);
-
+  
         // Fetch salary data
-        const salaryQuery = query(collection(db, "salary"));
-        const salarySnapshot = await getDocs(salaryQuery);
+        const salaryCollectionRef = collection(
+          db,
+          "admins",
+          currentUser.email,
+          "salary"
+        );
+        const salarySnapshot = await getDocs(salaryCollectionRef);
         const fetchedSalaries = salarySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
         setSalaries(fetchedSalaries);
-
+  
         // Fetch attendance data
-        const attendanceQuery = query(collection(db, "attendance"));
-        const attendanceSnapshot = await getDocs(attendanceQuery);
+        const attendanceCollectionRef = collection(
+          db,
+          "admins",
+          currentUser.email,
+          "attendance"
+        );
+        const attendanceSnapshot = await getDocs(attendanceCollectionRef);
         const fetchedAttendances = attendanceSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
         setAttendances(fetchedAttendances);
-
+  
+        // Calculate attendance data
         calculateAttendanceData(fetchedSalaries, fetchedAttendances);
+      } catch (error) {
+        console.error("Error fetching data:", error);
       }
     };
-
+  
     fetchUserAndEmployees();
   }, []);
-
+  
   // Calculate total attendance stats
   const calculateAttendanceData = (salaries, attendances) => {
     const present = attendances.filter((att) => att.status === "Present").length;
@@ -139,7 +157,7 @@ const SalaryApp = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-
+  
     // Validation: Ensure required fields are provided
     if (!newSalary.employeeId || !newSalary.date || !newSalary.basicSalary) {
       Swal.fire({
@@ -150,7 +168,7 @@ const SalaryApp = () => {
       });
       return;
     }
-
+  
     if (!user) {
       Swal.fire({
         title: "Error!",
@@ -160,23 +178,33 @@ const SalaryApp = () => {
       });
       return;
     }
-
+  
     try {
       const salaryData = {
         ...newSalary,
         employeeId: newSalary.employeeId,
       };
-
-      const salaryDocRef = collection(db, "salary");
-
+  
+      // Reference to the salary collection for the logged-in admin
+      const salaryCollectionRef = collection(
+        db,
+        "admins",
+        user.email,
+        "salary"
+      );
+  
       if (newSalary.id) {
-        const salaryDocRef = doc(salaryDocRef, newSalary.id);
+        // Update existing salary record
+        const salaryDocRef = doc(salaryCollectionRef, newSalary.id);
         await updateDoc(salaryDocRef, salaryData);
+  
+        // Update the state
         setSalaries((prev) =>
           prev.map((sal) =>
             sal.id === newSalary.id ? { ...sal, ...salaryData } : sal
           )
         );
+  
         Swal.fire({
           title: "Updated!",
           text: "Salary updated successfully!",
@@ -185,11 +213,15 @@ const SalaryApp = () => {
           timer: 2000,
         });
       } else {
-        const newDocRef = await addDoc(salaryDocRef, salaryData);
+        // Add new salary record
+        const newDocRef = await addDoc(salaryCollectionRef, salaryData);
+  
+        // Update the state
         setSalaries((prev) => [
           ...prev,
           { id: newDocRef.id, ...salaryData },
         ]);
+  
         Swal.fire({
           title: "Added!",
           text: "Salary added successfully!",
@@ -198,11 +230,12 @@ const SalaryApp = () => {
           timer: 2000,
         });
       }
-
+  
+      // Reset the form and close modal
       setIsModalOpen(false);
       setNewSalary({
         employeeId: "",
-        date: "",  // Clear the date
+        date: "", // Clear the date
         basicSalary: "",
         bonuses: "",
         deductions: "",
@@ -220,7 +253,7 @@ const SalaryApp = () => {
       });
     }
   };
-
+  
   const handleEdit = (salaryId) => {
     const salary = salaries.find((sal) => sal.id === salaryId);
     setNewSalary(salary);
@@ -243,7 +276,7 @@ const SalaryApp = () => {
       });
       return;
     }
-
+  
     const result = await Swal.fire({
       title: "Are you sure?",
       text: "You won't be able to revert this!",
@@ -254,13 +287,25 @@ const SalaryApp = () => {
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "Cancel",
     });
-
+  
     if (result.isConfirmed) {
       try {
-        const salaryDocRef = doc(db, "salary", salaryId);
+        // Correct Firestore path for salary document
+        const salaryDocRef = doc(
+          db,
+          "admins",
+          user.email,
+          "salary",
+          salaryId
+        );
+  
+        // Delete the document from Firestore
         await deleteDoc(salaryDocRef);
+  
+        // Update the local state
         setSalaries((prev) => prev.filter((sal) => sal.id !== salaryId));
-
+  
+        // Show success notification
         Swal.fire({
           title: "Deleted!",
           text: "The salary record has been deleted.",
@@ -270,6 +315,8 @@ const SalaryApp = () => {
         });
       } catch (error) {
         console.error("Error deleting salary:", error);
+  
+        // Show error notification
         Swal.fire({
           icon: "error",
           title: "Failed!",
@@ -278,7 +325,7 @@ const SalaryApp = () => {
       }
     }
   };
-
+  
   const calculateAttendanceCounts = (employeeId) => {
     const employeeAttendance = attendances.filter(
       (att) => att.employeeId === employeeId
