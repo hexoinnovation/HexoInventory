@@ -187,7 +187,7 @@ const Purchase = () => {
             Total Stock Value
           </h3>
           <p className="text-3xl font-bold text-gray-100">
-            ${totalStockValue.toFixed(2)}
+          ₹{totalStockValue.toFixed(2)}
           </p>
         </div>
       </div>
