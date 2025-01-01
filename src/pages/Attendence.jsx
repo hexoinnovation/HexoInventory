@@ -7,7 +7,7 @@ import {
   getDocs,
   doc,
   updateDoc,
-  deleteDoc,
+  deleteDoc,setDoc,getDoc,orderBy,where,limit
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import Swal from "sweetalert2";
@@ -35,235 +35,226 @@ const AttendanceApp = () => {
   const [employeeFilter, setEmployeeFilter] = useState(""); // Employee filter (employee name)
   const [dateFilterStart, setDateFilterStart] = useState(""); // Start date filter
   const [dateFilterEnd, setDateFilterEnd] = useState(""); // End date filter
-
-  // Fetch user and employee data from Firestore
+  const [latestDate, setLatestDate] = useState(new Date().toISOString().substr(0, 10)); // Default to today
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  
   useEffect(() => {
     const fetchUserAndEmployees = async () => {
       try {
         const currentUser = auth.currentUser;
         setUser(currentUser);
-  
+
         if (currentUser) {
-          // Fetch employee details for assigning attendance
-          const employeeQuery = query(
-            collection(db, "admins", currentUser.email, "Empdetails")
-          );
+          // Fetch employee details
+          const employeeQuery = collection(db, "admins", currentUser.email, "Empdetails");
           const employeeSnapshot = await getDocs(employeeQuery);
           const fetchedEmployees = employeeSnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
           }));
           setEmployees(fetchedEmployees);
-  
-          // Fetch attendance records
-          const attendanceCollectionRef = collection(
-            db,
-            "admins",
-            currentUser.email,
-            "attendance"
-          );
-          const attendanceSnapshot = await getDocs(attendanceCollectionRef);
-          const fetchedAttendances = [];
-  
-          // Iterate over each attendance document to fetch its subcollections
-          for (const doc of attendanceSnapshot.docs) {
-            const attendanceDoc = { id: doc.id, ...doc.data() };
-  
-            // Fetch subcollection (e.g., dynamically named by date)
-            const subcollectionQuery = collection(attendanceCollectionRef, doc.id, "<SUBCOLLECTION_NAME>"); // Replace <SUBCOLLECTION_NAME> with actual logic if dynamic
-            const subcollectionSnapshot = await getDocs(subcollectionQuery);
-  
-            // Add subcollection data to the fetched attendance record
-            attendanceDoc.subcollectionData = subcollectionSnapshot.docs.map((subDoc) => ({
-              id: subDoc.id,
-              ...subDoc.data(),
+
+          // Fetch all attendance records for the user (without ordering)
+          const attendanceQuery = collection(db, "admins", currentUser.email, "attendance");
+          const attendanceSnapshot = await getDocs(attendanceQuery);
+
+          if (attendanceSnapshot.empty) {
+            console.log("No attendance records found.");
+          } else {
+            console.log("All Attendance Records:", attendanceSnapshot.docs);
+
+            // Map the documents to an array with date and employee data
+            const fetchedAttendance = attendanceSnapshot.docs.map((doc) => ({
+              date: doc.id, // The document ID is the date (e.g., "06/30/2024")
+              ...doc.data(), // Spread the document data (employee info, status, timeIn, etc.)
             }));
-  
-            fetchedAttendances.push(attendanceDoc);
+
+            setAttendanceRecords(fetchedAttendance);
           }
-  
-          setAttendances(fetchedAttendances);
+        } else {
+          console.log("User not authenticated.");
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching employee or attendance data:", error);
         Swal.fire({
-          title: "Error!",
-          text: "Failed to fetch attendance and employee details. Please try again.",
           icon: "error",
-          confirmButtonText: "OK",
+          title: "Error",
+          text: "Failed to fetch attendance data. Please try again.",
         });
       }
     };
-  
-    fetchUserAndEmployees();
+
+    fetchUserAndEmployees(); // Fetch user and employee data when the component mounts
   }, []);
 
+  const handleStatusChange = (id, newStatus) => {
+    setEmployees((prev) =>
+      prev.map((emp) => (emp.id === id ? { ...emp, status: newStatus } : emp))
+    );
+  };
+  const handleDateChange = (employeeId, selectedDate) => {
+    // Update the employee's date in the state
+    setEmployees((prevEmployees) =>
+      prevEmployees.map((emp) =>
+        emp.id === employeeId ? { ...emp, date: selectedDate } : emp
+      )
+    );
+  };
+  
+  
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewAttendance((prev) => ({ ...prev, [name]: value }));
   };
+  const handleTimeChange = (id, field, newTime) => {
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.id === id ? { ...emp, [field]: newTime } : emp
+      )
+    );
+  };
 
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-  
+  const handleSave = async () => {
     if (!user) {
       Swal.fire({
-        title: "Error!",
-        text: "Please log in to add or update attendance details.",
         icon: "error",
-        confirmButtonText: "OK",
+        title: "Error",
+        text: "Please log in to save attendance.",
       });
       return;
     }
   
     try {
-      // Fetch employee details based on selected employeeId
-      const selectedEmployee = employees.find(
-        (employee) => employee.id === newAttendance.employeeId
-      );
+      const currentTime = new Date(); // Current timestamp
   
-      if (!selectedEmployee) {
-        Swal.fire({
-          title: "Error!",
-          text: "Invalid employee selected.",
-          icon: "error",
-          confirmButtonText: "OK",
-        });
-        return;
-      }
+      for (const employee of employees) {
+        // Ensure date is properly defined
+        const dateObject = employee.date ? new Date(employee.date) : new Date(); // Use employee's date or current date if undefined
+        const formattedDate = new Intl.DateTimeFormat("en-US", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          timeZone: "UTC",
+        }).format(dateObject);
   
-      const attendanceData = {
-        ...newAttendance,
-        employeeId: newAttendance.employeeId,
-        employeeName: selectedEmployee.name,
-        employeeContact: selectedEmployee.contact,
-        employeeEmail: selectedEmployee.email,
-      };
+        // Ensure date is valid before proceeding
+        if (!employee.date) {
+          console.warn(`No date for employee ${employee.id}, using current date`);
+        }
   
-      const userDocRef = collection(db, "admins", user.email, "attendance");
+        // Ensure status, timeIn, and timeOut are not undefined
+        const status = employee.status || "Not Set"; // Default value for status if not provided
+        const timeIn = employee.timeIn || "00:00"; // Default value for timeIn if not provided
+        const timeOut = employee.timeOut || "00:00"; // Default value for timeOut if not provided
   
-      if (newAttendance.id) {
-        // Update existing attendance
-        const attendanceDocRef = doc(userDocRef, newAttendance.id);
-        await updateDoc(attendanceDocRef, attendanceData);
-        setAttendances((prev) =>
-          prev.map((att) =>
-            att.id === newAttendance.id ? { ...att, ...attendanceData } : att
-          )
-        );
-        Swal.fire({
-          title: "Updated!",
-          text: "Attendance updated successfully!",
-          icon: "success",
-          showConfirmButton: false,
-          timer: 2000,
-        });
-      } else {
-        // Add new attendance
-        const newDocRef = await addDoc(userDocRef, attendanceData);
-        setAttendances((prev) => [
-          ...prev,
-          { id: newDocRef.id, ...attendanceData },
-        ]);
-        Swal.fire({
-          title: "Added!",
-          text: "Attendance added successfully!",
-          icon: "success",
-          showConfirmButton: false,
-          timer: 2000,
-        });
-      }
-  
-      // Reset form and state
-      setIsModalOpen(false);
-      setNewAttendance({
-        employeeName: "",
-        employeeContact: "",
-        employeeEmail: "",
-        date: "",
-        status: "Present",
-        timeIn: "",
-        timeOut: "",
-      });
-      setIsEditMode(false);
-    } catch (error) {
-      console.error("Error adding/updating attendance:", error);
-      Swal.fire({
-        title: "Error!",
-        text: "Failed to add/update attendance. Please try again.",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
-    }
-  };
-  
-  const handleEdit = (attendanceId) => {
-    const attendance = attendances.find((att) => att.id === attendanceId);
-    setNewAttendance(attendance);
-    setIsEditMode(true); // Set to edit mode
-    setIsModalOpen(true); // Open the modal for editing
-  };
-
-  const handleView = (attendanceId) => {
-    const attendance = attendances.find((att) => att.id === attendanceId);
-    setViewAttendance(attendance);
-  };
-
-  const handleDelete = async (attendanceId) => {
-    if (!user) {
-      Swal.fire({
-        icon: "error",
-        title: "Oops...",
-        text: "Please log in to delete attendance records.",
-      });
-      return;
-    }
-  
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: "You won't be able to revert this!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, delete it!",
-      cancelButtonText: "Cancel",
-    });
-  
-    if (result.isConfirmed) {
-      try {
-        // Reference the specific document to delete
-        const attendanceDocRef = doc(
+        const dateDocRef = doc(
           db,
           "admins",
           user.email,
           "attendance",
-          attendanceId
+          formattedDate
         );
   
-        // Delete the document
-        await deleteDoc(attendanceDocRef);
+        const attendanceRecord = {
+          employeeId: employee.id,
+          employeeName: employee.name,
+          employeeContact: employee.contact,
+          employeeEmail: employee.email,
+          status: status, // Ensure status is defined
+          timeIn: timeIn, // Ensure timeIn is defined
+          timeOut: timeOut, // Ensure timeOut is defined
+          lastModified: currentTime,
+          date: employee.date || formattedDate, // Use the employee date if available, otherwise fallback to formatted date
+        };
   
-        // Update the state to remove the deleted attendance
-        setAttendances((prev) => prev.filter((att) => att.id !== attendanceId));
-  
-        Swal.fire({
-          title: "Deleted!",
-          text: "The attendance record has been deleted.",
-          icon: "success",
-          showConfirmButton: false,
-          timer: 2000,
-        });
-      } catch (error) {
-        console.error("Error deleting attendance:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Failed!",
-          text: "Failed to delete attendance. Please try again.",
-        });
+        await setDoc(
+          dateDocRef,
+          { [employee.id]: attendanceRecord },
+          { merge: true }
+        );
       }
+  
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Attendance records saved successfully!",
+      });
+    } catch (error) {
+      console.error("Error saving attendance records:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to save attendance records. Please try again.",
+      });
     }
   };
+  
+  //   const attendance = attendances.find((att) => att.id === attendanceId);
+  //   setNewAttendance(attendance);
+  //   setIsEditMode(true); // Set to edit mode
+  //   setIsModalOpen(true); // Open the modal for editing
+  // };
+
+  // const handleView = (attendanceId) => {
+  //   const attendance = attendances.find((att) => att.id === attendanceId);
+  //   setViewAttendance(attendance);
+  // };
+
+  // const handleDelete = async (attendanceId) => {
+  //   if (!user) {
+  //     Swal.fire({
+  //       icon: "error",
+  //       title: "Oops...",
+  //       text: "Please log in to delete attendance records.",
+  //     });
+  //     return;
+  //   }
+  
+  //   const result = await Swal.fire({
+  //     title: "Are you sure?",
+  //     text: "You won't be able to revert this!",
+  //     icon: "warning",
+  //     showCancelButton: true,
+  //     confirmButtonColor: "#3085d6",
+  //     cancelButtonColor: "#d33",
+  //     confirmButtonText: "Yes, delete it!",
+  //     cancelButtonText: "Cancel",
+  //   });
+  
+  //   if (result.isConfirmed) {
+  //     try {
+  //       // Reference the specific document to delete
+  //       const attendanceDocRef = doc(
+  //         db,
+  //         "admins",
+  //         user.email,
+  //         "attendance",
+  //         attendanceId
+  //       );
+  
+  //       // Delete the document
+  //       await deleteDoc(attendanceDocRef);
+  
+  //       // Update the state to remove the deleted attendance
+  //       setAttendances((prev) => prev.filter((att) => att.id !== attendanceId));
+  
+  //       Swal.fire({
+  //         title: "Deleted!",
+  //         text: "The attendance record has been deleted.",
+  //         icon: "success",
+  //         showConfirmButton: false,
+  //         timer: 2000,
+  //       });
+  //     } catch (error) {
+  //       console.error("Error deleting attendance:", error);
+  //       Swal.fire({
+  //         icon: "error",
+  //         title: "Failed!",
+  //         text: "Failed to delete attendance. Please try again.",
+  //       });
+  //     }
+  //   }
+  // };
   
   // Combine Employee and Attendance Data
   const employeeAttendanceData = attendances.map((attendance) => {
@@ -425,73 +416,95 @@ const AttendanceApp = () => {
 
       {/* Add New Attendance Button */}
       <div className="mb-6">
-        <button
+        {/* <button
           onClick={() => setIsModalOpen(true)} // Open modal to add new attendance
           className="bg-gradient-to-r from-blue-900 to-blue-900 text-white px-6 py-3 rounded-lg shadow-md hover:from-blue-600 hover:to-blue-600"
         >
           Add New Attendance
-        </button>
+        </button> */}
       </div>
 
       {/* Employee and Attendance Table Section */}
-      <div className="overflow-x-auto shadow-xl rounded-xl border border-gray-200 mt-6">
-        <table className="min-w-full table-auto mt-4">
-          <thead className="bg-gradient-to-r from-blue-900 to-blue-900 text-white">
-            <tr>
-              <th className="px-4 py-2 text-left">Employee Name</th>
-              <th className="px-4 py-2 text-left">Employee Contact</th>
-              <th className="px-4 py-2 text-left">Employee Email</th>
-              <th className="px-4 py-2 text-left">Date</th>
-              <th className="px-4 py-2 text-left">Status</th>
-              <th className="px-3 py-2 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAttendanceData.length === 0 ? (
-              <tr>
-                <td
-                  colSpan="6"
-                  className="text-center py-4 text-red-500 font-semibold"
-                >
-                  No Attendance Records Found
-                </td>
-              </tr>
-            ) : (
-              filteredAttendanceData.map((attendance) => (
-                <tr key={attendance.id} className="border-b">
-                  <td className="px-4 py-2">{attendance.employeeName}</td>
-                  <td className="px-4 py-2">{attendance.employeeContact}</td>
-                  <td className="px-4 py-2">{attendance.employeeEmail}</td>
-                  <td className="px-4 py-2">{attendance.date}</td>
-                  <td className="px-4 py-2">{attendance.status}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex space-x-1">
-                      <button
-                        className="text-blue-500 hover:text-blue-700 p-2 rounded-full transition duration-200"
-                        onClick={() => handleView(attendance.id)}
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
-                      <button
-                        className="text-blue-500 hover:text-blue-700 p-2 rounded-full transition duration-200"
-                        onClick={() => handleEdit(attendance.id)}
-                      >
-                        <i className="fas fa-pencil-alt"></i>
-                      </button>
-                      <button
-                        className="text-red-500 hover:text-red-700 p-2 rounded-full transition duration-200"
-                        onClick={() => handleDelete(attendance.id)}
-                      >
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <div className="container mx-auto p-4">
+      <h1 className="text-xl font-bold mb-4">Attendance Manager</h1>
+      <table className="table-auto w-full border-collapse border border-gray-200">
+        <thead>
+          <tr>
+            <th className="px-4 py-2 border border-gray-200 text-left">Employee Name</th>
+            <th className="px-4 py-2 border border-gray-200 text-left">Employee Contact</th>
+            <th className="px-4 py-2 border border-gray-200 text-left">Employee Email</th>
+            <th className="px-4 py-2 border border-gray-200 text-left">Date</th>
+            <th className="px-4 py-2 border border-gray-200 text-left">Time In</th>
+            <th className="px-4 py-2 border border-gray-200 text-left">Time Out</th>
+            <th className="px-4 py-2 border border-gray-200 text-left">Status</th>
+            <th className="px-4 py-2 border border-gray-200 text-left">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+  {employees.map((employee) => (
+    <tr key={employee.id}>
+      <td className="px-4 py-2 border border-gray-200">{employee.name}</td>
+      <td className="px-4 py-2 border border-gray-200">{employee.contact}</td>
+      <td className="px-4 py-2 border border-gray-200">{employee.email}</td>
+     
+     
+      <td className="px-4 py-2 border border-gray-200">
+  <input
+    type="date"
+    value={employee.date || ""}  // Ensure employee.date is correctly set
+    onChange={(e) => handleDateChange(employee.id, e.target.value)}
+    className="border p-2 rounded w-full"
+  />
+</td>
+
+
+
+      <td className="px-4 py-2 border border-gray-200">
+        <input
+          type="time"
+          value={employee.timeIn}
+          onChange={(e) =>
+            handleTimeChange(employee.id, "timeIn", e.target.value)
+          }
+          className="border p-2 rounded w-full"
+        />
+      </td>
+      <td className="px-4 py-2 border border-gray-200">
+        <input
+          type="time"
+          value={employee.timeOut}
+          onChange={(e) =>
+            handleTimeChange(employee.id, "timeOut", e.target.value)
+          }
+          className="border p-2 rounded w-full"
+        />
+      </td>
+      <td className="px-4 py-2 border border-gray-200">
+        <select
+          value={employee.status}
+          onChange={(e) => handleStatusChange(employee.id, e.target.value)}
+          className="border p-2 rounded w-full"
+        >
+          <option value="Present">Present</option>
+          <option value="Absent">Absent</option>
+          <option value="On Leave">On Leave</option>
+        </select>
+      </td>
+      <td className="px-4 py-2 border border-gray-200">
+        <button className="text-blue-500 hover:underline">Edit</button>
+      </td>
+    </tr>
+  ))}
+</tbody>
+
+      </table>
+      <button
+        onClick={handleSave}
+        className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+      >
+        Save Attendance
+      </button>
+    </div>
 
       {/* View Attendance Modal */}
       {viewAttendance && (
