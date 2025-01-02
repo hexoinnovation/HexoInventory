@@ -48,66 +48,55 @@ const AttendanceApp = (currentUser) => {
       try {
         const currentUser = auth.currentUser;
         setUser(currentUser);
-
+  
         if (currentUser) {
-          console.log("Current User Email:", currentUser.email);
-
-          // Fetch employee details
           const employeeQuery = collection(db, "admins", currentUser.email, "Empdetails");
           const employeeSnapshot = await getDocs(employeeQuery);
-
+          let fetchedEmployees = [];
           if (!employeeSnapshot.empty) {
-            const fetchedEmployees = employeeSnapshot.docs.map((doc) => ({
+            fetchedEmployees = employeeSnapshot.docs.map((doc) => ({
               id: doc.id,
               ...doc.data(),
             }));
-            setEmployees(fetchedEmployees);
-          } else {
-            console.log("No employee details found.");
           }
-
-          // Fetch attendance records
+  
           const attendanceQuery = collection(db, "admins", currentUser.email, "attendance");
           const attendanceSnapshot = await getDocs(attendanceQuery);
-
-          if (attendanceSnapshot.empty) {
-            console.log("No attendance records found.");
-            setAttendanceRecords([]);
-            return;
-          }
-
-          // Map and sort attendance data by date
-          const allAttendance = attendanceSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            records: doc.data(),
-          }));
-
-          const sortedAttendance = allAttendance.sort((a, b) => {
-            const dateA = new Date(a.id.replace(/-/g, "/"));
-            const dateB = new Date(b.id.replace(/-/g, "/"));
-            return dateB - dateA; // Descending order
-          });
-
-          // Get the latest attendance record
-          const latestAttendance = sortedAttendance[0];
-          if (latestAttendance) {
-            console.log("Latest Attendance Record:", latestAttendance);
-
-            const employees = Object.keys(latestAttendance.records).map((key) => {
-              const record = latestAttendance.records[key];
+          let latestAttendance = [];
+          if (!attendanceSnapshot.empty) {
+            const allAttendance = attendanceSnapshot.docs.map((doc) => ({
+              id: doc.id,
+              records: doc.data(),
+            }));
+  
+            const sortedAttendance = allAttendance.sort((a, b) => {
+              const dateA = new Date(a.id.replace(/-/g, "/"));
+              const dateB = new Date(b.id.replace(/-/g, "/"));
+              return dateB - dateA; // Descending order
+            });
+  
+            latestAttendance = Object.keys(sortedAttendance[0].records || {}).map((key) => {
+              const record = sortedAttendance[0].records[key];
               return {
                 id: key,
                 name: record.name || "N/A",
                 contact: record.contact || "N/A",
                 email: record.email || "N/A",
-                date: record.date || latestAttendance.id,
+                date: record.date || sortedAttendance[0].id,
                 timeIn: record.timeIn || "",
                 timeOut: record.timeOut || "",
                 status: record.status || "Unknown",
               };
             });
-            setAttendanceRecords(employees);
           }
+  
+          // Combine fetched employees with attendance data
+          const combinedData = fetchedEmployees.map((employee) => {
+            const attendanceRecord = latestAttendance.find((record) => record.id === employee.id) || {};
+            return { ...employee, ...attendanceRecord };
+          });
+  
+          setAttendanceRecords(combinedData);
         } else {
           console.log("User not authenticated.");
         }
@@ -120,9 +109,10 @@ const AttendanceApp = (currentUser) => {
         });
       }
     };
-
+  
     fetchAttendanceAndEmployees();
   }, []);
+  
 
   const isValidDate = (date) => {
     // If date is a string, ensure it's in a format that can be parsed by Date constructor
@@ -131,7 +121,7 @@ const AttendanceApp = (currentUser) => {
   };
   
   const handleDateChange = (e, employeeId) => {
-    const newDate = e.target.value;  // Get the selected date
+    const newDate = e.target.value;
     setEmployees((prevEmployees) =>
       prevEmployees.map((emp) =>
         emp.id === employeeId ? { ...emp, date: newDate } : emp
@@ -140,23 +130,41 @@ const AttendanceApp = (currentUser) => {
   };
   
   const handleTimeChange = (employeeId, timeType, newTime) => {
-    console.log(`Changing ${timeType} for ID ${employeeId} to: ${newTime}`);
     setEmployees((prevEmployees) =>
       prevEmployees.map((employee) =>
-        employee.id === employeeId
-          ? { ...employee, [timeType]: newTime }
-          : employee
+        employee.id === employeeId ? { ...employee, [timeType]: newTime } : employee
       )
     );
   };
-
+  
   const handleStatusChange = (employeeId, newStatus) => {
-    console.log(`Changing status for ID ${employeeId} to: ${newStatus}`);
     setEmployees((prevEmployees) =>
       prevEmployees.map((employee) =>
-        employee.id === employeeId
-          ? { ...employee, status: newStatus }
-          : employee
+        employee.id === employeeId ? { ...employee, status: newStatus } : employee
+      )
+    );
+  };
+  const handleDateChangee = (e, employeeId) => {
+    const newDate = e.target.value;
+    setAttendanceRecords((prevRecords) =>
+      prevRecords.map((emp) =>
+        emp.id === employeeId ? { ...emp, date: newDate } : emp
+      )
+    );
+  };
+  
+  const handleTimeChangee = (employeeId, timeType, newTime) => {
+    setAttendanceRecords((prevRecords) =>
+      prevRecords.map((employee) =>
+        employee.id === employeeId ? { ...employee, [timeType]: newTime } : employee
+      )
+    );
+  };
+  
+  const handleStatusChangee = (employeeId, newStatus) => {
+    setAttendanceRecords((prevRecords) =>
+      prevRecords.map((employee) =>
+        employee.id === employeeId ? { ...employee, status: newStatus } : employee
       )
     );
   };
@@ -166,85 +174,68 @@ const AttendanceApp = (currentUser) => {
   };
   const handleSaveAttendance = async () => {
     if (!user) {
-      console.log("No user is logged in.");
-      return;
+        console.log("No user is logged in.");
+        return;
     }
 
     const attendanceRef = collection(db, "admins", user.email, "attendance");
 
     try {
-      const attendanceData = {};
+        const attendanceData = {};
 
-      for (const employee of employees) {
-        console.log(`Employee Object: `, employee);  // Log the entire employee object
-        
-        // Check if employee.date is undefined and if so, assign the selected date (not current date)
-        if (!employee.date) {
-            console.log(`Date is missing for employee: ${employee.name}. Please select a date.`);
-            Swal.fire({
-                icon: "error",
-                title: "Missing Date",
-                text: `Please select a date for ${employee.name}.`,
-            });
-            return; // Prevent saving attendance if the date is missing
-        }
+        // Iterate over attendanceRecords to prepare data for saving
+        for (const employee of attendanceRecords) {
+            // Ensure employee data contains a valid date
+            if (!employee.date) {
+                console.log(`Date is missing for employee: ${employee.name}. Please select a date.`);
+                Swal.fire({
+                    icon: "error",
+                    title: "Missing Date",
+                    text: `Please select a date for ${employee.name}.`,
+                });
+                return;
+            }
 
-        if (employee && employee.date && isValidDate(employee.date)) {
-            console.log(`Employee: ${employee.name}, Selected Date: ${employee.date}`);
-            const parsedDate = new Date(employee.date);
-            const formattedDate = new Intl.DateTimeFormat("en-CA", {
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-            }).format(parsedDate);
-    
+            // Format the date
+            const formattedDate = employee.date;
+
             if (!attendanceData[formattedDate]) {
                 attendanceData[formattedDate] = {};
             }
-    
+
+            // Save the attendance record including the date
             attendanceData[formattedDate][employee.id] = {
                 name: employee.name,
                 contact: employee.contact || "N/A",
                 email: employee.email || "N/A",
-                date: formattedDate,
+                date: formattedDate,  // Save the formatted date
                 timeIn: employee.timeIn || "00:00",
                 timeOut: employee.timeOut || "00:00",
                 status: employee.status || "Absent",
             };
-        } else {
-            console.log(`Missing or invalid date for employee: ${employee.name}, Date: ${employee.date}`);
-            if (!employee.date || isNaN(Date.parse(employee.date))) {
-                Swal.fire({
-                    icon: "error",
-                    title: "Invalid Date",
-                    text: `Please provide a valid date for ${employee.name}`,
-                });
-                return;
-            }
         }
-    }
-    
-      // Save attendance data
-      for (const date in attendanceData) {
-        const attendanceDocRef = doc(attendanceRef, date);
-        await setDoc(attendanceDocRef, attendanceData[date], { merge: true });
 
-        console.log(`Attendance for date ${date} saved successfully!`);
-      }
+        // Save all attendance records to Firestore
+        for (const date in attendanceData) {
+            const attendanceDocRef = doc(attendanceRef, date);
+            await setDoc(attendanceDocRef, attendanceData[date], { merge: true });
 
-      console.log("All attendance saved successfully!");
-      Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: "Attendance saved successfully!",
-      });
+            console.log(`Attendance for date ${date} saved successfully!`);
+        }
+
+        Swal.fire({
+            icon: "success",
+            title: "Success",
+            text: "Attendance saved successfully!",
+        });
+
     } catch (error) {
-      console.error("Error saving attendance: ", error);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Failed to save attendance. Please try again.",
-      });
+        console.error("Error saving attendance: ", error);
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "Failed to save attendance. Please try again.",
+        });
     }
 };
 
@@ -351,20 +342,13 @@ const AttendanceApp = (currentUser) => {
     return matchesEmployee && matchesStatus && matchesDate;
   });
 
-  // InfoBox calculations
   const totalEmployees = employees.length;
-  const totalPresent = filteredAttendanceData.filter(
-    (att) => att.status === "Present"
-  ).length;
-  const totalAbsent = filteredAttendanceData.filter(
-    (att) => att.status === "Absent"
-  ).length;
-  const totalOnLeave = filteredAttendanceData.filter(
-    (att) => att.status === "On Leave"
-  ).length;
-  const overallAttendancePercentage =
-    totalEmployees > 0 ? ((totalPresent / totalEmployees) * 100).toFixed(2) : 0;
-
+  const totalPresent = employees.filter((employee) => employee.status === "Present").length;
+  const totalAbsent = employees.filter((employee) => employee.status === "Absent").length;
+  const totalOnLeave = employees.filter((employee) => employee.status === "On Leave").length;
+  const overallAttendancePercentage = totalEmployees > 0 
+    ? ((totalPresent / totalEmployees) * 100).toFixed(2) 
+    : 0;
   return (
     <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Info Box Section */}
@@ -509,50 +493,46 @@ const AttendanceApp = (currentUser) => {
                   <td className="px-6 py-4 border border-blue-300">{employee.contact || "N/A"}</td>
                   <td className="px-6 py-4 border border-blue-300">{employee.email || "N/A"}</td>
                   <td className="px-6 py-4 border border-blue-300">
-                  <input
-  type="date"
-  value={employee.date || ''}
-  onChange={(e) => {
-    employee.date = e.target.value; // Update employee.date with the selected date
-  }}
-/>
+                
+  <input
+    type="date"
+    value={employee.date || ""}
+    onChange={(e) => handleDateChange(e, employee.id)}
+    className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  />
+</td>
 
-
-
-                  </td>
                   <td className="px-6 py-4 border border-blue-300">
-                <input
-                  type="time"
-                  value={employee.timeIn || ""}
-                  onChange={(e) =>
-                    handleTimeChange(employee.id, "timeIn", e.target.value)
-                  }
-                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-              </td>
-              <td className="px-6 py-4 border border-blue-300">
-                <input
-                  type="time"
-                  value={employee.timeOut || ""}
-                  onChange={(e) =>
-                    handleTimeChange(employee.id, "timeOut", e.target.value)
-                  }
-                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-              </td>
-              <td className="px-6 py-4 border border-blue-300">
-                <select
-                  value={employee.status || "Present"}
-                  onChange={(e) =>
-                    handleStatusChange(employee.id, e.target.value)
-                  }
-                  className="border border-blue-300 rounded px-4 py-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                >
-                  <option value="Present">Present</option>
-                  <option value="Absent">Absent</option>
-                  <option value="On Leave">On Leave</option>
-                </select>
-                  </td>
+  <input
+    type="time"
+    value={employee.timeIn || ""}
+    onChange={(e) =>
+      handleTimeChange(employee.id, "timeIn", e.target.value)
+    }
+    className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  />
+</td>
+<td className="px-6 py-4 border border-blue-300">
+  <input
+    type="time"
+    value={employee.timeOut || ""}
+    onChange={(e) =>
+      handleTimeChange(employee.id, "timeOut", e.target.value)
+    }
+    className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  />
+</td>
+<td className="px-6 py-4 border border-blue-300">
+          <select
+            value={employee.status || "Present"}
+            onChange={(e) => handleStatusChange(employee.id, e.target.value)}
+            className="border border-blue-300 rounded px-4 py-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          >
+            <option value="Present">Present</option>
+            <option value="Absent">Absent</option>
+            <option value="On Leave">On Leave</option>
+          </select>
+        </td>
                 </tr>
               ))
             ) : (
@@ -562,47 +542,42 @@ const AttendanceApp = (currentUser) => {
                   <td className="px-6 py-4 border border-blue-300">{employee.name || "N/A"}</td>
                   <td className="px-6 py-4 border border-blue-300">{employee.contact || "N/A"}</td>
                   <td className="px-6 py-4 border border-blue-300">{employee.email || "N/A"}</td>
-                  <td className="px-6 py-4 border border-blue-300">
-                  <input
-  type="date"
-  value={employee.date || ''}
-  onChange={(e) => handleDateChange(e, employee.id)}
-/>
-                  </td>
-                  <td className="px-6 py-4 border border-blue-300">
                 
-                <input
-                  type="time"
-                  value={employee.timeIn || ""}
-                  onChange={(e) =>
-                    handleTimeChange(employee.id, "timeIn", e.target.value)
-                  }
-                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-              </td>
-              <td className="px-6 py-4 border border-blue-300">
-                <input
-                  type="time"
-                  value={employee.timeOut || ""}
-                  onChange={(e) =>
-                    handleTimeChange(employee.id, "timeOut", e.target.value)
-                  }
-                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-              </td>
-              <td className="px-6 py-4 border border-blue-300">
-                <select
-                  value={employee.status || "Present"}
-                  onChange={(e) =>
-                    handleStatusChange(employee.id, e.target.value)
-                  }
-                  className="border border-blue-300 rounded px-4 py-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                >
-                  <option value="Present">Present</option>
-                  <option value="Absent">Absent</option>
-                  <option value="On Leave">On Leave</option>
-                </select>
-                  </td>
+                  <td className="px-6 py-4 border border-blue-300">
+  <input
+    type="date"
+    value={employee.date || ''}
+    onChange={(e) => handleDateChangee(e, employee.id)}
+    className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  />
+</td>
+<td className="px-6 py-4 border border-blue-300">
+  <input
+    type="time"
+    value={employee.timeIn || ''}
+    onChange={(e) => handleTimeChangee(employee.id, 'timeIn', e.target.value)}
+    className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  />
+</td>
+<td className="px-6 py-4 border border-blue-300">
+  <input
+    type="time"
+    value={employee.timeOut || ''}
+    onChange={(e) => handleTimeChangee(employee.id, 'timeOut', e.target.value)}
+    className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  />
+</td>
+<td className="px-6 py-4 border border-blue-300">
+  <select
+    value={employee.status || 'Present'}
+    onChange={(e) => handleStatusChangee(employee.id, e.target.value)}
+    className="border border-blue-300 rounded px-4 py-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  >
+    <option value="Present">Present</option>
+    <option value="Absent">Absent</option>
+    <option value="On Leave">On Leave</option>
+  </select>
+</td> 
                 </tr>
               ))
             )}
@@ -616,41 +591,6 @@ const AttendanceApp = (currentUser) => {
         Save Attendance
       </button>
     </div>
-
-
-
-    {/* {latestAttendance ? (
-  <table>
-    <thead>
-      <tr>
-        <th>Employee ID</th>
-        <th>Name</th>
-        <th>Contact</th>
-        <th>Email</th>
-        <th>Status</th>
-        <th>Time In</th>
-        <th>Time Out</th>
-        <th>Date</th>
-      </tr>
-    </thead>
-    <tbody>
-      {Object.values(latestAttendance).map((record, index) => (
-        <tr key={index}>
-          <td>{record.employeeId}</td>
-          <td>{record.name}</td>
-          <td>{record.contact}</td>
-          <td>{record.email}</td>
-          <td>{record.status}</td>
-          <td>{record.timeIn}</td>
-          <td>{record.timeOut}</td>
-          <td>{latestAttendance.date}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-) : (
-  <p>No attendance record found.</p>
-)} */}
 
       {/* View Attendance Modal */}
       {viewAttendance && (
