@@ -179,6 +179,17 @@ const [categoriesInStock, setCategoriesInStock] = useState(0); // State for the 
             color="from-orange-600 via-orange-700 to-orange-800"
           />
         </li>
+
+         {/* Total Categories Info Box */}
+         <li>
+            <InfoBox
+              title="Categories in Stock"
+              value={categoriesInStock} // Displaying the dynamic count here
+              description="Total Categories Available"
+              color="from-blue-600 via-blue-700 to-blue-800"
+            />
+          </li>
+
         {/* Total Products Info Box  */}
         <li>
             <InfoBox
@@ -188,15 +199,7 @@ const [categoriesInStock, setCategoriesInStock] = useState(0); // State for the 
               color="from-green-600 via-green-700 to-green-800"
             />
           </li>
-        {/* Total Categories Info Box */}
-        <li>
-            <InfoBox
-              title="Categories in Stock"
-              value={categoriesInStock} // Displaying the dynamic count here
-              description="Total Categories Available"
-              color="from-blue-600 via-blue-700 to-blue-800"
-            />
-          </li>
+        
       </ul>
 
       {/* Layout with Two Columns: Pie Chart and Orders Table */}

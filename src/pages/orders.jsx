@@ -84,11 +84,11 @@ const ManageOrders = () => {
   // Reset the form
   const resetForm = () => {
     setNewOrder({
-      orderId: "",
-      customerName: "",
-      status: "",
-      totalAmount: "",
-      date: "",
+      id: "",
+      totalItems: "",
+      paymentMethod: "",
+      finalTotal: "",
+      orderDate: "",
     });
     setEditOrderId(null); // Reset the edit order ID
     setPreviewImage(null); // Reset image preview
@@ -164,51 +164,51 @@ const ManageOrders = () => {
       {/* Order Form Column */}
       <div className="bg-white p-6 rounded-lg shadow-lg">
       <h2 className="text-2xl font-semibold text-blue-500 mb-4">
-            {editOrderId ? "Edit Order" : "Add New Order"}
+            {editOrderId ? "Edit Order" : "Edit Order"}
           </h2>
           <div className="space-y-4">
             <input
               type="text"
               placeholder="Order ID"
               className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              value={newOrder.orderId}
+              value={newOrder.id}
               onChange={(e) =>
-                setNewOrder({ ...newOrder, orderId: e.target.value })
+                setNewOrder({ ...newOrder, id: e.target.value })
               }
             />
             <input
               type="text"
-              placeholder="Customer Name"
+              placeholder="items "
               className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              value={newOrder.customerName}
+              value={newOrder.totalItems}
               onChange={(e) =>
-                setNewOrder({ ...newOrder, customerName: e.target.value })
+                setNewOrder({ ...newOrder, totalItems: e.target.value })
               }
             />
             <input
               type="text"
-              placeholder="Order Status"
+              placeholder="Payment Method"
               className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              value={newOrder.status}
+              value={newOrder.paymentMethod}
               onChange={(e) =>
-                setNewOrder({ ...newOrder, status: e.target.value })
+                setNewOrder({ ...newOrder, paymentMethod: e.target.value })
               }
             />
             <input
               type="number"
-              placeholder="Total Amount"
+              placeholder="Final Total"
               className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              value={newOrder.totalAmount}
+              value={newOrder.finalTotal}
               onChange={(e) =>
-                setNewOrder({ ...newOrder, totalAmount: e.target.value })
+                setNewOrder({ ...newOrder, finalTotal: e.target.value })
               }
             />
             <input
               type="date"
               className="w-full border border-blue-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              value={newOrder.date}
+              value={newOrder.orderDate}
               onChange={(e) =>
-                setNewOrder({ ...newOrder, date: e.target.value })
+                setNewOrder({ ...newOrder, orderDate: e.target.value })
               }
             />
           </div>
@@ -217,7 +217,7 @@ const ManageOrders = () => {
               className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition"
               onClick={editOrderId ? handleUpdateOrder : handleAddOrder}
             >
-              {editOrderId ? "Update Order" : "Add Order"}
+              {editOrderId ? "Update Order" : "Update Order"}
             </button>
             <button
               className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 transition"
@@ -228,7 +228,7 @@ const ManageOrders = () => {
           </div>
         </div>
 
-        {/* Order List Column */}
+        {/* Cart Orders Section  */}
         <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
           <h2 className="text-2xl font-semibold text-blue-500 mb-4">
             Order List
@@ -251,9 +251,7 @@ const ManageOrders = () => {
             <td className="border p-3">{order.totalItems}</td>
             <td className="border p-3">{order.paymentMethod}</td>
             <td className="border p-3">₹{order.finalTotal}</td>
-            <td className="border p-3">
-              {new Date(order.orderDate).toLocaleDateString()}
-            </td>
+            <td className="border p-3">{order.orderDate}</td>
             <td className="border p-3 flex justify-around">
                       <FontAwesomeIcon
                         icon={faEdit}
@@ -272,42 +270,10 @@ const ManageOrders = () => {
           </tr>
         ))}
       </tbody>
-            <tbody>
-              {orders.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="text-center p-4 text-gray-500">
-                    No orders available.
-                  </td>
-                </tr>
-              ) : (
-                orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-100 transition">
-                    <td className="border p-3">{order.orderId}</td>
-                    <td className="border p-3">{order.customerName}</td>
-                    <td className="border p-3">{order.status}</td>
-                    <td className="border p-3">₹{order.totalAmount}</td>
-                    <td className="border p-3">{order.date}</td>
-                    <td className="border p-3 flex justify-around">
-                      <FontAwesomeIcon
-                        icon={faEdit}
-                        className="text-yellow-500 cursor-pointer"
-                        onClick={() => {
-                          setEditOrderId(order.id);
-                          setNewOrder(order);
-                        }}
-                      />
-                      <FontAwesomeIcon
-                        icon={faTrash}
-                        className="text-red-500 cursor-pointer"
-                        onClick={() => handleDeleteOrder(order.id)}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
           </table>
         </div>
+
+        
       </div>
     </div>
   );
