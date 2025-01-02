@@ -11,14 +11,14 @@ import {
 } from "firebase/firestore";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { useAuth } from "../Authcontext";
+//import { useAuth } from "../Authcontext";
 
-const ManageProducts = () => {
+const ManageProducts = (currentUser) => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState([]);
    const [category, setCategory] = useState([]);
-   const [productCategory, setProductCategory] = useState('');
+   const [productoffers, setProductoffers] = useState('');
   // const [newProduct, setNewProduct] = useState({
   //   name: "",
   //   price: "",
@@ -46,7 +46,7 @@ const ManageProducts = () => {
   });
   const [editProductId, setEditProductId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
-  const { currentUser } = useAuth();
+  //const { currentUser } = useAuth();
 
   if (!currentUser) {
     return <p>Loading...</p>;
@@ -95,33 +95,36 @@ const ManageProducts = () => {
       reader.readAsDataURL(file);
     }
   };
-
-
-
-const handleAddProduct = async () => {
-  try {
-    // Generate the custom document ID
-    const docId = `${productCategory}-${Date.now()}`; // Using timestamp for uniqueness
-    const newDocRef = doc(productsCollection, docId); // Reference with custom ID
-
-    // Save the product data with the custom ID
-    await setDoc(newDocRef, {
-      ...newProduct,
-      Category: productCategory,
-    });
-
-    // Update the local state
-    setProducts([
-      ...products,
-      { ...newProduct, id: docId, Category: productCategory }
-    ]);
-
-    // Reset the form
-    resetForm();
-  } catch (error) {
-    console.error("Error adding product: ", error);
-  }
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  // Function to handle dropdown option clicks
+const handleCategorySelect = (category) => {
+  setSelectedCategory(category); // Store the selected category
+  console.log("Selected category:", category);
 };
+  const handleAddProduct = async () => {
+    try {
+      // Reference to the collection where products are stored
+      const productsCollectionRef = collection(db, "products"); // Replace "products" with your Firestore collection name
+  
+      // Save the product data with an auto-generated document ID
+      const docRef = await addDoc(productsCollectionRef, {
+        ...newProduct, 
+        offers: productoffers,// Include all the product data from your form or state
+        createdAt: new Date().toISOString(), // Optionally add a timestamp for record-keeping
+      });
+  
+      console.log("Product added with ID: ", docRef.id); // Log the auto-generated document ID
+  
+      // Update the local state (if needed)
+      setProducts([...products, { ...newProduct, id: docRef.id }]);
+  
+      // Reset the form
+      resetForm();
+    } catch (error) {
+      console.error("Error adding product: ", error);
+    }
+  };
+  
   const handleUpdateProduct = async () => {
     try {
       const productDoc = doc(
@@ -213,7 +216,7 @@ const handleAddProduct = async () => {
         </div>
         <div className="bg-yellow-500 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
           <h2 className="text-lg font-semibold">Average Price</h2>
-          <p className="text-3xl font-bold">${averagePrice}</p>
+          <p className="text-3xl font-bold">₹{averagePrice}</p>
         </div>
         <div className="bg-pink-500 text-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
           <h2 className="text-lg font-semibold">Products with Discounts</h2>
@@ -284,20 +287,20 @@ const handleAddProduct = async () => {
             <input
               type="radio"
               id="bestProduct"
-              name="productCategory"
+              name="productoffers"
               value="best_product"
-              checked={productCategory === 'best_product'}
-              onChange={() => setProductCategory('best_product')}
+              checked={productoffers === 'best_product'}
+              onChange={() => setProductoffers('best_product')}
             />
             <label htmlFor="bestProduct">Best Product</label>
 
             <input
               type="radio"
               id="offerProduct"
-              name="productCategory"
+              name="productoffers"
               value="offer_product"
-              checked={productCategory === 'offer_product'}
-              onChange={() => setProductCategory('offer_product')}
+              checked={productoffers === 'offer_product'}
+              onChange={() => setProductoffers('offer_product')}
             />
             <label htmlFor="offerProduct">Offer Product</label>
           </div>

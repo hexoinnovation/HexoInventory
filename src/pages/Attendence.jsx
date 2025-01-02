@@ -7,15 +7,16 @@ import {
   getDocs,
   doc,
   updateDoc,
-  deleteDoc,
+  deleteDoc,setDoc,getDoc,orderBy,where,limit
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import Swal from "sweetalert2";
+import { writeBatch } from 'firebase/firestore';
 
 const db = getFirestore();
 const auth = getAuth();
 
-const AttendanceApp = () => {
+const AttendanceApp = (currentUser) => {
   const [attendances, setAttendances] = useState([]);
   const [employees, setEmployees] = useState([]); // Fetch employee details
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,6 +27,7 @@ const AttendanceApp = () => {
         date: "",
         status: "Present",
   });
+  const [employee, setEmployee] = useState([]);
   const [viewAttendance, setViewAttendance] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [user, setUser] = useState(null);
@@ -35,202 +37,285 @@ const AttendanceApp = () => {
   const [employeeFilter, setEmployeeFilter] = useState(""); // Employee filter (employee name)
   const [dateFilterStart, setDateFilterStart] = useState(""); // Start date filter
   const [dateFilterEnd, setDateFilterEnd] = useState(""); // End date filter
+  const [latestDate, setLatestDate] = useState(new Date().toISOString().substr(0, 10)); // Default to today
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [latestAttendance, setLatestAttendance] = useState(null);
+  //const [formattedEmployees, setformatted] = useState(null);
+  //const formattedDate = new Date(employee.date).toISOString().split('T')[0];  // Formats to 'yyyy-mm-dd'
 
-  // Fetch user and employee data from Firestore
   useEffect(() => {
-    const fetchUserAndEmployees = async () => {
+    const fetchAttendanceAndEmployees = async () => {
       try {
         const currentUser = auth.currentUser;
         setUser(currentUser);
-  
+
         if (currentUser) {
-          // Fetch employee details for assigning attendance
-          const employeeQuery = query(
-            collection(db, "admins", currentUser.email, "Empdetails")
-          );
+          console.log("Current User Email:", currentUser.email);
+
+          // Fetch employee details
+          const employeeQuery = collection(db, "admins", currentUser.email, "Empdetails");
           const employeeSnapshot = await getDocs(employeeQuery);
-          const fetchedEmployees = employeeSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setEmployees(fetchedEmployees);
-  
-          // Fetch attendance records
-          const attendanceCollectionRef = collection(
-            db,
-            "admins",
-            currentUser.email,
-            "attendance"
-          );
-          const attendanceSnapshot = await getDocs(attendanceCollectionRef);
-          const fetchedAttendances = [];
-  
-          // Iterate over each attendance document to fetch its subcollections
-          for (const doc of attendanceSnapshot.docs) {
-            const attendanceDoc = { id: doc.id, ...doc.data() };
-  
-            // Fetch subcollection (e.g., dynamically named by date)
-            const subcollectionQuery = collection(attendanceCollectionRef, doc.id, "<SUBCOLLECTION_NAME>"); // Replace <SUBCOLLECTION_NAME> with actual logic if dynamic
-            const subcollectionSnapshot = await getDocs(subcollectionQuery);
-  
-            // Add subcollection data to the fetched attendance record
-            attendanceDoc.subcollectionData = subcollectionSnapshot.docs.map((subDoc) => ({
-              id: subDoc.id,
-              ...subDoc.data(),
+
+          if (!employeeSnapshot.empty) {
+            const fetchedEmployees = employeeSnapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
             }));
-  
-            fetchedAttendances.push(attendanceDoc);
+            setEmployees(fetchedEmployees);
+          } else {
+            console.log("No employee details found.");
           }
-  
-          setAttendances(fetchedAttendances);
+
+          // Fetch attendance records
+          const attendanceQuery = collection(db, "admins", currentUser.email, "attendance");
+          const attendanceSnapshot = await getDocs(attendanceQuery);
+
+          if (attendanceSnapshot.empty) {
+            console.log("No attendance records found.");
+            setAttendanceRecords([]);
+            return;
+          }
+
+          // Map and sort attendance data by date
+          const allAttendance = attendanceSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            records: doc.data(),
+          }));
+
+          const sortedAttendance = allAttendance.sort((a, b) => {
+            const dateA = new Date(a.id.replace(/-/g, "/"));
+            const dateB = new Date(b.id.replace(/-/g, "/"));
+            return dateB - dateA; // Descending order
+          });
+
+          // Get the latest attendance record
+          const latestAttendance = sortedAttendance[0];
+          if (latestAttendance) {
+            console.log("Latest Attendance Record:", latestAttendance);
+
+            const employees = Object.keys(latestAttendance.records).map((key) => {
+              const record = latestAttendance.records[key];
+              return {
+                id: key,
+                name: record.name || "N/A",
+                contact: record.contact || "N/A",
+                email: record.email || "N/A",
+                date: record.date || latestAttendance.id,
+                timeIn: record.timeIn || "",
+                timeOut: record.timeOut || "",
+                status: record.status || "Unknown",
+              };
+            });
+            setAttendanceRecords(employees);
+          }
+        } else {
+          console.log("User not authenticated.");
         }
       } catch (error) {
         console.error("Error fetching data:", error);
         Swal.fire({
-          title: "Error!",
-          text: "Failed to fetch attendance and employee details. Please try again.",
           icon: "error",
-          confirmButtonText: "OK",
+          title: "Error",
+          text: "Failed to fetch data. Please try again.",
         });
       }
     };
-  
-    fetchUserAndEmployees();
+
+    fetchAttendanceAndEmployees();
   }, []);
 
+  const isValidDate = (date) => {
+    // If date is a string, ensure it's in a format that can be parsed by Date constructor
+    const parsedDate = new Date(date);
+    return parsedDate instanceof Date && !isNaN(parsedDate.getTime());
+  };
+  
+  const handleDateChange = (e, employeeId) => {
+    const newDate = e.target.value;  // Get the selected date
+    setEmployees((prevEmployees) =>
+      prevEmployees.map((emp) =>
+        emp.id === employeeId ? { ...emp, date: newDate } : emp
+      )
+    );
+  };
+  
+  const handleTimeChange = (employeeId, timeType, newTime) => {
+    console.log(`Changing ${timeType} for ID ${employeeId} to: ${newTime}`);
+    setEmployees((prevEmployees) =>
+      prevEmployees.map((employee) =>
+        employee.id === employeeId
+          ? { ...employee, [timeType]: newTime }
+          : employee
+      )
+    );
+  };
+
+  const handleStatusChange = (employeeId, newStatus) => {
+    console.log(`Changing status for ID ${employeeId} to: ${newStatus}`);
+    setEmployees((prevEmployees) =>
+      prevEmployees.map((employee) =>
+        employee.id === employeeId
+          ? { ...employee, status: newStatus }
+          : employee
+      )
+    );
+  };
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewAttendance((prev) => ({ ...prev, [name]: value }));
   };
-
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleSaveAttendance = async () => {
     if (!user) {
-      Swal.fire({
-        title: "Error!",
-        text: "Please log in to add or update attendance details.",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
+      console.log("No user is logged in.");
       return;
     }
+
+    const attendanceRef = collection(db, "admins", user.email, "attendance");
 
     try {
-      const attendanceData = {
-        ...newAttendance,
-        employeeId: newAttendance.employeeId,
-      };
+      const attendanceData = {};
 
-      const userDocRef = collection(db, "admins", user.email, "attendance");
+      for (const employee of employees) {
+        console.log(`Employee Object: `, employee);  // Log the entire employee object
+        
+        // Check if employee.date is undefined and if so, assign the selected date (not current date)
+        if (!employee.date) {
+            console.log(`Date is missing for employee: ${employee.name}. Please select a date.`);
+            Swal.fire({
+                icon: "error",
+                title: "Missing Date",
+                text: `Please select a date for ${employee.name}.`,
+            });
+            return; // Prevent saving attendance if the date is missing
+        }
 
-      if (newAttendance.id) {
-        const attendanceDocRef = doc(userDocRef, newAttendance.id);
-        await updateDoc(attendanceDocRef, attendanceData);
-        setAttendances((prev) =>
-          prev.map((att) =>
-            att.id === newAttendance.id ? { ...att, ...attendanceData } : att
-          )
-        );
-        Swal.fire({
-          title: "Updated!",
-          text: "Attendance updated successfully!",
-          icon: "success",
-          showConfirmButton: false,
-          timer: 2000,
-        });
-      } else {
-        const newDocRef = await addDoc(userDocRef, attendanceData);
-        setAttendances((prev) => [
-          ...prev,
-          { id: newDocRef.id, ...attendanceData },
-        ]);
-        Swal.fire({
-          title: "Added!",
-          text: "Attendance added successfully!",
-          icon: "success",
-          showConfirmButton: false,
-          timer: 2000,
-        });
+        if (employee && employee.date && isValidDate(employee.date)) {
+            console.log(`Employee: ${employee.name}, Selected Date: ${employee.date}`);
+            const parsedDate = new Date(employee.date);
+            const formattedDate = new Intl.DateTimeFormat("en-CA", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+            }).format(parsedDate);
+    
+            if (!attendanceData[formattedDate]) {
+                attendanceData[formattedDate] = {};
+            }
+    
+            attendanceData[formattedDate][employee.id] = {
+                name: employee.name,
+                contact: employee.contact || "N/A",
+                email: employee.email || "N/A",
+                date: formattedDate,
+                timeIn: employee.timeIn || "00:00",
+                timeOut: employee.timeOut || "00:00",
+                status: employee.status || "Absent",
+            };
+        } else {
+            console.log(`Missing or invalid date for employee: ${employee.name}, Date: ${employee.date}`);
+            if (!employee.date || isNaN(Date.parse(employee.date))) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Invalid Date",
+                    text: `Please provide a valid date for ${employee.name}`,
+                });
+                return;
+            }
+        }
+    }
+    
+      // Save attendance data
+      for (const date in attendanceData) {
+        const attendanceDocRef = doc(attendanceRef, date);
+        await setDoc(attendanceDocRef, attendanceData[date], { merge: true });
+
+        console.log(`Attendance for date ${date} saved successfully!`);
       }
 
-      setIsModalOpen(false);
-      setNewAttendance({
-        employeeName: "",
-        employeeContact:"",
-        employeeEmail:"",
-        date: "",
-        status: "Present",
+      console.log("All attendance saved successfully!");
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Attendance saved successfully!",
       });
-      setIsEditMode(false); // Reset edit mode
     } catch (error) {
-      console.error("Error adding/updating attendance:", error);
-      Swal.fire({
-        title: "Error!",
-        text: "Failed to add/update attendance. Please try again.",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
-    }
-  };
-
-  const handleEdit = (attendanceId) => {
-    const attendance = attendances.find((att) => att.id === attendanceId);
-    setNewAttendance(attendance);
-    setIsEditMode(true); // Set to edit mode
-    setIsModalOpen(true); // Open the modal for editing
-  };
-
-  const handleView = (attendanceId) => {
-    const attendance = attendances.find((att) => att.id === attendanceId);
-    setViewAttendance(attendance);
-  };
-
-  const handleDelete = async (attendanceId) => {
-    if (!user) {
+      console.error("Error saving attendance: ", error);
       Swal.fire({
         icon: "error",
-        title: "Oops...",
-        text: "Please log in to delete attendance records.",
+        title: "Error",
+        text: "Failed to save attendance. Please try again.",
       });
-      return;
     }
+};
 
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: "You won't be able to revert this!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, delete it!",
-      cancelButtonText: "Cancel",
-    });
 
-    if (result.isConfirmed) {
-      try {
-        const attendanceDocRef = doc(db, "attendance", attendanceId);
-        await deleteDoc(attendanceDocRef);
-        setAttendances((prev) => prev.filter((att) => att.id !== attendanceId));
+  //   const attendance = attendances.find((att) => att.id === attendanceId);
+  //   setNewAttendance(attendance);
+  //   setIsEditMode(true); // Set to edit mode
+  //   setIsModalOpen(true); // Open the modal for editing
+  // };
 
-        Swal.fire({
-          title: "Deleted!",
-          text: "The attendance record has been deleted.",
-          icon: "success",
-          showConfirmButton: false,
-          timer: 2000,
-        });
-      } catch (error) {
-        console.error("Error deleting attendance:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Failed!",
-          text: "Failed to delete attendance. Please try again.",
-        });
-      }
-    }
-  };
+  // const handleView = (attendanceId) => {
+  //   const attendance = attendances.find((att) => att.id === attendanceId);
+  //   setViewAttendance(attendance);
+  // };
 
+  // const handleDelete = async (attendanceId) => {
+  //   if (!user) {
+  //     Swal.fire({
+  //       icon: "error",
+  //       title: "Oops...",
+  //       text: "Please log in to delete attendance records.",
+  //     });
+  //     return;
+  //   }
+  
+  //   const result = await Swal.fire({
+  //     title: "Are you sure?",
+  //     text: "You won't be able to revert this!",
+  //     icon: "warning",
+  //     showCancelButton: true,
+  //     confirmButtonColor: "#3085d6",
+  //     cancelButtonColor: "#d33",
+  //     confirmButtonText: "Yes, delete it!",
+  //     cancelButtonText: "Cancel",
+  //   });
+  
+  //   if (result.isConfirmed) {
+  //     try {
+  //       // Reference the specific document to delete
+  //       const attendanceDocRef = doc(
+  //         db,
+  //         "admins",
+  //         user.email,
+  //         "attendance",
+  //         attendanceId
+  //       );
+  
+  //       // Delete the document
+  //       await deleteDoc(attendanceDocRef);
+  
+  //       // Update the state to remove the deleted attendance
+  //       setAttendances((prev) => prev.filter((att) => att.id !== attendanceId));
+  
+  //       Swal.fire({
+  //         title: "Deleted!",
+  //         text: "The attendance record has been deleted.",
+  //         icon: "success",
+  //         showConfirmButton: false,
+  //         timer: 2000,
+  //       });
+  //     } catch (error) {
+  //       console.error("Error deleting attendance:", error);
+  //       Swal.fire({
+  //         icon: "error",
+  //         title: "Failed!",
+  //         text: "Failed to delete attendance. Please try again.",
+  //       });
+  //     }
+  //   }
+  // };
+  
   // Combine Employee and Attendance Data
   const employeeAttendanceData = attendances.map((attendance) => {
     const employee = employees.find((emp) => emp.id === attendance.employeeId);
@@ -391,66 +476,132 @@ const AttendanceApp = () => {
 
       {/* Add New Attendance Button */}
       <div className="mb-6">
-        <button
+        {/* <button
           onClick={() => setIsModalOpen(true)} // Open modal to add new attendance
           className="bg-gradient-to-r from-blue-900 to-blue-900 text-white px-6 py-3 rounded-lg shadow-md hover:from-blue-600 hover:to-blue-600"
         >
           Add New Attendance
-        </button>
+        </button> */}
       </div>
 
       {/* Employee and Attendance Table Section */}
-      <div className="overflow-x-auto shadow-xl rounded-xl border border-gray-200 mt-6">
-        <table className="min-w-full table-auto mt-4">
-          <thead className="bg-gradient-to-r from-blue-900 to-blue-900 text-white">
+      <div className="container mx-auto p-6 bg-blue-100 rounded-lg shadow-lg">
+      <h1 className="text-3xl font-extrabold mb-6 text-black">Attendance Manager</h1>
+      <div className="overflow-x-auto bg-white rounded-lg shadow-lg">
+        <table className="min-w-full table-auto border-collapse">
+          <thead className="bg-blue-900 text-white uppercase text-lg font-semibold">
             <tr>
-              <th className="px-4 py-2 text-left">Employee Name</th>
-              <th className="px-4 py-2 text-left">Employee Contact</th>
-              <th className="px-4 py-2 text-left">Employee Email</th>
-              <th className="px-4 py-2 text-left">Date</th>
-              <th className="px-4 py-2 text-left">Status</th>
-              <th className="px-3 py-2 text-left">Actions</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Employee Name</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Employee Contact</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Employee Email</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Date</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Time In</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Time Out</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Status</th>
             </tr>
           </thead>
-          <tbody>
-            {filteredAttendanceData.length === 0 ? (
-              <tr>
-                <td
-                  colSpan="6"
-                  className="text-center py-4 text-red-500 font-semibold"
+          <tbody className="text-black text-x font-bold">
+            {attendanceRecords.length === 0 ? (
+              // Show employee details input fields if no attendance records
+              employees.map((employee) => (
+                <tr key={employee.id}>
+                  <td className="px-6 py-4 border border-blue-300">{employee.name || "N/A"}</td>
+                  <td className="px-6 py-4 border border-blue-300">{employee.contact || "N/A"}</td>
+                  <td className="px-6 py-4 border border-blue-300">{employee.email || "N/A"}</td>
+                  <td className="px-6 py-4 border border-blue-300">
+                  <input
+  type="date"
+  value={employee.date || ''}
+  onChange={(e) => {
+    employee.date = e.target.value; // Update employee.date with the selected date
+  }}
+/>
+
+
+
+                  </td>
+                  <td className="px-6 py-4 border border-blue-300">
+                <input
+                  type="time"
+                  value={employee.timeIn || ""}
+                  onChange={(e) =>
+                    handleTimeChange(employee.id, "timeIn", e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </td>
+              <td className="px-6 py-4 border border-blue-300">
+                <input
+                  type="time"
+                  value={employee.timeOut || ""}
+                  onChange={(e) =>
+                    handleTimeChange(employee.id, "timeOut", e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </td>
+              <td className="px-6 py-4 border border-blue-300">
+                <select
+                  value={employee.status || "Present"}
+                  onChange={(e) =>
+                    handleStatusChange(employee.id, e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 >
-                  No Attendance Records Found
-                </td>
-              </tr>
+                  <option value="Present">Present</option>
+                  <option value="Absent">Absent</option>
+                  <option value="On Leave">On Leave</option>
+                </select>
+                  </td>
+                </tr>
+              ))
             ) : (
-              filteredAttendanceData.map((attendance) => (
-                <tr key={attendance.id} className="border-b">
-                  <td className="px-4 py-2">{attendance.employeeName}</td>
-                  <td className="px-4 py-2">{attendance.employeeContact}</td>
-                  <td className="px-4 py-2">{attendance.employeeEmail}</td>
-                  <td className="px-4 py-2">{attendance.date}</td>
-                  <td className="px-4 py-2">{attendance.status}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex space-x-1">
-                      <button
-                        className="text-blue-500 hover:text-blue-700 p-2 rounded-full transition duration-200"
-                        onClick={() => handleView(attendance.id)}
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
-                      <button
-                        className="text-blue-500 hover:text-blue-700 p-2 rounded-full transition duration-200"
-                        onClick={() => handleEdit(attendance.id)}
-                      >
-                        <i className="fas fa-pencil-alt"></i>
-                      </button>
-                      <button
-                        className="text-red-500 hover:text-red-700 p-2 rounded-full transition duration-200"
-                        onClick={() => handleDelete(attendance.id)}
-                      >
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    </div>
+              // Show existing attendance records if they exist
+              attendanceRecords.map((employee) => (
+                <tr key={employee.id} className="hover:bg-blue-200 transition duration-200">
+                  <td className="px-6 py-4 border border-blue-300">{employee.name || "N/A"}</td>
+                  <td className="px-6 py-4 border border-blue-300">{employee.contact || "N/A"}</td>
+                  <td className="px-6 py-4 border border-blue-300">{employee.email || "N/A"}</td>
+                  <td className="px-6 py-4 border border-blue-300">
+                  <input
+  type="date"
+  value={employee.date || ''}
+  onChange={(e) => handleDateChange(e, employee.id)}
+/>
+                  </td>
+                  <td className="px-6 py-4 border border-blue-300">
+                
+                <input
+                  type="time"
+                  value={employee.timeIn || ""}
+                  onChange={(e) =>
+                    handleTimeChange(employee.id, "timeIn", e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </td>
+              <td className="px-6 py-4 border border-blue-300">
+                <input
+                  type="time"
+                  value={employee.timeOut || ""}
+                  onChange={(e) =>
+                    handleTimeChange(employee.id, "timeOut", e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </td>
+              <td className="px-6 py-4 border border-blue-300">
+                <select
+                  value={employee.status || "Present"}
+                  onChange={(e) =>
+                    handleStatusChange(employee.id, e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  <option value="Present">Present</option>
+                  <option value="Absent">Absent</option>
+                  <option value="On Leave">On Leave</option>
+                </select>
                   </td>
                 </tr>
               ))
@@ -458,6 +609,48 @@ const AttendanceApp = () => {
           </tbody>
         </table>
       </div>
+      <button
+        onClick={handleSaveAttendance}
+        className="mt-6 bg-blue-600 text-white px-8 py-3 rounded-lg shadow-md hover:shadow-lg hover:bg-blue-700 transition duration-300 text-lg font-bold"
+      >
+        Save Attendance
+      </button>
+    </div>
+
+
+
+    {/* {latestAttendance ? (
+  <table>
+    <thead>
+      <tr>
+        <th>Employee ID</th>
+        <th>Name</th>
+        <th>Contact</th>
+        <th>Email</th>
+        <th>Status</th>
+        <th>Time In</th>
+        <th>Time Out</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {Object.values(latestAttendance).map((record, index) => (
+        <tr key={index}>
+          <td>{record.employeeId}</td>
+          <td>{record.name}</td>
+          <td>{record.contact}</td>
+          <td>{record.email}</td>
+          <td>{record.status}</td>
+          <td>{record.timeIn}</td>
+          <td>{record.timeOut}</td>
+          <td>{latestAttendance.date}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+) : (
+  <p>No attendance record found.</p>
+)} */}
 
       {/* View Attendance Modal */}
       {viewAttendance && (
@@ -474,7 +667,7 @@ const AttendanceApp = () => {
                 &times;
               </button>
             </div>
-
+ 
             <div className="space-y-6">
               <p className="text-gray-100">
                 <strong>Employee:</strong> {viewAttendance.employeeName}

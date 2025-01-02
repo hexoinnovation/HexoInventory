@@ -299,15 +299,8 @@ const Sales = () => {
                   )}
                 </td>
                 <td className="py-3 px-4">
-                  ₹
-                  {(
-                    (invoice.products || []).reduce(
-                      (acc, product) =>
-                        acc + (product.price || 0) * (product.quantity || 0),
-                      0
-                    ) || 0
-                  ).toFixed(2)}
-                </td>
+                ₹{(invoice.products || []).reduce((acc, p) => acc + p.total, 0)}
+              </td>
                 <td className="py-3 px-4">
                   <button
                     onClick={() => handleViewInvoice(invoice.invoiceNumber)}

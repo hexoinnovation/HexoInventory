@@ -129,10 +129,14 @@ const ViewAllInvoice = () => {
     }
 
     if (newFilter.specificDate) {
+      const formatDate = (date) => {
+        const options = { year: "2-digit", month: "2-digit", day: "2-digit" };
+        return new Intl.DateTimeFormat("en-US", options).format(new Date(date));
+      };
+    
       filteredData = filteredData.filter(
         (item) =>
-          new Date(item.invoiceDate).toDateString() ===
-          new Date(newFilter.specificDate).toDateString()
+          formatDate(item.invoiceDate) === formatDate(newFilter.specificDate)
       );
     }
 

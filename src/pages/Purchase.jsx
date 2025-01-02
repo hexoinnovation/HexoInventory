@@ -187,7 +187,7 @@ const Purchase = () => {
             Total Stock Value
           </h3>
           <p className="text-3xl font-bold text-gray-100">
-            ${totalStockValue.toFixed(2)}
+          ₹{totalStockValue.toFixed(2)}
           </p>
         </div>
       </div>
@@ -349,7 +349,7 @@ const Purchase = () => {
                 {/* <td className="py-3 px-4">{product.categories}</td> */}
                 <td className="py-3 px-4">{product.pname}</td>
                 <td className="py-3 px-4 text-left">{product.estock}</td>
-                <td className="py-3 px-4">{product.price}</td>
+                <td className="py-3 px-4">₹{product.price}</td>
                 <td className="py-3 px-4">
                   <button
                     onClick={() => {

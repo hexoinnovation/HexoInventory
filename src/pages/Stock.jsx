@@ -232,7 +232,7 @@ const Stocks = () => {
         </div>
         <div className="bg-blue-900 p-4 rounded-md shadow-md border-l-4 border-blue-400">
           <h3 className="text-lg font-semibold text-gray-100">Total Price</h3>
-          <p className="text-3xl font-bold text-gray-100">${totalPrice}</p>
+          <p className="text-3xl font-bold text-gray-100">₹{totalPrice}</p>
         </div>
       </div>
 
@@ -332,7 +332,7 @@ const Stocks = () => {
                   <td className="py-3 px-4">{product.pname}</td>
                   <td className="py-3 px-4">{product.estock}</td>
                   <td className="py-3 px-4">{currentStock}</td>
-                  <td className="py-3 px-4">${product.price}</td>
+                  <td className="py-3 px-4">₹{product.price}</td>
                   <td className="py-3 px-4">
                     <button
                       onClick={() => {
