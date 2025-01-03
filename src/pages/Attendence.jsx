@@ -11,11 +11,12 @@ import {
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import Swal from "sweetalert2";
+import { writeBatch } from 'firebase/firestore';
 
 const db = getFirestore();
 const auth = getAuth();
 
-const AttendanceApp = () => {
+const AttendanceApp = (currentUser) => {
   const [attendances, setAttendances] = useState([]);
   const [employees, setEmployees] = useState([]); // Fetch employee details
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,6 +27,7 @@ const AttendanceApp = () => {
         date: "",
         status: "Present",
   });
+  const [employee, setEmployee] = useState([]);
   const [viewAttendance, setViewAttendance] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [user, setUser] = useState(null);
@@ -37,158 +39,216 @@ const AttendanceApp = () => {
   const [dateFilterEnd, setDateFilterEnd] = useState(""); // End date filter
   const [latestDate, setLatestDate] = useState(new Date().toISOString().substr(0, 10)); // Default to today
   const [attendanceRecords, setAttendanceRecords] = useState([]);
-  
+  const [latestAttendance, setLatestAttendance] = useState(null);
+  //const [formattedEmployees, setformatted] = useState(null);
+  //const formattedDate = new Date(employee.date).toISOString().split('T')[0];  // Formats to 'yyyy-mm-dd'
+
   useEffect(() => {
-    const fetchUserAndEmployees = async () => {
+    const fetchAttendanceAndEmployees = async () => {
       try {
         const currentUser = auth.currentUser;
         setUser(currentUser);
 
         if (currentUser) {
+          console.log("Current User Email:", currentUser.email);
+
           // Fetch employee details
           const employeeQuery = collection(db, "admins", currentUser.email, "Empdetails");
           const employeeSnapshot = await getDocs(employeeQuery);
-          const fetchedEmployees = employeeSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setEmployees(fetchedEmployees);
 
-          // Fetch all attendance records for the user (without ordering)
+          if (!employeeSnapshot.empty) {
+            const fetchedEmployees = employeeSnapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }));
+            setEmployees(fetchedEmployees);
+          } else {
+            console.log("No employee details found.");
+          }
+
+          // Fetch attendance records
           const attendanceQuery = collection(db, "admins", currentUser.email, "attendance");
           const attendanceSnapshot = await getDocs(attendanceQuery);
 
           if (attendanceSnapshot.empty) {
             console.log("No attendance records found.");
-          } else {
-            console.log("All Attendance Records:", attendanceSnapshot.docs);
+            setAttendanceRecords([]);
+            return;
+          }
 
-            // Map the documents to an array with date and employee data
-            const fetchedAttendance = attendanceSnapshot.docs.map((doc) => ({
-              date: doc.id, // The document ID is the date (e.g., "06/30/2024")
-              ...doc.data(), // Spread the document data (employee info, status, timeIn, etc.)
-            }));
+          // Map and sort attendance data by date
+          const allAttendance = attendanceSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            records: doc.data(),
+          }));
 
-            setAttendanceRecords(fetchedAttendance);
+          const sortedAttendance = allAttendance.sort((a, b) => {
+            const dateA = new Date(a.id.replace(/-/g, "/"));
+            const dateB = new Date(b.id.replace(/-/g, "/"));
+            return dateB - dateA; // Descending order
+          });
+
+          // Get the latest attendance record
+          const latestAttendance = sortedAttendance[0];
+          if (latestAttendance) {
+            console.log("Latest Attendance Record:", latestAttendance);
+
+            const employees = Object.keys(latestAttendance.records).map((key) => {
+              const record = latestAttendance.records[key];
+              return {
+                id: key,
+                name: record.name || "N/A",
+                contact: record.contact || "N/A",
+                email: record.email || "N/A",
+                date: record.date || latestAttendance.id,
+                timeIn: record.timeIn || "",
+                timeOut: record.timeOut || "",
+                status: record.status || "Unknown",
+              };
+            });
+            setAttendanceRecords(employees);
           }
         } else {
           console.log("User not authenticated.");
         }
       } catch (error) {
-        console.error("Error fetching employee or attendance data:", error);
+        console.error("Error fetching data:", error);
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: "Failed to fetch attendance data. Please try again.",
+          text: "Failed to fetch data. Please try again.",
         });
       }
     };
 
-    fetchUserAndEmployees(); // Fetch user and employee data when the component mounts
+    fetchAttendanceAndEmployees();
   }, []);
 
-  const handleStatusChange = (id, newStatus) => {
-    setEmployees((prev) =>
-      prev.map((emp) => (emp.id === id ? { ...emp, status: newStatus } : emp))
-    );
+  const isValidDate = (date) => {
+    // If date is a string, ensure it's in a format that can be parsed by Date constructor
+    const parsedDate = new Date(date);
+    return parsedDate instanceof Date && !isNaN(parsedDate.getTime());
   };
-  const handleDateChange = (employeeId, selectedDate) => {
-    // Update the employee's date in the state
+  
+  const handleDateChange = (e, employeeId) => {
+    const newDate = e.target.value;  // Get the selected date
     setEmployees((prevEmployees) =>
       prevEmployees.map((emp) =>
-        emp.id === employeeId ? { ...emp, date: selectedDate } : emp
+        emp.id === employeeId ? { ...emp, date: newDate } : emp
       )
     );
   };
   
-  
+  const handleTimeChange = (employeeId, timeType, newTime) => {
+    console.log(`Changing ${timeType} for ID ${employeeId} to: ${newTime}`);
+    setEmployees((prevEmployees) =>
+      prevEmployees.map((employee) =>
+        employee.id === employeeId
+          ? { ...employee, [timeType]: newTime }
+          : employee
+      )
+    );
+  };
+
+  const handleStatusChange = (employeeId, newStatus) => {
+    console.log(`Changing status for ID ${employeeId} to: ${newStatus}`);
+    setEmployees((prevEmployees) =>
+      prevEmployees.map((employee) =>
+        employee.id === employeeId
+          ? { ...employee, status: newStatus }
+          : employee
+      )
+    );
+  };
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewAttendance((prev) => ({ ...prev, [name]: value }));
   };
-  const handleTimeChange = (id, field, newTime) => {
-    setEmployees((prev) =>
-      prev.map((emp) =>
-        emp.id === id ? { ...emp, [field]: newTime } : emp
-      )
-    );
-  };
-
-  const handleSave = async () => {
+  const handleSaveAttendance = async () => {
     if (!user) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Please log in to save attendance.",
-      });
+      console.log("No user is logged in.");
       return;
     }
-  
+
+    const attendanceRef = collection(db, "admins", user.email, "attendance");
+
     try {
-      const currentTime = new Date(); // Current timestamp
-  
+      const attendanceData = {};
+
       for (const employee of employees) {
-        // Ensure date is properly defined
-        const dateObject = employee.date ? new Date(employee.date) : new Date(); // Use employee's date or current date if undefined
-        const formattedDate = new Intl.DateTimeFormat("en-US", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          timeZone: "UTC",
-        }).format(dateObject);
-  
-        // Ensure date is valid before proceeding
+        console.log(`Employee Object: `, employee);  // Log the entire employee object
+        
+        // Check if employee.date is undefined and if so, assign the selected date (not current date)
         if (!employee.date) {
-          console.warn(`No date for employee ${employee.id}, using current date`);
+            console.log(`Date is missing for employee: ${employee.name}. Please select a date.`);
+            Swal.fire({
+                icon: "error",
+                title: "Missing Date",
+                text: `Please select a date for ${employee.name}.`,
+            });
+            return; // Prevent saving attendance if the date is missing
         }
-  
-        // Ensure status, timeIn, and timeOut are not undefined
-        const status = employee.status || "Not Set"; // Default value for status if not provided
-        const timeIn = employee.timeIn || "00:00"; // Default value for timeIn if not provided
-        const timeOut = employee.timeOut || "00:00"; // Default value for timeOut if not provided
-  
-        const dateDocRef = doc(
-          db,
-          "admins",
-          user.email,
-          "attendance",
-          formattedDate
-        );
-  
-        const attendanceRecord = {
-          employeeId: employee.id,
-          employeeName: employee.name,
-          employeeContact: employee.contact,
-          employeeEmail: employee.email,
-          status: status, // Ensure status is defined
-          timeIn: timeIn, // Ensure timeIn is defined
-          timeOut: timeOut, // Ensure timeOut is defined
-          lastModified: currentTime,
-          date: employee.date || formattedDate, // Use the employee date if available, otherwise fallback to formatted date
-        };
-  
-        await setDoc(
-          dateDocRef,
-          { [employee.id]: attendanceRecord },
-          { merge: true }
-        );
+
+        if (employee && employee.date && isValidDate(employee.date)) {
+            console.log(`Employee: ${employee.name}, Selected Date: ${employee.date}`);
+            const parsedDate = new Date(employee.date);
+            const formattedDate = new Intl.DateTimeFormat("en-CA", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+            }).format(parsedDate);
+    
+            if (!attendanceData[formattedDate]) {
+                attendanceData[formattedDate] = {};
+            }
+    
+            attendanceData[formattedDate][employee.id] = {
+                name: employee.name,
+                contact: employee.contact || "N/A",
+                email: employee.email || "N/A",
+                date: formattedDate,
+                timeIn: employee.timeIn || "00:00",
+                timeOut: employee.timeOut || "00:00",
+                status: employee.status || "Absent",
+            };
+        } else {
+            console.log(`Missing or invalid date for employee: ${employee.name}, Date: ${employee.date}`);
+            if (!employee.date || isNaN(Date.parse(employee.date))) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Invalid Date",
+                    text: `Please provide a valid date for ${employee.name}`,
+                });
+                return;
+            }
+        }
+    }
+    
+      // Save attendance data
+      for (const date in attendanceData) {
+        const attendanceDocRef = doc(attendanceRef, date);
+        await setDoc(attendanceDocRef, attendanceData[date], { merge: true });
+
+        console.log(`Attendance for date ${date} saved successfully!`);
       }
-  
+
+      console.log("All attendance saved successfully!");
       Swal.fire({
         icon: "success",
         title: "Success",
-        text: "Attendance records saved successfully!",
+        text: "Attendance saved successfully!",
       });
     } catch (error) {
-      console.error("Error saving attendance records:", error);
+      console.error("Error saving attendance: ", error);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "Failed to save attendance records. Please try again.",
+        text: "Failed to save attendance. Please try again.",
       });
     }
-  };
-  
+};
+
+
   //   const attendance = attendances.find((att) => att.id === attendanceId);
   //   setNewAttendance(attendance);
   //   setIsEditMode(true); // Set to edit mode
@@ -425,86 +485,172 @@ const AttendanceApp = () => {
       </div>
 
       {/* Employee and Attendance Table Section */}
-      <div className="container mx-auto p-4">
-      <h1 className="text-xl font-bold mb-4">Attendance Manager</h1>
-      <table className="table-auto w-full border-collapse border border-gray-200">
-        <thead>
-          <tr>
-            <th className="px-4 py-2 border border-gray-200 text-left">Employee Name</th>
-            <th className="px-4 py-2 border border-gray-200 text-left">Employee Contact</th>
-            <th className="px-4 py-2 border border-gray-200 text-left">Employee Email</th>
-            <th className="px-4 py-2 border border-gray-200 text-left">Date</th>
-            <th className="px-4 py-2 border border-gray-200 text-left">Time In</th>
-            <th className="px-4 py-2 border border-gray-200 text-left">Time Out</th>
-            <th className="px-4 py-2 border border-gray-200 text-left">Status</th>
-            <th className="px-4 py-2 border border-gray-200 text-left">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-  {employees.map((employee) => (
-    <tr key={employee.id}>
-      <td className="px-4 py-2 border border-gray-200">{employee.name}</td>
-      <td className="px-4 py-2 border border-gray-200">{employee.contact}</td>
-      <td className="px-4 py-2 border border-gray-200">{employee.email}</td>
-     
-     
-      <td className="px-4 py-2 border border-gray-200">
-  <input
-    type="date"
-    value={employee.date || ""}  // Ensure employee.date is correctly set
-    onChange={(e) => handleDateChange(employee.id, e.target.value)}
-    className="border p-2 rounded w-full"
-  />
-</td>
+      <div className="container mx-auto p-6 bg-blue-100 rounded-lg shadow-lg">
+      <h1 className="text-3xl font-extrabold mb-6 text-black">Attendance Manager</h1>
+      <div className="overflow-x-auto bg-white rounded-lg shadow-lg">
+        <table className="min-w-full table-auto border-collapse">
+          <thead className="bg-blue-900 text-white uppercase text-lg font-semibold">
+            <tr>
+              <th className="px-6 py-4 border border-blue-300 text-left">Employee Name</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Employee Contact</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Employee Email</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Date</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Time In</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Time Out</th>
+              <th className="px-6 py-4 border border-blue-300 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody className="text-black text-x font-bold">
+            {attendanceRecords.length === 0 ? (
+              // Show employee details input fields if no attendance records
+              employees.map((employee) => (
+                <tr key={employee.id}>
+                  <td className="px-6 py-4 border border-blue-300">{employee.name || "N/A"}</td>
+                  <td className="px-6 py-4 border border-blue-300">{employee.contact || "N/A"}</td>
+                  <td className="px-6 py-4 border border-blue-300">{employee.email || "N/A"}</td>
+                  <td className="px-6 py-4 border border-blue-300">
+                  <input
+  type="date"
+  value={employee.date || ''}
+  onChange={(e) => {
+    employee.date = e.target.value; // Update employee.date with the selected date
+  }}
+/>
 
 
 
-      <td className="px-4 py-2 border border-gray-200">
-        <input
-          type="time"
-          value={employee.timeIn}
-          onChange={(e) =>
-            handleTimeChange(employee.id, "timeIn", e.target.value)
-          }
-          className="border p-2 rounded w-full"
-        />
-      </td>
-      <td className="px-4 py-2 border border-gray-200">
-        <input
-          type="time"
-          value={employee.timeOut}
-          onChange={(e) =>
-            handleTimeChange(employee.id, "timeOut", e.target.value)
-          }
-          className="border p-2 rounded w-full"
-        />
-      </td>
-      <td className="px-4 py-2 border border-gray-200">
-        <select
-          value={employee.status}
-          onChange={(e) => handleStatusChange(employee.id, e.target.value)}
-          className="border p-2 rounded w-full"
-        >
-          <option value="Present">Present</option>
-          <option value="Absent">Absent</option>
-          <option value="On Leave">On Leave</option>
-        </select>
-      </td>
-      <td className="px-4 py-2 border border-gray-200">
-        <button className="text-blue-500 hover:underline">Edit</button>
-      </td>
-    </tr>
-  ))}
-</tbody>
-
-      </table>
+                  </td>
+                  <td className="px-6 py-4 border border-blue-300">
+                <input
+                  type="time"
+                  value={employee.timeIn || ""}
+                  onChange={(e) =>
+                    handleTimeChange(employee.id, "timeIn", e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </td>
+              <td className="px-6 py-4 border border-blue-300">
+                <input
+                  type="time"
+                  value={employee.timeOut || ""}
+                  onChange={(e) =>
+                    handleTimeChange(employee.id, "timeOut", e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </td>
+              <td className="px-6 py-4 border border-blue-300">
+                <select
+                  value={employee.status || "Present"}
+                  onChange={(e) =>
+                    handleStatusChange(employee.id, e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  <option value="Present">Present</option>
+                  <option value="Absent">Absent</option>
+                  <option value="On Leave">On Leave</option>
+                </select>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              // Show existing attendance records if they exist
+              attendanceRecords.map((employee) => (
+                <tr key={employee.id} className="hover:bg-blue-200 transition duration-200">
+                  <td className="px-6 py-4 border border-blue-300">{employee.name || "N/A"}</td>
+                  <td className="px-6 py-4 border border-blue-300">{employee.contact || "N/A"}</td>
+                  <td className="px-6 py-4 border border-blue-300">{employee.email || "N/A"}</td>
+                  <td className="px-6 py-4 border border-blue-300">
+                  <input
+  type="date"
+  value={employee.date || ''}
+  onChange={(e) => handleDateChange(e, employee.id)}
+/>
+                  </td>
+                  <td className="px-6 py-4 border border-blue-300">
+                
+                <input
+                  type="time"
+                  value={employee.timeIn || ""}
+                  onChange={(e) =>
+                    handleTimeChange(employee.id, "timeIn", e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </td>
+              <td className="px-6 py-4 border border-blue-300">
+                <input
+                  type="time"
+                  value={employee.timeOut || ""}
+                  onChange={(e) =>
+                    handleTimeChange(employee.id, "timeOut", e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </td>
+              <td className="px-6 py-4 border border-blue-300">
+                <select
+                  value={employee.status || "Present"}
+                  onChange={(e) =>
+                    handleStatusChange(employee.id, e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  <option value="Present">Present</option>
+                  <option value="Absent">Absent</option>
+                  <option value="On Leave">On Leave</option>
+                </select>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
       <button
-        onClick={handleSave}
-        className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        onClick={handleSaveAttendance}
+        className="mt-6 bg-blue-600 text-white px-8 py-3 rounded-lg shadow-md hover:shadow-lg hover:bg-blue-700 transition duration-300 text-lg font-bold"
       >
         Save Attendance
       </button>
     </div>
+
+
+
+    {/* {latestAttendance ? (
+  <table>
+    <thead>
+      <tr>
+        <th>Employee ID</th>
+        <th>Name</th>
+        <th>Contact</th>
+        <th>Email</th>
+        <th>Status</th>
+        <th>Time In</th>
+        <th>Time Out</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {Object.values(latestAttendance).map((record, index) => (
+        <tr key={index}>
+          <td>{record.employeeId}</td>
+          <td>{record.name}</td>
+          <td>{record.contact}</td>
+          <td>{record.email}</td>
+          <td>{record.status}</td>
+          <td>{record.timeIn}</td>
+          <td>{record.timeOut}</td>
+          <td>{latestAttendance.date}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+) : (
+  <p>No attendance record found.</p>
+)} */}
 
       {/* View Attendance Modal */}
       {viewAttendance && (
