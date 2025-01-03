@@ -202,6 +202,12 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Salary</span>
               </Link>
             </li>
+            <li className={activeLink === "salary2" ? "active" : ""}>
+              <Link to="/salary2" onClick={() => handleLinkClick("salary2")}>
+                <i className="bx bxs-wallet"></i>
+                <span className="text">Salary2.o</span>
+              </Link>
+            </li>
           </ul>
         )}
 
