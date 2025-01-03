@@ -238,59 +238,50 @@ const [invoiceData, setInvoiceData] = useState([]);
         </li>
       </ul>
 
-      {/* Layout with Two Columns: Pie Chart and Inventory Table */}
       <div className="grid grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
-        <div className="inventory-table bg-gradient-to-r from-blue-600 to-blue-700 p-8 rounded-2xl shadow-lg">
-          <h3 className="text-xl font-semibold text-gray-100 mb-6">Inventory</h3>
-          <table className="min-w-full table-auto text-gray-100">
-            <thead className="bg-blue-900">
-            <tr>
-      <th className="py-3 px-4 text-left">UID</th>
-      <th className="py-3 px-4 text-left">Date</th>
-      {/* <th className="py-3 px-4 text-left">Client</th> */}
-      <th className="py-3 px-4 text-left">Product Name</th>
-      <th className="py-3 px-4 text-left">Sales</th>
-      <th className="py-3 px-4 text-left">Total Amount</th>
-      {/* <th className="py-3 px-4 text-left">Actions</th> */}
-    </tr>
-            </thead>
-            <tbody>
-    {filteredInvoiceData.map((invoice) => (
-      <tr key={invoice.id} className="hover:bg-black-100">
-        <td className="py-3 px-4">{invoice.invoiceNumber}</td>
-        <td className="py-3 px-4">
-          {new Date(invoice.invoiceDate).toLocaleDateString()}
-        </td>
-        {/* <td className="py-3 px-4">{invoice.billTo?.name || "N/A"}</td> */}
-        <td className="py-3 px-4">
-          {(invoice.products || [])
-            .map((product) => product.description || "N/A")
-            .join(", ")}
-        </td>
-        <td className="py-3 px-4">
-          {(invoice.products || []).reduce(
-            (acc, product) => acc + (product.quantity || 0),
-            0
-          )}
-        </td>
-        <td className="py-3 px-4">
-          ₹{(invoice.products || []).reduce(
-            (acc, p) => acc + p.total,
-            0
-          )}
-        </td>
-        {/* <td className="py-3 px-4">
-          <button
-            onClick={() => handleViewInvoice(invoice.invoiceNumber)}
-            className="bg-blue-900 text-white py-1 px-3 rounded-md"
-          >
-            View
-          </button>
-        </td> */}
-      </tr>
-    ))}
-  </tbody>
-</table>
+  <div className="inventory-table bg-gradient-to-r from-blue-600 to-blue-700 p-8 rounded-2xl shadow-lg">
+    <h3 className="text-xl font-semibold text-gray-100 mb-6">Inventory</h3>
+    <table className="min-w-full table-auto text-gray-100">
+      <thead className="bg-blue-900">
+        <tr>
+          <th className="py-3 px-4 text-left">UID</th>
+          <th className="py-3 px-4 text-left">Date</th>
+          <th className="py-3 px-4 text-left">Product Name</th>
+          <th className="py-3 px-4 text-left">Sales</th>
+          <th className="py-3 px-4 text-left">Total Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filteredInvoiceData
+          .sort((a, b) => new Date(b.invoiceDate) - new Date(a.invoiceDate)) // Optional: Sort by date descending
+          .slice(0, 5) // Get the last 5 entries
+          .map((invoice) => (
+            <tr key={invoice.id} className="hover:bg-black-100">
+              <td className="py-3 px-4">{invoice.invoiceNumber}</td>
+              <td className="py-3 px-4">
+                {new Date(invoice.invoiceDate).toLocaleDateString()}
+              </td>
+              <td className="py-3 px-4">
+                {(invoice.products || [])
+                  .map((product) => product.description || "N/A")
+                  .join(", ")}
+              </td>
+              <td className="py-3 px-4">
+                {(invoice.products || []).reduce(
+                  (acc, product) => acc + (product.quantity || 0),
+                  0
+                )}
+              </td>
+              <td className="py-3 px-4">
+                ₹{(invoice.products || []).reduce(
+                  (acc, p) => acc + p.total,
+                  0
+                )}
+              </td>
+            </tr>
+          ))}
+      </tbody>
+    </table>
         </div>
 
         {/* Right Column: Pie Chart */}
