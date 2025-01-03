@@ -134,7 +134,7 @@ const ManageOrders = () => {
 
 
   // Info Box Calculations
-  const totalOrders = orders.length;
+
   const totalRevenue = orders
     .reduce((acc, order) => acc + parseFloat(order.totalAmount || 0), 0)
     .toFixed(2);
@@ -235,6 +235,40 @@ const ManageOrders = () => {
     );
   };
 
+//   // Calculate the total number of orders by counting `id`s in both arrays
+// const totalOrders = currentOrders.filter(order => order.id).length + buyNowOrders.filter(order => order.id).length;
+
+
+const [totalOrders, setTotalOrders] = useState(0); // Initialize totalOrders state
+
+useEffect(() => {
+  const fetchTotalOrders = async () => {
+    try {
+      // Reference to the user's 'buynow order' collection
+      const userDocRef = doc(db, "users", userEmail);
+      const buynowCollectionRef = collection(userDocRef, "buynow order");
+
+      // Reference to the user's 'Cart order' collection
+      const cartCollectionRef = collection(userDocRef, "Cart order");
+
+      // Fetch documents from both collections
+      const buynowQuerySnapshot = await getDocs(buynowCollectionRef);
+      const cartQuerySnapshot = await getDocs(cartCollectionRef);
+
+      // Calculate total orders by combining lengths of both collections
+      const total = buynowQuerySnapshot.size + cartQuerySnapshot.size;
+
+      // Set the total orders state
+      setTotalOrders(total);
+    } catch (error) {
+      console.error("Error fetching orders: ", error);
+    }
+  };
+
+  fetchTotalOrders(); // Call the function to fetch the total orders
+
+}, [userEmail]); // Re-run the effect when userEmail changes
+
 
   return (
     <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
@@ -244,10 +278,10 @@ const ManageOrders = () => {
 
       {/* Info Boxes */}
       <div className="grid grid-cols-4 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-blue-500 text-white p-4 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold">Total Orders</h2>
-          <p className="text-3xl font-bold">{totalOrders}</p>
-        </div>
+      <div className="bg-blue-500 text-white p-4 rounded-lg shadow-md">
+      <h2 className="text-lg font-semibold">Total Orders</h2>
+      <p className="text-3xl font-bold">{totalOrders}</p>
+    </div>
         <div className="bg-green-500 text-white p-4 rounded-lg shadow-md">
           <h2 className="text-lg font-semibold">Total Revenue</h2>
           <p className="text-3xl font-bold">₹{totalRevenue}</p>

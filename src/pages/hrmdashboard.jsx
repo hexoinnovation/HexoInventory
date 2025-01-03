@@ -21,36 +21,60 @@ const InfoBox = ({ title, value, description, color }) => {
   );
 };
 
-const HRMControl = () => {
-  const [employees, setEmployees] = useState([]);
+const HRMControl = (user ) => {
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [presentEmployees, setPresentEmployees] = useState(0);
   const [absentEmployees, setAbsentEmployees] = useState(0);
+  const [employees, setEmployees] = useState([]);
 
   // Fetch employee data from Firestore on mount
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "Employees"), (snapshot) => {
-      const employeeData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+    if (user?.email) {
+      // Path to Empdetails in the Firestore database
+      const userDocRef = collection(db, "admins", user.email, "Empdetails");
 
-      // Set the employee data
-      setEmployees(employeeData);
+      // Fetch Total Employees Count
+      const fetchTotalEmployees = async () => {
+        try {
+          const snapshot = await getDoc(doc(db, "admins", user.email));
+          const adminData = snapshot.data();
+          if (adminData && adminData.totalEmployees) {
+            setTotalEmployees(adminData.totalEmployees);
+          }
+        } catch (error) {
+          console.error("Error fetching total employees:", error);
+        }
+      };
 
-      // Calculate total employees, present and absent employees
-      const total = employeeData.length;
-      const present = employeeData.filter((employee) => employee.attendance === "Present").length;
-      const absent = employeeData.filter((employee) => employee.attendance === "Absent").length;
+      // Fetch Employee Details
+      const unsubscribe = onSnapshot(userDocRef, (snapshot) => {
+        const employeeData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
 
-      setTotalEmployees(total);
-      setPresentEmployees(present);
-      setAbsentEmployees(absent);
-    });
+        setEmployees(employeeData);
 
-    // Cleanup the subscription when the component unmounts
-    return () => unsubscribe();
-  }, []);
+        // Calculate Present and Absent Employees
+        const present = employeeData.filter(
+          (employee) => employee.attendance === "Present"
+        ).length;
+        const absent = employeeData.filter(
+          (employee) => employee.attendance === "Absent"
+        ).length;
+
+        setPresentEmployees(present);
+        setAbsentEmployees(absent);
+      });
+
+      // Fetch total employees count once
+      fetchTotalEmployees();
+
+      // Cleanup the snapshot listener
+      return () => unsubscribe();
+    }
+  }, [user?.email]);
+
 
   // Pie chart data for attendance distribution
   const attendanceData = {
@@ -72,6 +96,10 @@ const HRMControl = () => {
     ],
   };
 
+
+
+
+  
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Header Title */}
@@ -96,12 +124,13 @@ const HRMControl = () => {
       <ul className="box-info grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
         {/* Total Employees Info Box */}
         <li>
-          <InfoBox
-            title="Total Employees"
-            value={totalEmployees}
-            description="Total Number of Employees"
-            color="from-blue-600 via-blue-700 to-blue-800"
-          />
+        <InfoBox
+        title="Total Employees"
+        value={totalEmployees}
+        description="Total Number of Employees"
+        color="from-blue-600 via-blue-700 to-blue-800"
+      />
+
         </li>
 
         {/* Present Employees Info Box */}
