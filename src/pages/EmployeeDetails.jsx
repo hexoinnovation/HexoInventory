@@ -104,87 +104,97 @@ const App = () => {
     }
   };
 
-  const handleFormSubmit = async (e) => {
+  const [isSubmitting, setIsSubmitting] = useState(false); // Track form submission state
+
+const handleFormSubmit = async (e) => {
     e.preventDefault();
 
     if (!user) {
-      Swal.fire({
-        title: "Error!",
-        text: "Please log in to add or update employee details.",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
-      return;
+        Swal.fire({
+            title: "Error!",
+            text: "Please log in to add or update employee details.",
+            icon: "error",
+            confirmButtonText: "OK",
+        });
+        return;
     }
+
+    if (isSubmitting) return; // Prevent duplicate submissions
+
+    setIsSubmitting(true); // Set loading state to true
 
     try {
-      let photoURL = "";
+        let photoURL = "";
 
-      if (newEmployee.photo) {
-        photoURL = newEmployee.photo;
-      }
+        if (newEmployee.photo) {
+            photoURL = newEmployee.photo;
+        }
 
-      const userDocRef = collection(db, "admins", user.email, "Empdetails");
-      const employeeData = {
-        ...newEmployee,
-        photo: photoURL,
-      };
+        const userDocRef = collection(db, "admins", user.email, "Empdetails");
+        const employeeData = {
+            ...newEmployee,
+            photo: photoURL,
+        };
 
-      if (newEmployee.id) {
-        const employeeDocRef = doc(userDocRef, newEmployee.id);
-        await updateDoc(employeeDocRef, employeeData);
-        setEmployees((prev) =>
-          prev.map((emp) =>
-            emp.id === newEmployee.id ? { ...emp, ...employeeData } : emp
-          )
-        );
-        Swal.fire({
-          title: "Updated!",
-          text: "Employee updated successfully!",
-          icon: "success",
-          showConfirmButton: false,
-          timer: 2000,
+        if (newEmployee.id) {
+            // Update existing employee
+            const employeeDocRef = doc(userDocRef, newEmployee.id);
+            await updateDoc(employeeDocRef, employeeData);
+            setEmployees((prev) =>
+                prev.map((emp) =>
+                    emp.id === newEmployee.id ? { ...emp, ...employeeData } : emp
+                )
+            );
+            Swal.fire({
+                title: "Updated!",
+                text: "Employee updated successfully!",
+                icon: "success",
+                showConfirmButton: false,
+                timer: 2000,
+            });
+        } else {
+            // Add new employee
+            const newDocRef = await addDoc(userDocRef, employeeData);
+            setEmployees((prev) => [
+                ...prev,
+                { id: newDocRef.id, ...employeeData },
+            ]);
+            Swal.fire({
+                title: "Added!",
+                text: "Employee added successfully!",
+                icon: "success",
+                showConfirmButton: false,
+                timer: 2000,
+            });
+        }
+
+        setIsModalOpen(false);
+        setNewEmployee({
+            name: "",
+            photo: null,
+            dob: "",
+            gender: "",
+            contact: "",
+            email: "",
+            role: "",
+            salaryInterval: "",
+            address: "",
+            state: "",
+            country: "",
         });
-      } else {
-        const newDocRef = await addDoc(userDocRef, employeeData);
-        setEmployees((prev) => [
-          ...prev,
-          { id: newDocRef.id, ...employeeData },
-        ]);
-        Swal.fire({
-          title: "Added!",
-          text: "Employee added successfully!",
-          icon: "success",
-          showConfirmButton: false,
-          timer: 2000,
-        });
-      }
-
-      setIsModalOpen(false);
-      setNewEmployee({
-        name: "",
-        photo: null,
-        dob: "",
-        gender: "",
-        contact: "",
-        email: "",
-        role: "",
-        salaryInterval: "",
-        address: "",
-        state: "",
-        country: "",
-      });
-      setIsEditMode(false); // Reset edit mode
+        setIsEditMode(false); // Reset edit mode
     } catch (error) {
-      console.error("Error adding/updating employee:", error);
-      Swal.fire({
-        title: "Error!",
-        text: "Failed to add/update employee. Please try again.",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
+        console.error("Error adding/updating employee:", error);
+        Swal.fire({
+            title: "Error!",
+            text: "Failed to add/update employee. Please try again.",
+            icon: "error",
+            confirmButtonText: "OK",
+        });
+    } finally {
+        setIsSubmitting(false); // Reset loading state
     }
-  };
+};
 
   const handleEdit = (employeeId) => {
     const employee = employees.find((emp) => emp.id === employeeId);
@@ -810,11 +820,19 @@ const App = () => {
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
-                >
-                  {isEditMode ? "Update Employee" : "Add Employee"}
-                </button>
+  type="submit"
+  className={`bg-blue-600 text-white px-6 py-3 rounded-lg ${
+    isSubmitting ? "cursor-not-allowed opacity-50" : "hover:bg-blue-700"
+  }`}
+  disabled={isSubmitting} // Disable the button while submitting
+>
+  {isSubmitting
+    ? "Processing..." // Show feedback during submission
+    : isEditMode
+    ? "Update Employee"
+    : "Add Employee"}
+</button>
+
               </div>
             </form>
           </div>
