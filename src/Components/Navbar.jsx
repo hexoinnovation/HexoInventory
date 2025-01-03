@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaBell, FaUserCircle, FaCog } from "react-icons/fa";
-import { AiOutlineMail, AiOutlineFullscreen, AiOutlineFullscreenExit } from "react-icons/ai";
+import { AiOutlineWhatsApp, AiOutlineFullscreen, AiOutlineFullscreenExit } from "react-icons/ai";
 import { RiLogoutCircleRLine } from "react-icons/ri";
 import { Link } from "react-router-dom";
 
@@ -138,7 +138,24 @@ const Navbar = ({ handleMenuClick }) => {
           )}
         </div>
 
-        {/* Mail */}
+         {/* whatapp*/}
+
+        <div
+        className="relative"
+        onMouseEnter={() => setActiveDropdown("whatsapp")}
+        onMouseLeave={() => setActiveDropdown("")}
+      >
+        <a
+          href="https://web.whatsapp.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-3 rounded-full hover:bg-gray-700 flex items-center justify-center"
+        >
+          <AiOutlineWhatsApp size={24} />
+        </a>
+      </div>
+
+        {/* Mail
         <div
           className="relative"
           onMouseEnter={() => setActiveDropdown("mail")}
@@ -167,7 +184,7 @@ const Navbar = ({ handleMenuClick }) => {
               </div>
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* Profile as Direct Link */}
         <div className="relative">
