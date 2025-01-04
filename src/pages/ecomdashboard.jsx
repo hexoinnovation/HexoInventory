@@ -138,34 +138,68 @@ const [categoriesInStock, setCategoriesInStock] = useState(0); // State for the 
 
 const [totalOrders, setTotalOrders] = useState(0); // Initialize totalOrders state
 
+const fetchTotalOrders = async () => {
+  try {
+    if (!userEmail) {
+      throw new Error("User email is not provided");
+    }
+
+    // Reference to the user's document
+    const userDocRef = doc(db, "users", userEmail);
+
+    // Reference to the 'buynow order' and 'Cart order' subcollections
+    const buynowCollectionRef = collection(userDocRef, "buynow order");
+    const cartCollectionRef = collection(userDocRef, "Cart order");
+
+    // Fetch documents from both collections
+    const buynowQuerySnapshot = await getDocs(buynowCollectionRef);
+    const cartQuerySnapshot = await getDocs(cartCollectionRef);
+
+    // Calculate total orders
+    const total = buynowQuerySnapshot.size + cartQuerySnapshot.size;
+    setTotalOrders(total);
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+  }
+};
+
+const [buyNowOrders, setBuyNowOrders] = useState([]);
+
 useEffect(() => {
-  const fetchTotalOrders = async () => {
+  const fetchOrders = async () => {
     try {
-      // Reference to the user's 'buynow order' collection
-      const userDocRef = doc(db, "users", userEmail);
-      const buynowCollectionRef = collection(userDocRef, "buynow order");
+      if (!userEmail) {
+        console.error("User email is not available");
+        return;
+      }
 
-      // Reference to the user's 'Cart order' collection
-      const cartCollectionRef = collection(userDocRef, "Cart order");
+      console.log("Fetching BuyNow orders for user:", userEmail);
 
-      // Fetch documents from both collections
-      const buynowQuerySnapshot = await getDocs(buynowCollectionRef);
-      const cartQuerySnapshot = await getDocs(cartCollectionRef);
+      // Correct Firestore path for sub-collection
+      const buynowCollectionRef = collection(db, "users", userEmail, "buynow order");
 
-      // Calculate total orders by combining lengths of both collections
-      const total = buynowQuerySnapshot.size + cartQuerySnapshot.size;
+      // Fetching data from Firestore
+      const buynowSnapshot = await getDocs(buynowCollectionRef);
 
-      // Set the total orders state
-      setTotalOrders(total);
+      if (buynowSnapshot.empty) {
+        console.log("No BuyNow orders found.");
+        setBuyNowOrders([]); // Ensure the state reflects no data
+      } else {
+        const fetchedBuyNowOrders = buynowSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        console.log("Fetched BuyNow orders:", fetchedBuyNowOrders);
+        setBuyNowOrders(fetchedBuyNowOrders); // Update state with fetched data
+      }
     } catch (error) {
-      console.error("Error fetching orders: ", error);
+      console.error("Error fetching BuyNow orders:", error.message);
     }
   };
 
-  fetchTotalOrders(); // Call the function to fetch the total orders
-
-}, [userEmail]); // Re-run the effect when userEmail changes
-
+  fetchOrders();
+}, [userEmail]);
 
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
@@ -241,27 +275,34 @@ useEffect(() => {
           <h3 className="text-xl font-semibold text-gray-100 mb-6">
             Recent Orders
           </h3>
-          <table className="min-w-full table-auto text-gray-100">
-            <thead className="bg-blue-900">
-              <tr>
-                <th className="px-6 py-4 text-left text-white">Order ID</th>
-                <th className="px-6 py-4 text-left text-white">Order Date</th>
-                {/* <th className="px-6 py-4 text-left text-white">Customer</th> */}
-                <th className="px-6 py-4 text-left text-white">Final Total</th>
-                <th className="px-6 py-4 text-left text-white">Payment Method</th>
+          <table className="min-w-full border-collapse border border-gray-300">
+        <thead className="bg-blue-900">
+          <tr>
+            <th className="px-6 py-4 text-left text-white">Order ID</th>
+            <th className="px-6 py-4 text-left text-white">Order Date</th>
+            <th className="px-6 py-4 text-left text-white">Final Total</th>
+            <th className="px-6 py-4 text-left text-white">Payment Method</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Array.isArray(buyNowOrders) && buyNowOrders.length > 0 ? (
+            buyNowOrders.map((order) => (
+              <tr key={order.id} className="border-t border-gray-300">
+                <td className="px-6 py-4">{order.id}</td>
+                <td className="px-6 py-4">{order.orderdate}</td>
+                <td className="px-6 py-4">{order.totalamount }</td>
+                <td className="px-6 py-4">{order.paymentmethod }</td>
               </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order.id}>
-                  <td className="px-6 py-4">{order.id}</td>
-                  {/* <td className="px-6 py-4">{order.customer}</td> */}
-                  <td className="px-6 py-4">{order.total}</td>
-                  <td className="px-6 py-4">{order.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="4" className="text-center py-4">
+                No orders found.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
         </div>
 
         {/* Right Column: Pie Chart */}
