@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
-import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../config/firebase"; // Import Firestore instance
+import { collection, onSnapshot, getDoc, doc, getDocs } from "firebase/firestore";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { db, auth } from "../config/firebase"; // Import Firebase instance and auth
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
@@ -21,22 +22,25 @@ const InfoBox = ({ title, value, description, color }) => {
   );
 };
 
-const HRMControl = (user ) => {
+const HRMControl = () => {
+  const [currentUser] = useAuthState(auth); // Get the current user using Firebase hook
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [presentEmployees, setPresentEmployees] = useState(0);
   const [absentEmployees, setAbsentEmployees] = useState(0);
   const [employees, setEmployees] = useState([]);
+  const [searchTerm, setSearchTerm] = useState(""); // Search term state
+  const [roleFilter, setRoleFilter] = useState(""); // Role filter state
 
   // Fetch employee data from Firestore on mount
   useEffect(() => {
-    if (user?.email) {
+    if (currentUser?.email) {
       // Path to Empdetails in the Firestore database
-      const userDocRef = collection(db, "admins", user.email, "Empdetails");
+      const userDocRef = collection(db, "admins", currentUser.email, "Empdetails");
 
       // Fetch Total Employees Count
       const fetchTotalEmployees = async () => {
         try {
-          const snapshot = await getDoc(doc(db, "admins", user.email));
+          const snapshot = await getDoc(doc(db, "admins", currentUser.email));
           const adminData = snapshot.data();
           if (adminData && adminData.totalEmployees) {
             setTotalEmployees(adminData.totalEmployees);
@@ -73,8 +77,7 @@ const HRMControl = (user ) => {
       // Cleanup the snapshot listener
       return () => unsubscribe();
     }
-  }, [user?.email]);
-
+  }, [currentUser?.email]);
 
   // Pie chart data for attendance distribution
   const attendanceData = {
@@ -96,10 +99,51 @@ const HRMControl = (user ) => {
     ],
   };
 
+  useEffect(() => {
+    const fetchEmployeeCount = async () => {
+      try {
+        if (!currentUser || !currentUser.email) {
+          console.error("User not authenticated or email missing.");
+          return;
+        }
 
+        // Reference to the user's "Empdetails" collection
+        const empDetailsCollectionRef = collection(db, "admins", currentUser.email, "Empdetails");
 
+        // Fetch all employee documents
+        const empDetailsSnapshot = await getDocs(empDetailsCollectionRef);
 
-  
+        // Count the number of documents in the collection
+        const employeeCount = empDetailsSnapshot.size;
+
+        console.log("Total Employees:", employeeCount);
+
+        // Update the state
+        setTotalEmployees(employeeCount);
+      } catch (error) {
+        console.error("Error fetching employee count:", error.message);
+      }
+    };
+
+    fetchEmployeeCount();
+  }, [currentUser]);
+
+  // Filter employees based on multiple criteria including search term and role filter
+  const filteredEmployees = employees.filter((employee) => {
+    return (
+      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) && // Search by name
+      (roleFilter ? employee.role === roleFilter : true) && // Filter by Role
+      (employee.attendance === "Present" || employee.attendance === "Absent") // Ensure attendance filter
+    );
+  });
+
+// Fetch employee data
+const fetchEmployees = async () => {
+  const querySnapshot = await getDocs(userDocRef);
+  const employeeList = querySnapshot.docs.map((doc) => doc.data());
+  setFilteredEmployees(employeeList); // Assuming setFilteredEmployees is your state setter for employee data
+};
+
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Header Title */}
@@ -120,17 +164,18 @@ const HRMControl = (user ) => {
         </div>
       </div>
 
+
+
       {/* Info Boxes for HRM Stats */}
       <ul className="box-info grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
         {/* Total Employees Info Box */}
         <li>
-        <InfoBox
-        title="Total Employees"
-        value={totalEmployees}
-        description="Total Number of Employees"
-        color="from-blue-600 via-blue-700 to-blue-800"
-      />
-
+          <InfoBox
+            title="Total Employees"
+            value={totalEmployees}
+            description="Total Number of Employees"
+            color="from-blue-600 via-blue-700 to-blue-800"
+          />
         </li>
 
         {/* Present Employees Info Box */}
@@ -164,31 +209,52 @@ const HRMControl = (user ) => {
               <tr>
                 <th className="px-6 py-4 text-left text-white">No</th>
                 <th className="px-6 py-4 text-left text-white">Name</th>
-                <th className="px-6 py-4 text-left text-white">Position</th>
+                <th className="px-6 py-4 text-left text-white">DOB</th>
+                <th className="px-6 py-4 text-left text-white">Role</th>
                 <th className="px-6 py-4 text-left text-white">Salary</th>
-                <th className="px-6 py-4 text-left text-white">Attendance</th>
+                
               </tr>
             </thead>
             <tbody>
-              {employees.map((employee) => (
-                <tr key={employee.id}>
-                  <td className="px-6 py-4">{employee.no}</td>
-                  <td className="px-6 py-4">{employee.name}</td>
-                  <td className="px-6 py-4">{employee.position}</td>
-                  <td className="px-6 py-4">{employee.salary}</td>
-                  <td className="px-6 py-4">{employee.attendance}</td>
-                </tr>
-              ))}
-            </tbody>
+  {filteredEmployees.length === 0 ? (
+    <tr>
+      <td
+        colSpan="6"  // Adjusted to 6 since we have 6 columns
+        className="text-center py-4 text-red-500 font-semibold"
+      >
+        No Employee Found
+      </td>
+    </tr>
+  ) : (
+    filteredEmployees.map((employee, index) => (
+      <tr key={employee.id}>
+        <td className="px-6 py-4">{index + 1}</td>
+        <td className="px-6 py-4">
+          <div className="flex items-center gap-5">
+            <img
+              src={employee.photo}
+              alt="Employee"
+              className="rounded-full w-15 h-14"
+            />
+            <span>{employee.name}</span>
+          </div>
+        </td>
+        <td className="px-6 py-4">{employee.dob}</td>
+        <td className="px-6 py-4">{employee.contact}</td>
+        <td className="px-6 py-4">{employee.email}</td>
+        <td className="px-6 py-4">{employee.role}</td>
+        <td className="px-6 py-4">₹{employee.salary}</td>
+      </tr>
+    ))
+  )}
+</tbody>
           </table>
         </div>
 
         {/* Right Column: Pie Chart */}
-        <div className="chart-container bg-gradient-to-r from-white-900 via-white-700 to-white-800 p-8 rounded-2xl shadow-lg">
-          <h3 className="text-xl font-semibold text-gray-700 mb-6">Attendance Distribution</h3>
-          <div className="w-full max-w-xs mx-auto">
-            <Pie data={attendanceData} />
-          </div>
+        <div className="chart bg-gradient-to-r from-blue-600 to-blue-700 p-8 rounded-2xl shadow-lg">
+          <h3 className="text-xl font-semibold text-gray-100 mb-6">Attendance Distribution</h3>
+          <Pie data={attendanceData} options={{ responsive: true }} />
         </div>
       </div>
     </main>
