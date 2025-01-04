@@ -135,71 +135,46 @@ const [categoriesInStock, setCategoriesInStock] = useState(0); // State for the 
   fetchCategoriesCount(); // Call the function to fetch the categories count
 }, []);
 
-
+const [buyNowOrders, setBuyNowOrders] = useState([]);
 const [totalOrders, setTotalOrders] = useState(0); // Initialize totalOrders state
 
-const fetchTotalOrders = async () => {
-  try {
-    if (!userEmail) {
-      throw new Error("User email is not provided");
-    }
-
-    // Reference to the user's document
-    const userDocRef = doc(db, "users", userEmail);
-
-    // Reference to the 'buynow order' and 'Cart order' subcollections
-    const buynowCollectionRef = collection(userDocRef, "buynow order");
-    const cartCollectionRef = collection(userDocRef, "Cart order");
-
-    // Fetch documents from both collections
-    const buynowQuerySnapshot = await getDocs(buynowCollectionRef);
-    const cartQuerySnapshot = await getDocs(cartCollectionRef);
-
-    // Calculate total orders
-    const total = buynowQuerySnapshot.size + cartQuerySnapshot.size;
-    setTotalOrders(total);
-  } catch (error) {
-    console.error("Error fetching orders:", error);
-  }
-};
-
-const [buyNowOrders, setBuyNowOrders] = useState([]);
 
 useEffect(() => {
-  const fetchOrders = async () => {
+  const fetchTotalOrders = async () => {
     try {
-      if (!userEmail) {
-        console.error("User email is not available");
-        return;
-      }
+      // Reference to the user's 'buynow order' collection
+      const userDocRef = doc(db, "users", userEmail);
+      const buynowCollectionRef = collection(userDocRef, "buynow order");
 
-      console.log("Fetching BuyNow orders for user:", userEmail);
+      // Reference to the user's 'Cart order' collection
+      const cartCollectionRef = collection(userDocRef, "Cart order");
 
-      // Correct Firestore path for sub-collection
-      const buynowCollectionRef = collection(db, "users", userEmail, "buynow order");
+      // Fetch documents from both collections
+      const buynowQuerySnapshot = await getDocs(buynowCollectionRef);
+      const cartQuerySnapshot = await getDocs(cartCollectionRef);
 
-      // Fetching data from Firestore
-      const buynowSnapshot = await getDocs(buynowCollectionRef);
+      // Calculate total orders by combining lengths of both collections
+      const total = buynowQuerySnapshot.size + cartQuerySnapshot.size;
+      const fetchedBuyNowOrders = buynowSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-      if (buynowSnapshot.empty) {
-        console.log("No BuyNow orders found.");
-        setBuyNowOrders([]); // Ensure the state reflects no data
-      } else {
-        const fetchedBuyNowOrders = buynowSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-
-        console.log("Fetched BuyNow orders:", fetchedBuyNowOrders);
-        setBuyNowOrders(fetchedBuyNowOrders); // Update state with fetched data
-      }
+      // Set the total orders state
+      setTotalOrders(total);
+      setBuyNowOrders(fetchedBuyNowOrders);
     } catch (error) {
-      console.error("Error fetching BuyNow orders:", error.message);
+      console.error("Error fetching orders: ", error);
     }
   };
 
-  fetchOrders();
-}, [userEmail]);
+  fetchTotalOrders(); // Call the function to fetch the total orders
+
+}, [userEmail]); // Re-run the effect when userEmail changes
+
+
+  // const [userEmail, setUserEmail] = useState(""); // Assuming userEmail is available, otherwise fetch from auth
+
 
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
@@ -240,7 +215,7 @@ useEffect(() => {
          <li>
           <InfoBox
             title="Total Orders"
-            value={totalOrders}
+            value={totalOrders} // Passing the totalOrders state to InfoBox
             description="Total Orders Processed"
             color="from-orange-600 via-orange-700 to-orange-800"
           />
