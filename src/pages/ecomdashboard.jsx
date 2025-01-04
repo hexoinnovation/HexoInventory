@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
 import { useState, useEffect } from "react";
-import { collection, getDocs } from "firebase/firestore"; // Firestore functions for querying
+import { collection, getDocs, doc  } from "firebase/firestore"; // Firestore functions for querying
 import { db } from "../config/firebase";
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
@@ -22,7 +22,7 @@ const InfoBox = ({ title, value, description, color }) => {
   );
 };
 
-const Dashboard = () => {
+const Dashboard = (userEmail) => {
   // WhatsApp click handler
   const handleWhatsAppClick = () => {
     const phoneNumber = "+1234567890"; // Replace with your actual phone number
@@ -135,6 +135,38 @@ const [categoriesInStock, setCategoriesInStock] = useState(0); // State for the 
   fetchCategoriesCount(); // Call the function to fetch the categories count
 }, []);
 
+
+const [totalOrders, setTotalOrders] = useState(0); // Initialize totalOrders state
+
+useEffect(() => {
+  const fetchTotalOrders = async () => {
+    try {
+      // Reference to the user's 'buynow order' collection
+      const userDocRef = doc(db, "users", userEmail);
+      const buynowCollectionRef = collection(userDocRef, "buynow order");
+
+      // Reference to the user's 'Cart order' collection
+      const cartCollectionRef = collection(userDocRef, "Cart order");
+
+      // Fetch documents from both collections
+      const buynowQuerySnapshot = await getDocs(buynowCollectionRef);
+      const cartQuerySnapshot = await getDocs(cartCollectionRef);
+
+      // Calculate total orders by combining lengths of both collections
+      const total = buynowQuerySnapshot.size + cartQuerySnapshot.size;
+
+      // Set the total orders state
+      setTotalOrders(total);
+    } catch (error) {
+      console.error("Error fetching orders: ", error);
+    }
+  };
+
+  fetchTotalOrders(); // Call the function to fetch the total orders
+
+}, [userEmail]); // Re-run the effect when userEmail changes
+
+
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Header Title */}
@@ -174,7 +206,7 @@ const [categoriesInStock, setCategoriesInStock] = useState(0); // State for the 
          <li>
           <InfoBox
             title="Total Orders"
-            value="1,200"
+            value={totalOrders}
             description="Total Orders Processed"
             color="from-orange-600 via-orange-700 to-orange-800"
           />
