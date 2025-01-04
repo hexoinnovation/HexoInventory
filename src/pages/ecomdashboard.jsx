@@ -135,8 +135,9 @@ const [categoriesInStock, setCategoriesInStock] = useState(0); // State for the 
   fetchCategoriesCount(); // Call the function to fetch the categories count
 }, []);
 
-
+const [buyNowOrders, setBuyNowOrders] = useState([]);
 const [totalOrders, setTotalOrders] = useState(0); // Initialize totalOrders state
+
 
 useEffect(() => {
   const fetchTotalOrders = async () => {
@@ -154,9 +155,14 @@ useEffect(() => {
 
       // Calculate total orders by combining lengths of both collections
       const total = buynowQuerySnapshot.size + cartQuerySnapshot.size;
+      const fetchedBuyNowOrders = buynowSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
       // Set the total orders state
       setTotalOrders(total);
+      setBuyNowOrders(fetchedBuyNowOrders);
     } catch (error) {
       console.error("Error fetching orders: ", error);
     }
@@ -165,6 +171,9 @@ useEffect(() => {
   fetchTotalOrders(); // Call the function to fetch the total orders
 
 }, [userEmail]); // Re-run the effect when userEmail changes
+
+
+  // const [userEmail, setUserEmail] = useState(""); // Assuming userEmail is available, otherwise fetch from auth
 
 
   return (
@@ -206,7 +215,7 @@ useEffect(() => {
          <li>
           <InfoBox
             title="Total Orders"
-            value={totalOrders}
+            value={totalOrders} // Passing the totalOrders state to InfoBox
             description="Total Orders Processed"
             color="from-orange-600 via-orange-700 to-orange-800"
           />
@@ -241,27 +250,34 @@ useEffect(() => {
           <h3 className="text-xl font-semibold text-gray-100 mb-6">
             Recent Orders
           </h3>
-          <table className="min-w-full table-auto text-gray-100">
-            <thead className="bg-blue-900">
-              <tr>
-                <th className="px-6 py-4 text-left text-white">Order ID</th>
-                <th className="px-6 py-4 text-left text-white">Order Date</th>
-                {/* <th className="px-6 py-4 text-left text-white">Customer</th> */}
-                <th className="px-6 py-4 text-left text-white">Final Total</th>
-                <th className="px-6 py-4 text-left text-white">Payment Method</th>
+          <table className="min-w-full border-collapse border border-gray-300">
+        <thead className="bg-blue-900">
+          <tr>
+            <th className="px-6 py-4 text-left text-white">Order ID</th>
+            <th className="px-6 py-4 text-left text-white">Order Date</th>
+            <th className="px-6 py-4 text-left text-white">Final Total</th>
+            <th className="px-6 py-4 text-left text-white">Payment Method</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Array.isArray(buyNowOrders) && buyNowOrders.length > 0 ? (
+            buyNowOrders.map((order) => (
+              <tr key={order.id} className="border-t border-gray-300">
+                <td className="px-6 py-4">{order.id}</td>
+                <td className="px-6 py-4">{order.orderdate}</td>
+                <td className="px-6 py-4">{order.totalamount }</td>
+                <td className="px-6 py-4">{order.paymentmethod }</td>
               </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order.id}>
-                  <td className="px-6 py-4">{order.id}</td>
-                  {/* <td className="px-6 py-4">{order.customer}</td> */}
-                  <td className="px-6 py-4">{order.total}</td>
-                  <td className="px-6 py-4">{order.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="4" className="text-center py-4">
+                No orders found.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
         </div>
 
         {/* Right Column: Pie Chart */}
