@@ -7,7 +7,7 @@ import {
   getDocs,
   doc,
   updateDoc,
-  deleteDoc,where,getDoc
+  deleteDoc,where,getDoc,setDoc
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import Swal from "sweetalert2";
@@ -412,40 +412,41 @@ const SalaryApp = (  updateSalaryStatus) => {
     }
   };
 
-  const saveSalaryDetails = async (employeeDetails) => {
-    const { email } = employeeDetails; // Assuming `employeeDetails` includes the user's email
-    const salaryData = {
-      date: employeeDetails.selectedDate,
-      totalWorkingDays: employeeDetails.attendanceCounts.totalWorkingDays,
-      presentCount: employeeDetails.attendanceCounts.presentCount,
-      absentCount: employeeDetails.attendanceCounts.absentCount,
-      salary: employeeDetails.salary,
-      status: employeeDetails.status,
-    };
-  
+  const handleSaveToFirestore = async () => {
     try {
-      // Reference to the user's document
-      const userDocRef = db.collection('users').doc(email);
+      if (!user || !user.email) {
+        alert("User not logged in or email not available!");
+        return;
+      }
   
-      // Add the salary data as a sub-collection under the user's document
-      await userDocRef.collection('salaryemp').add(salaryData);
+      // Prepare the data to save
+      const employeeData = {
+        name: viewEmployee.name,
+        contact: viewEmployee.contact,
+        role: viewEmployee.role,
+        presentCount: attendanceCounts.presentCount || 0,
+        absentCount: attendanceCounts.absentCount || 0,
+        totalWorkingDays: attendanceCounts.totalWorkingDays || 0,
+        salary:
+          viewEmployee.salaryInterval === "monthly"
+            ? (attendanceCounts.presentCount * viewEmployee.salary) /
+              attendanceCounts.totalWorkingDays
+            : attendanceCounts.presentCount * viewEmployee.salary,
+        status: status,
+        date: selectedDate,
+        isMonthly: isMonthly,
+      };
   
-      // Show success message
-      Swal.fire({
-        title: 'Success!',
-        text: 'Salary details saved successfully.',
-        icon: 'success',
-        confirmButtonText: 'OK',
-      });
+      // Define the document path in Firestore
+      const docRef = doc(db, "admins", user.email, "Salaryemp", viewEmployee.id);
   
+      // Save the data
+      await setDoc(docRef, employeeData);
+  
+      alert("Employee salary details saved successfully!");
     } catch (error) {
-      console.error('Error saving salary details: ', error);
-      Swal.fire({
-        title: 'Error!',
-        text: 'There was an issue saving the salary details.',
-        icon: 'error',
-        confirmButtonText: 'Try Again',
-      });
+      console.error("Error saving data to Firestore:", error);
+      alert("Failed to save employee details. Please try again.");
     }
   };
   const [selectedSalaryDate, setSelectedSalaryDate] = useState(new Date());
@@ -656,18 +657,9 @@ const SalaryApp = (  updateSalaryStatus) => {
   ${employee.salary} ({employee.salaryInterval})
 </td>
 
-                <td className="px-4 py-2">
-                  <button
-                    onClick={() => handleStatusClick(employee.id)}
-                    className={`px-4 py-1 rounded-lg ${
-                      employee.status === "Paid"
-                        ? "bg-green-500 text-white"
-                        : "bg-yellow-500 text-white"
-                    }`}
-                  >
-                    {employee.status}
-                  </button>
-                </td>
+<td className={`px-4 py-2 ${employee.status === "Paid" ? "bg-green-500 text-white" : "bg-red-500 text-white"} rounded-lg text-center`}>
+      {employee.status}
+    </td>
                 <td className="px-3 py-2">
                   <button
                     onClick={() => setViewEmployee(employee)}
@@ -765,9 +757,7 @@ const SalaryApp = (  updateSalaryStatus) => {
       </div>
 
       {/* Save Button */}
-      <button
-        onClick={saveSalaryDetails}
-        className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-300"
+      <button   onClick={handleSaveToFirestore}   className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-300"
       >
         Save
       </button>
