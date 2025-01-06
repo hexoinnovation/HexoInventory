@@ -135,42 +135,51 @@ const [categoriesInStock, setCategoriesInStock] = useState(0); // State for the 
   fetchCategoriesCount(); // Call the function to fetch the categories count
 }, []);
 
-const [buyNowOrders, setBuyNowOrders] = useState([]);
-const [totalOrders, setTotalOrders] = useState(0); // Initialize totalOrders state
+const [totalOrders, setTotalOrders] = useState(0); // Total orders state
+const [currentOrders, setCurrentOrders] = useState([]); // Current orders state
+const [buyNowOrders, setBuyNowOrders] = useState([]); // Buy now orders state
 
 
 useEffect(() => {
   const fetchTotalOrders = async () => {
     try {
-      // Reference to the user's 'buynow order' collection
+      // Reference to user's Firestore collections
       const userDocRef = doc(db, "users", userEmail);
       const buynowCollectionRef = collection(userDocRef, "buynow order");
-
-      // Reference to the user's 'Cart order' collection
       const cartCollectionRef = collection(userDocRef, "Cart order");
 
-      // Fetch documents from both collections
+      // Fetch documents from 'buynow order' and 'Cart order' collections
       const buynowQuerySnapshot = await getDocs(buynowCollectionRef);
       const cartQuerySnapshot = await getDocs(cartCollectionRef);
 
-      // Calculate total orders by combining lengths of both collections
-      const total = buynowQuerySnapshot.size + cartQuerySnapshot.size;
-      const fetchedBuyNowOrders = buynowSnapshot.docs.map((doc) => ({
+      // Extract 'Buy Now' orders
+      const fetchedBuyNowOrders = buynowQuerySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
 
-      // Set the total orders state
-      setTotalOrders(total);
+      // Extract 'Cart' orders (current orders)
+      const fetchedCurrentOrders = cartQuerySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Calculate total orders
+      const total = fetchedBuyNowOrders.length + fetchedCurrentOrders.length;
+
+      // Update states
       setBuyNowOrders(fetchedBuyNowOrders);
+      setCurrentOrders(fetchedCurrentOrders);
+      setTotalOrders(total);
     } catch (error) {
       console.error("Error fetching orders: ", error);
     }
   };
 
-  fetchTotalOrders(); // Call the function to fetch the total orders
-
-}, [userEmail]); // Re-run the effect when userEmail changes
+  if (userEmail) {
+    fetchTotalOrders();
+  }
+}, [userEmail]);
 
 
   // const [userEmail, setUserEmail] = useState(""); // Assuming userEmail is available, otherwise fetch from auth
@@ -215,11 +224,26 @@ useEffect(() => {
          <li>
           <InfoBox
             title="Total Orders"
-            value={totalOrders} // Passing the totalOrders state to InfoBox
+            value={totalOrders}
             description="Total Orders Processed"
             color="from-orange-600 via-orange-700 to-orange-800"
           />
         </li>
+
+ {/* Additional debugging or display */}
+ <section className="mt-8">
+        <h3 className="text-xl font-semibold">Debugging Info:</h3>
+        <p>
+          <strong>Total Orders:</strong> {totalOrders}
+        </p>
+        <p>
+          <strong>Buy Now Orders:</strong> {buyNowOrders.length}
+        </p>
+        <p>
+          <strong>Current Orders:</strong> {currentOrders.length}
+        </p>
+      </section>
+
 
          {/* Total Categories Info Box */}
          <li>
