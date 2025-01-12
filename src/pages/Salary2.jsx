@@ -672,6 +672,7 @@ const SalaryApp = (  updateSalaryStatus) => {
             ))
           )}
         </tbody>
+
       </table>
 
       {viewEmployee && (
