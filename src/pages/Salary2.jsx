@@ -264,78 +264,149 @@ const SalaryApp = (  updateSalaryStatus) => {
   };
   const [salaryDate, setSalaryDate] = useState("");
   const [status, setStatus] = useState("Pending");
-  const handleDateChange = async (event) => {
-    const selectedDate = event.target.value;
-    setSelectedDate(selectedDate);
-  
-    if (!selectedDate || !viewEmployee) return;
-  
-    try {
-      const attendanceRef = doc(db, "admins", user.email, "attendance", selectedDate);
-      const attendanceSnapshot = await getDoc(attendanceRef);
-  
-      if (attendanceSnapshot.exists()) {
-        const attendanceData = attendanceSnapshot.data();
-        const employeeAttendance = Object.values(attendanceData).find(
-          (record) => record.name === viewEmployee.name
-        );
-  
-        if (employeeAttendance) {
-          const presentCount = employeeAttendance.status === "Present" ? 1 : 0;
-          const absentCount = employeeAttendance.status === "Absent" ? 1 : 0;
-          const totalWorkingDays = isMonthly ? 30 : 1; // If monthly view, default to 30 working days
-  
-          const salary =
-            isMonthly
-              ? viewEmployee.salary // Monthly salary
-              : (presentCount * viewEmployee.salary) / totalWorkingDays; // Daily rate
-  
+
+    const handleDateChange = async (event) => {
+      const selectedDate = event.target.value;
+      setSelectedDate(selectedDate);
+    
+      if (!selectedDate || !viewEmployee) {
+        console.log("Selected date or employee not available.");
+        return;
+      }
+    
+      console.log("Selected Date: ", selectedDate);
+      console.log("Viewing Employee: ", viewEmployee);
+    
+      // Extract year and month from the selected date (for monthly attendance)
+      const [year, month] = selectedDate.split("-");
+      console.log("Year: ", year, "Month: ", month);
+    
+      try {
+        if (isMonthly) {
+          // Calculate start and end dates of the month
+          const start = new Date(year, month - 1, 1); // First day of the month
+          const end = new Date(year, month, 0); // Last day of the month
+    
+          console.log(`Fetching attendance for the month from ${start.toISOString()} to ${end.toISOString()}`);
+    
+          let presentCount = 0;
+          let absentCount = 0;
+          const attendanceDetails = [];
+    
+          // Loop through each day in the month
+          for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+            const formattedDate = date.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+    
+            try {
+              const docRef = doc(db, "admins", user.email, "attendance", formattedDate);
+              const docSnap = await getDoc(docRef);
+    
+              if (docSnap.exists()) {
+                const attendanceData = docSnap.data();
+                console.log(`Fetched Attendance for ${formattedDate}:`, attendanceData);
+    
+                // Check if the employee's record exists
+                const employeeData = Object.values(attendanceData).find(
+                  (record) => record.name === viewEmployee.name
+                );
+    
+                if (employeeData) {
+                  attendanceDetails.push({ date: formattedDate, ...employeeData });
+                  if (employeeData.status === "Present") presentCount++;
+                  if (employeeData.status === "Absent") absentCount++;
+                }
+              }
+            } catch (error) {
+              console.error(`Error fetching attendance for ${formattedDate}:`, error);
+            }
+          }
+    
+          const totalWorkingDays = presentCount + absentCount;
+          console.log(
+            `Present Count: ${presentCount}, Absent Count: ${absentCount}, Total Working Days: ${totalWorkingDays}`
+          );
+    
+          // Update attendance counts and salary calculation
           setAttendanceCounts({
             presentCount,
             absentCount,
             totalWorkingDays,
-            salary: absentCount === 0 ? viewEmployee.salary : salary, // Adjust if no absents
+            salary: totalWorkingDays > 0 ? (presentCount * viewEmployee.salary) / totalWorkingDays : 0,
+            attendanceDetails, // Include attendance details for UI or debugging
           });
         } else {
-          Swal.fire({
-            icon: "info",
-            title: "No Data",
-            text: `No attendance data found for ${viewEmployee.name} on ${selectedDate}.`,
-          });
-          setAttendanceCounts({
-            presentCount: 0,
-            absentCount: 0,
-            totalWorkingDays: 0,
-            salary: 0,
-          });
+          console.log("Fetching attendance for the specific date:", selectedDate);
+    
+          const attendanceRef = doc(db, "admins", user.email, "attendance", selectedDate);
+          const attendanceSnapshot = await getDoc(attendanceRef);
+    
+          if (attendanceSnapshot.exists()) {
+            const attendanceData = attendanceSnapshot.data();
+            console.log("Attendance Data for Selected Date: ", attendanceData);
+    
+            const employeeAttendance = Object.values(attendanceData).find(
+              (record) => record.name === viewEmployee.name
+            );
+    
+            if (employeeAttendance) {
+              const presentCount = employeeAttendance.status === "Present" ? 1 : 0;
+              const absentCount = employeeAttendance.status === "Absent" ? 1 : 0;
+    
+              console.log(`Present Count: ${presentCount}, Absent Count: ${absentCount}`);
+    
+              setAttendanceCounts({
+                presentCount,
+                absentCount,
+                totalWorkingDays: 1, // Only 1 day for a specific selected date
+                salary: absentCount === 0 ? viewEmployee.salary : 0,
+                attendanceDetails: [{ date: selectedDate, ...employeeAttendance }], // Debugging info
+              });
+            } else {
+              console.log(`No attendance data found for ${viewEmployee.name} on ${selectedDate}.`);
+              Swal.fire({
+                icon: "info",
+                title: "No Data",
+                text: `No attendance data found for ${viewEmployee.name} on ${selectedDate}.`,
+              });
+              setAttendanceCounts({
+                presentCount: 0,
+                absentCount: 0,
+                totalWorkingDays: 0,
+                salary: 0,
+              });
+            }
+          } else {
+            console.log(`No attendance records found for ${selectedDate}.`);
+            Swal.fire({
+              icon: "error",
+              title: "No Attendance",
+              text: `No attendance records found for ${selectedDate}.`,
+            });
+            setAttendanceCounts({
+              presentCount: 0,
+              absentCount: 0,
+              totalWorkingDays: 0,
+              salary: 0,
+            });
+          }
         }
-      } else {
+      } catch (error) {
+        console.error("Error fetching attendance: ", error);
         Swal.fire({
           icon: "error",
-          title: "No Attendance",
-          text: `No attendance records found for ${selectedDate}.`,
-        });
-        setAttendanceCounts({
-          presentCount: 0,
-          absentCount: 0,
-          totalWorkingDays: 0,
-          salary: 0,
+          title: "Error",
+          text: "Failed to fetch attendance data. Please try again.",
         });
       }
-    } catch (error) {
-      console.error("Error fetching attendance: ", error);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Failed to fetch attendance data. Please try again.",
-      });
-    }
-  };
-  
-  // Handle checkbox toggle for monthly view
-  const handleCheckboxChange = () => {
-    setIsMonthly(!isMonthly); // Toggle the monthly view
-  };
+    };
+    
+    const handleCheckboxChange = () => {
+      console.log("Toggling monthly view. Current state:", isMonthly);
+      setIsMonthly(!isMonthly); // Toggle the monthly view
+    };
+    
+    
+    
   
   const handleDateChangee = (e) => {
     setSalaryDate(e.target.value);
@@ -531,12 +602,12 @@ const SalaryApp = (  updateSalaryStatus) => {
         </div>
 
         <div className="bg-gradient-to-r from-purple-900 to-purple-900 p-6 rounded-lg shadow-lg text-center text-white w-80">
-          <h3 className="text-xl font-semibold">Total Present</h3>
+          <h3 className="text-xl font-semibold">Paid Salary</h3>
           <p className="text-4xl font-bold">{totalPresent}</p>
         </div>
 
         <div className="bg-gradient-to-r from-orange-900 to-orange-900 p-6 rounded-lg shadow-lg text-center text-white w-80">
-          <h3 className="text-xl font-semibold">Total Absent</h3>
+          <h3 className="text-xl font-semibold">Pending salary</h3>
           <p className="text-4xl font-bold">{totalAbsent}</p>
         </div>
 
@@ -546,7 +617,7 @@ const SalaryApp = (  updateSalaryStatus) => {
         </div>
       </div>
 
-      {/* Filter Section */}
+      {/* Filter Section
       <div className="bg-blue-900 p-4 rounded-md shadow-md mb-6">
         <h3 className="text-lg font-semibold mb-4 text-gray-100">Filters</h3>
         <div className="grid grid-cols-4 gap-6">
@@ -610,18 +681,18 @@ const SalaryApp = (  updateSalaryStatus) => {
         </div>
       </div>
 
-      {/* Add New Salary Button */}
-      <div className="mb-6">
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-gradient-to-r from-blue-900 to-blue-900 text-white px-6 py-3 rounded-lg shadow-md hover:from-blue-900 to-blue-900"
-        >
-          Add New Salary
-        </button>
-      </div>
+      // {/* Add New Salary Button */}
+      {/* // <div className="mb-6">
+      //   <button */}
+      {/* //     onClick={() => setIsModalOpen(true)}
+      //     className="bg-gradient-to-r from-blue-900 to-blue-900 text-white px-6 py-3 rounded-lg shadow-md hover:from-blue-900 to-blue-900"
+      //   >
+      //     Add New Salary
+      //   </button>
+      // </div> */} 
 
       <div className="overflow-x-auto shadow-xl rounded-xl border border-gray-200 mt-6 p-4">
-      <h2 className="text-xl font-semibold mb-4">Salary Table</h2>
+      <h2 className="text-xxl font-semibold mb-4">Payroll Management System</h2>
       <table className="min-w-full table-auto">
         <thead className="bg-gradient-to-r from-blue-900 to-blue-600 text-white">
           <tr>
@@ -677,12 +748,12 @@ const SalaryApp = (  updateSalaryStatus) => {
 
       {viewEmployee && (
   <div className="fixed inset-0 bg-gray-900 bg-opacity-70 flex justify-center items-center">
-    <div className="bg-gradient-to-r from-purple-600 to-blue-400 rounded-lg p-8 shadow-2xl max-w-lg w-full text-white transition-all duration-300 transform hover:scale-105">
+    <div className="bg-gradient-to-r from-white-600 to-gray-400 rounded-lg p-8 shadow-2xl max-w-lg w-full text-white transition-all duration-300 transform hover:scale-105">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-3xl font-extrabold">{viewEmployee.name}'s Details</h3>
+        <h3 className="text-3xl font-extrabold text-black">{viewEmployee.name}'s Details</h3>
         <button
           onClick={handleCloseModal}
-          className="text-2xl font-bold text-white hover:text-red-500 transition-colors duration-300"
+          className="text-2xl font-bold text-black hover:text-red-500 transition-colors duration-300"
         >
           &times;
         </button>
@@ -694,7 +765,7 @@ const SalaryApp = (  updateSalaryStatus) => {
           type="date"
           value={selectedDate}
           onChange={handleDateChange}
-          className="w-full py-2 px-4 rounded-lg bg-gray-200 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+          className="w-full py-2 px-4 rounded-lg bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
         />
       </div>
 
@@ -704,13 +775,13 @@ const SalaryApp = (  updateSalaryStatus) => {
           type="checkbox"
           checked={isMonthly}
           onChange={handleCheckboxChange}
-          className="mr-2 accent-indigo-500"
+          className="mr-2 accent-indigo-500 "
         />
-        <label className="text-lg font-medium">Show Monthly Attendance</label>
+        <label className="text-lg font-medium text-black">Show Monthly Attendance</label>
       </div>
 
       {/* Employee Details */}
-      <div className="space-y-4 mb-6">
+      <div className="space-y-4 mb-6 text-black">
         <p><strong>Contact:</strong> {viewEmployee.contact}</p>
         <p><strong>Role:</strong> {viewEmployee.role}</p>
         <p><strong>Present Count:</strong> {attendanceCounts.presentCount || 0}</p>
@@ -718,7 +789,7 @@ const SalaryApp = (  updateSalaryStatus) => {
       </div>
 
       {/* Total Working Days Input */}
-      <div className="mb-6">
+      <div className="mb-6 text-black">
         <input
           type="number"
           value={attendanceCounts.totalWorkingDays || ""}
@@ -729,12 +800,12 @@ const SalaryApp = (  updateSalaryStatus) => {
             }))
           }
           placeholder="Enter Total Working Days"
-          className="w-full py-2 px-4 rounded-lg bg-gray-200 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+          className="w-full py-2 px-4 rounded-lg bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
         />
       </div>
 
       {/* Salary Calculation */}
-      <div className="mb-6">
+      <div className="mb-6 text-black">
         <p>
           <strong>Salary:</strong> $
           {viewEmployee.salaryInterval === "monthly"
@@ -745,11 +816,11 @@ const SalaryApp = (  updateSalaryStatus) => {
       </div>
 
       {/* Status Toggle (Paid/Pending) */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 text-black">
         <p>Status: <span className={status === "Paid" ? "text-green-900" : "text-yellow-500"}>{status}</span></p>
         <button
           onClick={toggleStatus}
-          className={`px-6 py-2 rounded-lg font-semibold text-white text-lg transition-colors duration-300 ${
+          className={`px-6 py-2 rounded-lg font-semibold text-black text-lg transition-colors duration-300 ${
             status === "Paid" ? "bg-green-600 hover:bg-green-700" : "bg-yellow-600 hover:bg-yellow-700"
           }`}
         >
@@ -758,7 +829,7 @@ const SalaryApp = (  updateSalaryStatus) => {
       </div>
 
       {/* Save Button */}
-      <button   onClick={handleSaveToFirestore}   className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-300"
+      <button   onClick={handleSaveToFirestore}   className="w-full py-3 bg-indigo-600 text-black rounded-lg hover:bg-indigo-700 transition-colors duration-300"
       >
         Save
       </button>
