@@ -11,6 +11,10 @@ import {
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import Swal from "sweetalert2";
+import { EyeIcon } from '@heroicons/react/outline'; // Import the icon
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+import '@fortawesome/fontawesome-free/css/all.min.css';
 
 const db = getFirestore();
 const auth = getAuth();
@@ -19,6 +23,7 @@ const SalaryApp = (  updateSalaryStatus) => {
   
   const [salaries, setSalaries] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [status, setStatus] = useState("");
   const [attendances, setAttendances] = useState([]); // To store attendance data
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newSalary, setNewSalary] = useState({
@@ -32,7 +37,7 @@ const SalaryApp = (  updateSalaryStatus) => {
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [user, setUser] = useState(null);
-
+  const [salaryData, setSalaryData] = useState([]);
   // Filter States
   const [statusFilter, setStatusFilter] = useState("");
   const [employeeFilter, setEmployeeFilter] = useState("");
@@ -263,8 +268,9 @@ const SalaryApp = (  updateSalaryStatus) => {
     }
   };
   const [salaryDate, setSalaryDate] = useState("");
-  const [status, setStatus] = useState("Pending");
-
+  const handleStatusToggle = () => {
+    setStatus((prevStatus) => !prevStatus); // Toggle between true (Paid) and false (Pending)
+  };
     const handleDateChange = async (event) => {
       const selectedDate = event.target.value;
       setSelectedDate(selectedDate);
@@ -404,10 +410,99 @@ const SalaryApp = (  updateSalaryStatus) => {
       console.log("Toggling monthly view. Current state:", isMonthly);
       setIsMonthly(!isMonthly); // Toggle the monthly view
     };
-    
-    
-    
+    const [activeTab, setActiveTab] = useState("salary"); // Default tab
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+  };
   
+
+let downloadCount = 0; // This will track the download count for receipt number
+
+const generateSalaryReceipt = (employee) => {
+  const doc = new jsPDF();
+
+  // Get current date and time for receipt and download date
+  const currentDate = new Date();
+  const formattedDate = currentDate.toLocaleString(); // Format as per locale (e.g., "01/16/2025, 3:15:00 PM")
+
+  // Increment the download count for the receipt number
+  downloadCount++;
+
+  // Header with Address, Contact, and Email
+  doc.setFontSize(12);
+  // doc.setFont("helvetica", "normal");
+  // doc.text("Address: 1234 Street, City, Country", 10, 15);
+  // doc.text("Contact No: 123-456-7890", 10, 20);
+  // doc.text("Email: info@company.com", 10, 25);
+
+  // Receipt Title
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.text("Salary Receipt", 105, 40, null, null, "center");
+
+  // Receipt Date and Receipt Number
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Receipt Date: ${formattedDate}`, 10, 50); // Current date and time
+  doc.text(`Receipt Number: ${downloadCount}`, 10, 60); // Use the download count as the receipt number
+  doc.text(`Employee ID: ${employee.id}`, 10, 70);
+
+  // Employee Details
+  doc.setFontSize(12);
+  doc.text(`Name: ${employee.name}`, 10, 80);
+  doc.text(`Contact: ${employee.contact}`, 10, 90);
+  doc.text(`Role: ${employee.role}`, 10, 100);
+
+  // Table Header for Attendance Details
+  doc.setFont("helvetica", "bold");
+  doc.text("Attendance Summary", 10, 110);
+  doc.line(10, 112, 200, 112); // Underline
+
+  const tableStartY = 120;
+  doc.text("Present Days", 15, tableStartY);
+  doc.text("Absent Days", 75, tableStartY);
+  doc.text("Total Working Days", 135, tableStartY);
+  doc.text("Day Salary", 175, tableStartY);
+
+  // Table Data
+  doc.setFont("helvetica", "normal");
+  const tableDataY = tableStartY + 10;
+  doc.text(`${employee.presentCount}`, 15, tableDataY);
+  doc.text(`${employee.absentCount}`, 75, tableDataY);
+  doc.text(`${employee.totalWorkingDays}`, 135, tableDataY);
+  doc.text(`${employee.salary}`, 175, tableDataY);
+
+  // Amount Received Section (Displaying 1 for Yes, 0 for No)
+  const amountDetailsY = tableDataY + 20;
+  doc.setFont("helvetica", "bold");
+  doc.text("Amount Received:", 10, amountDetailsY);
+
+  doc.setFont("helvetica", "normal");
+  const amountReceivedX = 50;
+  const amountReceivedY = amountDetailsY - 5;
+  doc.rect(amountReceivedX, amountReceivedY, 5, 5); // Create a checkbox-like box
+  doc.text(employee.amountReceived ? "1" : "0", amountReceivedX + 7, amountReceivedY + 4); // Display 1 for Yes, 0 for No
+
+  doc.text(`Salary Date: ${employee.salaryDate || "Not Paid"}`, 10, amountDetailsY + 10);
+
+  // Authorized Signature Section
+  const signatureY = amountDetailsY + 30;
+  doc.text("Authorized Signature:", 10, signatureY);
+  doc.line(60, signatureY, 110, signatureY); // Signature line
+
+  // Footer Note
+  const footerY = signatureY + 20;
+  doc.setFontSize(10);
+  doc.text(
+    "This is a system-generated receipt. Please save it for your records.",
+    10,
+    footerY
+  );
+
+  // Save PDF with current date as the download date
+  doc.save(`${employee.name}_Salary_Receipt_${downloadCount}.pdf`);
+};  
   const handleDateChangee = (e) => {
     setSalaryDate(e.target.value);
   };
@@ -504,12 +599,14 @@ const SalaryApp = (  updateSalaryStatus) => {
               attendanceCounts.totalWorkingDays
             : attendanceCounts.presentCount * viewEmployee.salary,
         status: status,
-        date: selectedDate,
+        date: selectedDate, // The selected date (e.g., salary calculation date)
+        salaryDate: salaryDate, // The specific salary date
         isMonthly: isMonthly,
       };
   
-      // Define the document path in Firestore
-      const docRef = doc(db, "admins", user.email, "Salaryemp", viewEmployee.id);
+      // Create a unique Firestore document path by combining employee ID and salary date
+      const docPath = `${viewEmployee.id}_${salaryDate}`;
+      const docRef = doc(db, "admins", user.email, "Salaryemp", docPath);
   
       // Save the data
       await setDoc(docRef, employeeData);
@@ -520,6 +617,42 @@ const SalaryApp = (  updateSalaryStatus) => {
       alert("Failed to save employee details. Please try again.");
     }
   };
+  
+  const [loading, setLoading] = useState(false);
+
+  const fetchSalaryReport = async () => {
+    try {
+      if (!user || !user.email) {
+        alert("User not logged in or email not available!");
+        return;
+      }
+
+      setLoading(true);
+
+      // Reference to the Firestore collection
+      const salaryCollectionRef = collection(
+        db,
+        "admins",
+        user.email,
+        "Salaryemp"
+      );
+
+      // Fetch all documents in the collection
+      const querySnapshot = await getDocs(salaryCollectionRef);
+      const fetchedData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setSalaryData(fetchedData);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching salary report:", error);
+      alert("Failed to fetch salary report. Please try again.");
+      setLoading(false);
+    }
+  };
+
   const [selectedSalaryDate, setSelectedSalaryDate] = useState(new Date());
   const [viewEmployee, setViewEmployee] = useState(null);
   const [attendanceCounts, setAttendanceCounts] = useState({
@@ -567,7 +700,16 @@ const SalaryApp = (  updateSalaryStatus) => {
     setAttendanceCounts({ presentCount: 0, absentCount: 0, totalWorkingDays: 0 }); // Reset attendance counts
     setSelectedDate(""); // Reset selected date
   };
-  
+  const [paidCount, setPaidCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    const paid = salaryData.filter(employee => employee.status === true).length;
+    const pending = salaryData.filter(employee => employee.status === false).length;
+    
+    setPaidCount(paid);
+    setPendingCount(pending);
+  }, [salaryData]);
   // Filter Logic
   const filteredSalaryData = employeeSalaryData.filter((salary) => {
     const matchesEmployee = employeeFilter
@@ -602,14 +744,15 @@ const SalaryApp = (  updateSalaryStatus) => {
         </div>
 
         <div className="bg-gradient-to-r from-purple-900 to-purple-900 p-6 rounded-lg shadow-lg text-center text-white w-80">
-          <h3 className="text-xl font-semibold">Paid Salary</h3>
-          <p className="text-4xl font-bold">{totalPresent}</p>
-        </div>
+        <h3 className="text-xl font-semibold">Paid Salary</h3>
+        <p className="text-4xl font-bold">{paidCount}</p>
+      </div>
 
-        <div className="bg-gradient-to-r from-orange-900 to-orange-900 p-6 rounded-lg shadow-lg text-center text-white w-80">
-          <h3 className="text-xl font-semibold">Pending salary</h3>
-          <p className="text-4xl font-bold">{totalAbsent}</p>
-        </div>
+      {/* Pending Salary Card */}
+      <div className="bg-gradient-to-r from-orange-900 to-orange-900 p-6 rounded-lg shadow-lg text-center text-white w-80">
+        <h3 className="text-xl font-semibold">Pending Salary</h3>
+        <p className="text-4xl font-bold">{pendingCount}</p>
+      </div>
 
         <div className="bg-gradient-to-r from-green-900 to-green-900 p-6 rounded-lg shadow-lg text-center text-white w-80">
           <h3 className="text-xl font-semibold">Overall Attendance (%)</h3>
@@ -693,6 +836,118 @@ const SalaryApp = (  updateSalaryStatus) => {
 
       <div className="overflow-x-auto shadow-xl rounded-xl border border-gray-200 mt-6 p-4">
       <h2 className="text-xxl font-semibold mb-4">Payroll Management System</h2>
+      <div>
+      <div className="flex mb-4">
+        <button
+          className={`px-6 py-2 font-semibold text-lg rounded-lg ${
+            activeTab === "salary"
+              ? "bg-blue-600 text-white"
+              : "bg-gray-200 hover:text-blue-600"
+          }`}
+          onClick={() => handleTabChange("salary")}
+        >
+          Salary
+        </button>
+        <button
+  className={`ml-4 px-6 py-2 font-semibold text-lg rounded-lg ${
+    activeTab === "report"
+      ? "bg-blue-600 text-white"
+      : "bg-gray-200 hover:text-blue-600"
+  }`}
+  onClick={() => {
+    handleTabChange("report");
+    fetchSalaryReport();
+  }}
+>
+  Salary Report
+</button>
+
+      </div>
+      {activeTab === "report" && (
+        <div>
+          {/* <button
+            className="px-6 py-2 font-semibold text-lg hover:text-blue-600 bg-gray-200 rounded-lg"
+            onClick={fetchSalaryReport}
+          >
+            Fetch Salary Report
+          </button> */}
+      {loading && <p className="mt-4">Loading salary report...</p>}
+
+      {!loading && salaryData.length > 0 && (
+            <table className="min-w-full bg-white border-collapse border border-gray-200 mt-4">
+              <thead>
+                <tr>
+                  <th className="px-4 py-2 border border-gray-300">Name</th>
+                  <th className="px-4 py-2 border border-gray-300">Contact</th>
+                  <th className="px-4 py-2 border border-gray-300">Role</th>
+                  <th className="px-4 py-2 border border-gray-300">Present Count</th>
+                  <th className="px-4 py-2 border border-gray-300">Absent Count</th>
+                  <th className="px-4 py-2 border border-gray-300">
+                    Total Working Days
+                  </th>
+                  <th className="px-4 py-2 border border-gray-300">Salary</th>
+                  <th className="px-4 py-2 border border-gray-300">Clickable Date</th>
+                  <th className="px-4 py-2 border border-gray-300">Status</th>
+                  <th className="px-4 py-2 border border-gray-300">Salary Date</th>
+                  <th className="px-4 py-2 border border-gray-300">Salary Recepit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {salaryData.map((employee) => (
+                  <tr key={employee.id}>
+                    <td className="px-4 py-2 border border-gray-300">
+                      {employee.name}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-300">
+                      {employee.contact}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-300">
+                      {employee.role}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-300">
+                      {employee.presentCount}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-300">
+                      {employee.absentCount}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-300">
+                      {employee.totalWorkingDays}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-300">
+                      {employee.salary}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-300">
+                      {employee.date}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-300">
+                      {employee.status ? "Paid" : "Pending"}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-300">
+                      {employee.salaryDate}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-300">
+  <button
+    onClick={() => generateSalaryReceipt(employee)}
+    className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+  >
+    {/* Font Awesome Download Icon */}
+    <i className="fas fa-download"></i>
+  </button>
+</td>
+
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {!loading && salaryData.length === 0 && (
+            <p className="mt-4">No salary reports available.</p>
+          )}
+        </div>
+      )}</div>
+       {activeTab === "salary" && (
+        <div>
       <table className="min-w-full table-auto">
         <thead className="bg-gradient-to-r from-blue-900 to-blue-600 text-white">
           <tr>
@@ -700,7 +955,7 @@ const SalaryApp = (  updateSalaryStatus) => {
             <th className="px-4 py-3 text-left">Role</th>
             <th className="px-4 py-3 text-left">Salary Date</th>
             <th className="px-4 py-3 text-left">Net Salary</th>
-            <th className="px-4 py-3 text-left">Status</th>
+         
             <th className="px-3 py-3 text-left">Actions</th>
           </tr>
         </thead>
@@ -728,17 +983,15 @@ const SalaryApp = (  updateSalaryStatus) => {
   ${employee.salary} ({employee.salaryInterval})
 </td>
 
-<td className="px-4 py-2 ">
-      {employee.status}
-    </td>
-                <td className="px-3 py-2">
-                  <button
-                    onClick={() => setViewEmployee(employee)}
-                    className="text-blue-500 hover:text-blue-700 p-2 rounded-full transition duration-200"
-                  >
-                    View
-                  </button>
-                </td>
+
+<td className="px-3 py-2">
+  <button
+    onClick={() => setViewEmployee(employee)}
+    className="text-blue-500 hover:text-blue-700 p-3 rounded-full transition duration-200 transform hover:scale-105 focus:outline-none"
+  >
+    <EyeIcon className="w-6 h-6" /> {/* The icon size */}
+  </button>
+</td>
               </tr>
             ))
           )}
@@ -775,7 +1028,7 @@ const SalaryApp = (  updateSalaryStatus) => {
           type="checkbox"
           checked={isMonthly}
           onChange={handleCheckboxChange}
-          className="mr-2 accent-indigo-500 "
+          className="mr-2 accent-indigo-500"
         />
         <label className="text-lg font-medium text-black">Show Monthly Attendance</label>
       </div>
@@ -792,239 +1045,54 @@ const SalaryApp = (  updateSalaryStatus) => {
       <div className="mb-6 text-black">
         <input
           type="number"
-          value={attendanceCounts.totalWorkingDays || ""}
-          onChange={(e) =>
-            setAttendanceCounts((prev) => ({
-              ...prev,
-              totalWorkingDays: parseInt(e.target.value, 10) || 0,
-            }))
-          }
           placeholder="Enter Total Working Days"
+          value={attendanceCounts.totalWorkingDays}
+          onChange={(e) => setAttendanceCounts(prev => ({
+            ...prev,
+            totalWorkingDays: parseInt(e.target.value, 10) || 0
+          }))}
           className="w-full py-2 px-4 rounded-lg bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
         />
       </div>
 
-      {/* Salary Calculation */}
-      <div className="mb-6 text-black">
-        <p>
-          <strong>Salary:</strong> $
-          {viewEmployee.salaryInterval === "monthly"
-            ? (attendanceCounts.presentCount * viewEmployee.salary) /
-              attendanceCounts.totalWorkingDays
-            : attendanceCounts.presentCount * viewEmployee.salary}
-        </p>
-      </div>
+     {/* Salary Calculation */}
+<div className="mb-6 text-black">
+  <p>
+    <strong>Salary:</strong> $
+    {attendanceCounts.totalWorkingDays > 0
+      ? ((parseFloat(viewEmployee.salary || 0) / attendanceCounts.totalWorkingDays) * (attendanceCounts.totalWorkingDays - (attendanceCounts.absentCount || 0))).toFixed(2)
+      : parseFloat(viewEmployee.salary || 0).toFixed(2)}
+    ({viewEmployee.salaryInterval || 'Monthly'})
+  </p>
+</div>
 
-      {/* Status Toggle (Paid/Pending) */}
+
+      {/* Status Toggle (Paid/Unpaid) */}
       <div className="flex justify-between items-center mb-6 text-black">
-        <p>Status: <span className={status === "Paid" ? "text-green-900" : "text-yellow-500"}>{status}</span></p>
-        <button
-          onClick={toggleStatus}
-          className={`px-6 py-2 rounded-lg font-semibold text-black text-lg transition-colors duration-300 ${
-            status === "Paid" ? "bg-green-600 hover:bg-green-700" : "bg-yellow-600 hover:bg-yellow-700"
-          }`}
-        >
-          Status
-        </button>
-      </div>
-
+    <p>
+      <strong>Status:</strong> {status ? 'Paid' : 'Pending'}
+    </p>
+    <button
+      onClick={handleStatusToggle}
+      className={`py-2 px-4 rounded-lg text-white ${status ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} transition-colors duration-300`}
+    >
+      {status ? 'Mark as Pending' : 'Mark as Paid'}
+    </button>
+  </div>
       {/* Save Button */}
-      <button   onClick={handleSaveToFirestore}   className="w-full py-3 bg-indigo-600 text-black rounded-lg hover:bg-indigo-700 transition-colors duration-300"
+      <button
+        onClick={handleSaveToFirestore}
+        className="w-full py-3 bg-indigo-600 text-black rounded-lg hover:bg-indigo-700 transition-colors duration-300"
       >
         Save
       </button>
     </div>
   </div>
 )}
-</div>
-      {/* Modal to Add or Edit Salary */}
-      {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-gray-700 bg-opacity-50 z-50">
-          <div className="bg-blue-900 p-5 rounded-xl shadow-lg w-full max-w-3xl">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-100">
-                {isEditMode ? "Update Salary" : "Add Salary"}
-              </h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-red-500 hover:text-blue-500 text-4xl font-bold"
-              >
-                &times;
-              </button>
-            </div>
-
-            <form onSubmit={handleFormSubmit} className="space-y-6">
-              <div className="grid grid-cols-3 sm:grid-cols-2 gap-6">
-                {/* Employee Select */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-100">
-                    Employee
-                  </label>
-                  <select
-                    name="employeeId"
-                    value={newSalary.employeeId}
-                    onChange={handleEmployeeChange}
-                    className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    required
-                  >
-                    <option value="">Select Employee</option>
-                    {employees.map((employee) => (
-                      <option key={employee.id} value={employee.id}>
-                        {employee.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Role Display */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-100">
-                    Role
-                  </label>
-                  <input
-                    type="text"
-                    value={role}
-                    readOnly
-                    className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                {/* Present Count */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-100">
-                    Present Count
-                  </label>
-                  <input
-                    type="number"
-                    value={presentCount}
-                    readOnly
-                    className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                {/* Absent Count */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-100">
-                    Absent Count
-                  </label>
-                  <input
-                    type="number"
-                    value={absentCount}
-                    readOnly
-                    className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                {/* Salary Date Picker */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-100">
-                    Salary Date
-                  </label>
-                  <input
-                    type="date"
-                    name="date"
-                    value={newSalary.date}
-                    onChange={handleInputChange}
-                    className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    required
-                  />
-                </div>
-
-                {/* Basic Salary */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-100">
-                    Basic Salary
-                  </label>
-                  <input
-                    type="number"
-                    name="basicSalary"
-                    value={newSalary.basicSalary}
-                    onChange={handleInputChange}
-                    className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    required
-                  />
-                </div>
-
-                {/* Bonuses */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-100">
-                    Bonuses
-                  </label>
-                  <input
-                    type="number"
-                    name="bonuses"
-                    value={newSalary.bonuses}
-                    onChange={handleInputChange}
-                    className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                {/* Deductions */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-100">
-                    Deductions
-                  </label>
-                  <input
-                    type="number"
-                    name="deductions"
-                    value={newSalary.deductions}
-                    onChange={handleInputChange}
-                    className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                {/* Net Salary */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-100">
-                    Net Salary
-                  </label>
-                  <input
-                    type="number"
-                    name="netSalary"
-                    value={newSalary.netSalary}
-                    onChange={handleInputChange}
-                    className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    required
-                  />
-                </div>
-
-                {/* Salary Status */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-100">
-                    Status
-                  </label>
-                  <select
-                    name="status"
-                    value={newSalary.status}
-                    onChange={handleInputChange}
-                    className="border border-gray-100 rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    required
-                  >
-                    <option value="Paid">Paid</option>
-                    <option value="Pending">Pending</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-between mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
-                >
-                  {isEditMode ? "Update Salary" : "Add Salary"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+  </div>
       )}
+</div>
+    
     </div>
   );
 };
