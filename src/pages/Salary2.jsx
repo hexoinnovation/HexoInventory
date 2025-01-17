@@ -980,7 +980,7 @@ const generateSalaryReceipt = (employee) => {
                 />
                 </td>
                 <td className="px-4 py-2">
-  ${employee.salary} ({employee.salaryInterval})
+                ₹{employee.salary} ({employee.salaryInterval})
 </td>
 
 
@@ -1042,18 +1042,16 @@ const generateSalaryReceipt = (employee) => {
       </div>
 
       {/* Total Working Days Input */}
-      <div className="mb-6 text-black">
-        <input
-          type="number"
-          placeholder="Enter Total Working Days"
-          value={attendanceCounts.totalWorkingDays}
-          onChange={(e) => setAttendanceCounts(prev => ({
-            ...prev,
-            totalWorkingDays: parseInt(e.target.value, 10) || 0
-          }))}
-          className="w-full py-2 px-4 rounded-lg bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
-        />
-      </div>
+<div className="mb-6 text-black">
+  <p><strong>Total Working Days</strong></p>
+  <input
+    type="number"
+    placeholder="Enter Total Working Days"
+    value={attendanceCounts.totalWorkingDays}
+    readOnly  // Makes the input field non-editable
+    className="w-full py-2 px-4 rounded-lg bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+  />
+</div>
 
      {/* Salary Calculation */}
 <div className="mb-6 text-black">
