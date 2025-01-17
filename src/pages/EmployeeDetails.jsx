@@ -542,7 +542,7 @@ const handleFormSubmit = async (e) => {
           <div>
             <h3 className="text-lg font-semibold text-blue-100">Job Details</h3>
             <p className="text-gray-100">Role: {viewEmployee.role}</p>
-            <p className="text-gray-100">Salary: ₹{viewEmployee.salary}</p>
+            <p className="text-gray-100">Per day Salary: ₹{viewEmployee.salary}</p>
             <p className="text-gray-100">Salary Interval: {viewEmployee.salaryInterval}</p>
           </div>
 
