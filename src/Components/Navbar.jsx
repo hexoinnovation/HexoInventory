@@ -4,19 +4,27 @@ import { FaBell, FaUserCircle, FaCog } from "react-icons/fa";
 import { AiOutlineWhatsApp, AiOutlineFullscreen, AiOutlineFullscreenExit } from "react-icons/ai";
 import { RiLogoutCircleRLine } from "react-icons/ri";
 import { Link } from "react-router-dom";
-
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  getDocs,
+  doc,
+  updateDoc,onSnapshot,
+  deleteDoc,setDoc,getDoc,orderBy,where,limit
+} from "firebase/firestore";
+import { db } from "../config/firebase";
+import { getAuth } from "firebase/auth";
 const Navbar = ({ handleMenuClick }) => {
-  const [activeDropdown, setActiveDropdown] = useState(""); // Active dropdown state
+
   const [isFullScreen, setIsFullScreen] = useState(false); // Fullscreen toggle state
   const [currentDateTime, setCurrentDateTime] = useState(new Date().toLocaleString()); // Date & Time state
   // const [activeLink, setActiveLink] = useState(""); // Active link state
   const [activeLink, setActiveLink] = useState("Dashboard");
   const navigate = useNavigate();
 
-  const notifications = [
-    { id: 1, message: "New user registered", time: "2 mins ago" },
-    { id: 2, message: "System update available", time: "10 mins ago" },
-  ];
+ 
 
   const mails = [
     { id: 1, subject: "Welcome to the platform!", time: "5 mins ago" },
@@ -77,6 +85,79 @@ const Navbar = ({ handleMenuClick }) => {
         toast.error("Error logging out. Please try again.");
       });
   };
+  const [activeDropdown, setActiveDropdown] = useState("");
+  const [notifications, setNotifications] = useState([]);
+  
+  const notificationSound = new Audio("/notification.mp3.wav"); // Path to your notification sound
+  
+  useEffect(() => {
+    const fetchAllOrders = async () => {
+      const usersRef = collection(db, "users"); // Reference to the `users` collection
+      const userEmails = (await getDocs(usersRef)).docs.map((doc) => doc.id);
+      const unsubscribeFunctions = [];
+  
+      const notificationMap = new Map(); // To ensure unique notifications
+  
+      const updateNotifications = (newNotification) => {
+        if (!notificationMap.has(newNotification.id)) {
+          notificationMap.set(newNotification.id, newNotification);
+          setNotifications(Array.from(notificationMap.values()));
+          playNotificationSound();
+        }
+      };
+  
+      userEmails.forEach((email) => {
+        const buynowRef = collection(db, `users/${email}/buynow order`);
+        const cartRef = collection(db, `users/${email}/Cart order`);
+  
+        // Listener for `buynow` orders
+        const unsubscribeBuynow = onSnapshot(query(buynowRef), (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+              const newNotification = {
+                ...change.doc.data(),
+                id: change.doc.id,
+                type: "Buy Now",
+                userEmail: email,
+              };
+              updateNotifications(newNotification);
+            }
+          });
+        });
+        unsubscribeFunctions.push(unsubscribeBuynow);
+  
+        // Listener for `cart` orders
+        const unsubscribeCart = onSnapshot(query(cartRef), (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+              const newNotification = {
+                ...change.doc.data(),
+                id: change.doc.id,
+                type: "Cart",
+                userEmail: email,
+              };
+              updateNotifications(newNotification);
+            }
+          });
+        });
+        unsubscribeFunctions.push(unsubscribeCart);
+      });
+  
+      // Cleanup listeners
+      return () => {
+        unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
+      };
+    };
+  
+    fetchAllOrders();
+  }, []);
+  
+  const playNotificationSound = () => {
+    notificationSound.play().catch((err) => {
+      console.error("Error playing notification sound:", err);
+    });
+  };
+  
 
 
   return (
@@ -102,40 +183,67 @@ const Navbar = ({ handleMenuClick }) => {
           )}
         </button>
 
-        {/* Notifications */}
         <div
-          className="relative"
-          onMouseEnter={() => setActiveDropdown("notifications")}
-          onMouseLeave={() => setActiveDropdown("")}
-        >
-          <button className="p-3 rounded-full hover:bg-gray-700">
-            <FaBell size={24} />
-            {notifications.length > 0 && (
-              <span className="absolute top-0 right-0 bg-red-600 text-xs text-white rounded-full w-5 h-5 flex items-center justify-center">
-                {notifications.length}
-              </span>
-            )}
-          </button>
-          {activeDropdown === "notifications" && (
-            <div className="absolute right-0 mt-2 w-80 bg-white text-black rounded-lg shadow-lg z-50">
-              <div className="p-4">
-                <h3 className="font-semibold text-lg">Notifications</h3>
-              </div>
-              <div className="h-60 overflow-y-auto">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className="p-4 border-b hover:bg-gray-200 cursor-pointer"
-                  >
-                    <p className="text-sm">{notification.message}</p>
-                    <span className="text-xs text-gray-500">
-                      {notification.time}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+      className="relative"
+      onMouseEnter={() => setActiveDropdown("notifications")}
+      onMouseLeave={() => setActiveDropdown("")}
+    >
+      {/* Notification Bell */}
+      <button className="p-3 rounded-full hover:bg-gray-700">
+        <FaBell size={24} />
+        {notifications.length > 0 && (
+          <span className="absolute top-0 right-0 bg-red-600 text-xs text-white rounded-full w-5 h-5 flex items-center justify-center">
+            {notifications.length}
+          </span>
+        )}
+      </button>
+
+      {/* Notification Dropdown */}
+      {activeDropdown === "notifications" && (
+        <div className="absolute right-0 mt-2 w-80 bg-white text-black rounded-lg shadow-lg z-50">
+          <div className="p-4">
+            <h3 className="font-semibold text-lg">Order Notifications</h3>
+          </div>
+          <div className="h-60 overflow-y-auto">
+  {notifications.map((notification) => (
+    <div
+      key={notification.id}
+      className="p-4 border-b hover:bg-gray-200 cursor-pointer"
+    >
+      {/* Order Type */}
+      {notification.type && (
+        <p className="text-sm font-semibold">{notification.type} Order</p>
+      )}
+
+{notification.productName ? (
+        <p className="text-sm">Product Name: {notification.productName}</p>
+      ) : notification.name ? (
+        <p className="text-sm">Name: {notification.name}</p>
+      ) : null}
+
+      {/* User Information */}
+      {notification.userEmail && (
+        <p className="text-sm ">User: {notification.userEmail}</p>
+      )}
+
+      {/* Order Date */}
+      {notification.orderDate && (
+        <p className="text-sm text-gray-900">
+          Order Date: {notification.orderDate}
+        </p>
+      )}
+
+      {/* Created At */}
+      {notification.createdAt && (
+        <span className="text-sm text-gray-900">
+          Order Date: {new Date(notification.createdAt).toLocaleString()}
+        </span>
+      )}
+    </div>
+  ))}
+</div>
+        </div>
+      )}
         </div>
 
          {/* whatapp*/}
