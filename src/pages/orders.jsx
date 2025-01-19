@@ -151,7 +151,7 @@ const ManageOrders = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const userDocRef = doc(db, "users", userEmail);
+        const userDocRef = doc(db,  userEmail);
         const cartCollectionRef = collection(userDocRef, "Cart order");
   
         const querySnapshot = await getDocs(cartCollectionRef);
@@ -181,7 +181,7 @@ const ManageOrders = () => {
         }
 
         // Reference to the user's "BuyNow order" collection
-        const userDocRef = doc(db, "users", userEmail);
+        const userDocRef = doc(db,  userEmail);
         const buynowCollectionRef = collection(userDocRef, "buynow order");
 
         // Fetch BuyNow orders
@@ -245,7 +245,7 @@ useEffect(() => {
   const fetchTotalOrders = async () => {
     try {
       // Reference to the user's 'buynow order' collection
-      const userDocRef = doc(db, "users", userEmail);
+      const userDocRef = doc(db,  userEmail);
       const buynowCollectionRef = collection(userDocRef, "buynow order");
 
       // Reference to the user's 'Cart order' collection
