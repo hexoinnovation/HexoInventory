@@ -470,10 +470,10 @@ const AttendanceApp = (currentUser) => {
 
       {/* Employee and Attendance Table Section */}
       <div className="container mx-auto p-6 bg-blue-100 rounded-lg shadow-lg">
-      <h1 className="text-3xl font-extrabold mb-6 text-black">Attendance Manager</h1>
+      <h1 className="text-2xl font-bold mb-6 text-black">Attendance Manager</h1>
       <div className="overflow-x-auto bg-white rounded-lg shadow-lg">
         <table className="min-w-full table-auto border-collapse">
-          <thead className="bg-blue-900 text-white uppercase text-lg font-semibold">
+          <thead className="bg-blue-900 text-white text-sm font-bold">
             <tr>
               <th className="px-6 py-4 border border-blue-300 text-left">Employee Name</th>
               <th className="px-6 py-4 border border-blue-300 text-left">Employee Contact</th>
@@ -484,7 +484,7 @@ const AttendanceApp = (currentUser) => {
               <th className="px-6 py-4 border border-blue-300 text-left">Status</th>
             </tr>
           </thead>
-          <tbody className="text-black text-x font-bold">
+          <tbody className="text-black text-sm">
             {attendanceRecords.length === 0 ? (
               // Show employee details input fields if no attendance records
               employees.map((employee) => (
