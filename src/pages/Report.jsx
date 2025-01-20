@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { FaShoppingCart, FaStore, FaUsers, FaDownload, FaFileInvoice, FaClipboardList } from "react-icons/fa";
+import {
+  FaShoppingCart,
+  FaStore,
+  FaUsers,
+  FaDownload,
+  FaFileInvoice,
+  FaClipboardList,
+} from "react-icons/fa";
 import { collection, getDocs } from "firebase/firestore";
-import { db, auth } from "../config/firebase"; // Assuming you have your firebase setup
+import { db, auth } from "../config/firebase";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -12,7 +19,9 @@ const DataTable = ({ fields, data }) => (
     <thead className="bg-blue-900 text-white">
       <tr>
         {fields.map((field) => (
-          <th key={field} className="py-3 px-4 text-left border-b">{field.charAt(0).toUpperCase() + field.slice(1)}</th>
+          <th key={field} className="py-3 px-4 text-left border-b">
+            {field.charAt(0).toUpperCase() + field.slice(1)}
+          </th>
         ))}
       </tr>
     </thead>
@@ -20,7 +29,9 @@ const DataTable = ({ fields, data }) => (
       {data.map((item, index) => (
         <tr key={index} className="hover:bg-gray-100 transition duration-300">
           {fields.map((field) => (
-            <td key={field} className="py-3 px-4 border-b">{item[field]}</td>
+            <td key={field} className="py-3 px-4 border-b">
+              {item[field]}
+            </td>
           ))}
         </tr>
       ))}
@@ -48,22 +59,47 @@ const ReportTabs = () => {
     searchQuery: "",
     startDate: "",
     endDate: "",
-    category: ""
+    category: "",
   });
-  const [pagination, setPagination] = useState({ currentPage: 1, itemsPerPage: 10 });
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    itemsPerPage: 10,
+  });
+  const [loading, setLoading] = useState(true); // Loading state
   const currentUser = auth.currentUser;
 
   // Report Fields Configuration
   const customFields = {
-    purchase: ["no", "sname", "phone", "pname",  "price"],
-    sales: ["no", "pname", "phone",  "sales", "price"],
-    stock: ["no", "pname", "phone",  "estock", "price"],
+    purchase: ["no", "sname", "phone", "pname", "price"],
+    sales: ["no", "pname", "phone", "sales", "price"],
+    stock: ["no", "pname", "phone", "estock", "price"],
     invoices: ["invoiceNumber", "total", "paymentStatus", "invoiceDate"],
     orders: ["orderId", "product", "quantity", "status", "totalPrice"],
-    attendance: ["employeeName", "employeeContact", "employeeEmail", "date","status"],
+    attendance: [
+      "employeeName",
+      "employeeContact",
+      "employeeEmail",
+      "date",
+      "status",
+    ],
     salary: ["employeeId", "name", "salaryAmount", "paymentDate"],
-    empdetails: ["name", "contact", "dob", "gender", "role", "salary", "salaryInterval"],
-    businesses: ["businessName", "registrationNumber", "contactNumber",  "gstNumber", "city","state"],
+    empdetails: [
+      "name",
+      "contact",
+      "dob",
+      "gender",
+      "role",
+      "salary",
+      "salaryInterval",
+    ],
+    businesses: [
+      "businessName",
+      "registrationNumber",
+      "contactNumber",
+      "gstNumber",
+      "city",
+      "state",
+    ],
     customers: ["name", "city", "phone", "aadhaar", "email", "panno"],
   };
 
@@ -73,18 +109,39 @@ const ReportTabs = () => {
       if (!currentUser) return;
 
       const collections = [
-        "Purchase", "Purchase", "Purchase", "Invoices", "Orders", "attendance", "salary", "Empdetails", "Businesses", "Customers"];
+        "Purchase",
+        "Purchase",
+        "Purchase",
+        "Invoices",
+        "Orders",
+        "attendance",
+        "salary",
+        "Empdetails",
+        "Businesses",
+        "Customers",
+      ];
       const newData = {};
+
+      setLoading(true); // Start loading
 
       try {
         for (const collectionName of collections) {
-          const collectionRef = collection(db, "admins", currentUser.email, collectionName);
+          const collectionRef = collection(
+            db,
+            "admins",
+            currentUser.email,
+            collectionName
+          );
           const snapshot = await getDocs(collectionRef);
-          newData[collectionName.toLowerCase()] = snapshot.docs.map((doc) => doc.data());
+          newData[collectionName.toLowerCase()] = snapshot.docs.map((doc) =>
+            doc.data()
+          );
         }
         setData(newData);
       } catch (error) {
         console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false); // End loading
       }
     };
 
@@ -99,8 +156,10 @@ const ReportTabs = () => {
 
       if (!activeData) return;
 
-      const filtered = activeData.filter(item => {
-        const matchesSearch = JSON.stringify(item).toLowerCase().includes(searchQuery.toLowerCase());
+      const filtered = activeData.filter((item) => {
+        const matchesSearch = JSON.stringify(item)
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase());
         const matchesDateRange =
           (!startDate || new Date(item.date) >= new Date(startDate)) &&
           (!endDate || new Date(item.date) <= new Date(endDate));
@@ -123,7 +182,7 @@ const ReportTabs = () => {
       searchQuery: "",
       startDate: "",
       endDate: "",
-      category: ""
+      category: "",
     });
   };
 
@@ -143,7 +202,7 @@ const ReportTabs = () => {
       searchQuery: "",
       startDate: "",
       endDate: "",
-      category: ""
+      category: "",
     });
   };
 
@@ -159,7 +218,7 @@ const ReportTabs = () => {
   const exportToPDF = () => {
     const doc = new jsPDF();
     const tableColumns = Object.keys(filteredData[0]);
-    const tableRows = filteredData.map(item => Object.values(item));
+    const tableRows = filteredData.map((item) => Object.values(item));
 
     doc.autoTable({
       head: [tableColumns],
@@ -174,7 +233,9 @@ const ReportTabs = () => {
       {/* Header */}
       <div className="flex items-center space-x-3 mb-8 p-6 sm:p-8 bg-gradient-to-r from-blue-900 to-blue-900">
         <FaShoppingCart className="text-4xl text-white" />
-        <h1 className="text-3xl font-extrabold text-white">Reports Dashboard</h1>
+        <h1 className="text-3xl font-extrabold text-white">
+          Reports Dashboard
+        </h1>
       </div>
 
       {/* Main Content */}
@@ -183,7 +244,18 @@ const ReportTabs = () => {
         <div className="w-64 bg-white shadow-md p-6">
           <h2 className="text-xl font-semibold mb-6">Reports</h2>
           <div className="space-y-4">
-            {["purchase", "sales", "stock", "invoices", "orders", "attendance", "salary", "empdetails", "businesses", "customers"].map((tab) => (
+            {[
+              "purchase",
+              "sales",
+              "stock",
+              "invoices",
+              "orders",
+              "attendance",
+              "salary",
+              "empdetails",
+              "businesses",
+              "customers",
+            ].map((tab) => (
               <button
                 key={tab}
                 className={`flex items-center px-6 py-3 w-full text-lg rounded-lg hover:bg-indigo-100 ${
@@ -192,9 +264,15 @@ const ReportTabs = () => {
                 onClick={() => handleTabChange(tab)}
               >
                 <span className="mr-3 text-xl">
-                  {tab === "purchase" ? <FaShoppingCart /> :
-                  tab === "sales" ? <FaStore /> :
-                  tab === "empdetails" ? <FaUsers /> : <FaClipboardList />}
+                  {tab === "purchase" ? (
+                    <FaShoppingCart />
+                  ) : tab === "sales" ? (
+                    <FaStore />
+                  ) : tab === "empdetails" ? (
+                    <FaUsers />
+                  ) : (
+                    <FaClipboardList />
+                  )}
                 </span>
                 <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
               </button>
@@ -211,14 +289,18 @@ const ReportTabs = () => {
                 type="text"
                 placeholder="Search records"
                 value={filters.searchQuery}
-                onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, searchQuery: e.target.value })
+                }
                 className="p-2 border border-gray-300 rounded-md w-full sm:w-1/3"
               />
               <input
                 type="date"
                 name="start"
                 value={filters.startDate}
-                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, startDate: e.target.value })
+                }
                 className="ml-4 p-2 border border-gray-300 rounded-md"
               />
               <span className="mx-2">to</span>
@@ -226,7 +308,9 @@ const ReportTabs = () => {
                 type="date"
                 name="end"
                 value={filters.endDate}
-                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, endDate: e.target.value })
+                }
                 className="p-2 border border-gray-300 rounded-md"
               />
             </div>
@@ -238,49 +322,63 @@ const ReportTabs = () => {
             </button>
           </div>
 
-          {/* Download Buttons */}
-          <div className="flex space-x-4 mb-6">
-            <button
-              onClick={exportToExcel}
-              className="px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center"
-            >
-              <FaDownload className="mr-2" /> Download Excel
-            </button>
-            <button
-              onClick={exportToPDF}
-              className="px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 flex items-center"
-            >
-              <FaDownload className="mr-2" /> Download PDF
-            </button>
-          </div>
+          {/* Loading state with spinner */}
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="w-16 h-16 border-4 border-blue-900 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <>
+              {/* Download Buttons */}
+              <div className="flex space-x-4 mb-6">
+                <button
+                  onClick={exportToExcel}
+                  className="px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center"
+                >
+                  <FaDownload className="mr-2" /> Download Excel
+                </button>
+                <button
+                  onClick={exportToPDF}
+                  className="px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 flex items-center"
+                >
+                  <FaDownload className="mr-2" /> Download PDF
+                </button>
+              </div>
 
-          {/* Data Display */}
-          <div className="overflow-x-auto bg-white shadow-xl rounded-lg mb-6">
-            {filteredData.length > 0 ? (
-              <DataTable fields={customFields[activeTab]} data={currentItems} />
-            ) : (
-              <p>No data available for this tab.</p>
-            )}
-          </div>
+              {/* Data Display */}
+              <div className="overflow-x-auto bg-white shadow-xl rounded-lg mb-6">
+                {filteredData.length > 0 ? (
+                  <DataTable
+                    fields={customFields[activeTab]}
+                    data={filteredData}
+                  />
+                ) : (
+                  <p>No data available for this tab.</p>
+                )}
+              </div>
 
-          {/* Pagination */}
-          <div className="flex justify-between items-center mt-6">
-            <button
-              onClick={() => handlePageChange(pagination.currentPage - 1)}
-              disabled={pagination.currentPage === 1}
-              className="px-4 py-2 bg-blue-900 text-white rounded-md"
-            >
-              Previous
-            </button>
-            <span className="mx-4">{pagination.currentPage} of {totalPages}</span>
-            <button
-              onClick={() => handlePageChange(pagination.currentPage + 1)}
-              disabled={pagination.currentPage === totalPages}
-              className="px-4 py-2 bg-blue-900 text-white rounded-md"
-            >
-              Next
-            </button>
-          </div>
+              {/* Pagination */}
+              <div className="flex justify-between items-center mt-6">
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1}
+                  className="px-4 py-2 bg-blue-900 text-white rounded-md"
+                >
+                  Previous
+                </button>
+                <span className="mx-4">
+                  {pagination.currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage === totalPages}
+                  className="px-4 py-2 bg-blue-900 text-white rounded-md"
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
