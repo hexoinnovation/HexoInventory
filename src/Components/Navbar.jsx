@@ -125,8 +125,7 @@ const Navbar = ({ handleMenuClick }) => {
           });
         });
         unsubscribeFunctions.push(unsubscribeBuynow);
-  
-        // Listener for `cart` orders
+
         const unsubscribeCart = onSnapshot(query(cartRef), (snapshot) => {
           snapshot.docChanges().forEach((change) => {
             if (change.type === "added") {
@@ -157,9 +156,13 @@ const Navbar = ({ handleMenuClick }) => {
       console.error("Error playing notification sound:", err);
     });
   };
-  
+ // const navigate = useNavigate();
 
-
+  const handleNavigate = () => {
+    if (notifications.length > 0) {
+      navigate("/orders"); // Update '/orders' to the correct route for `Order.jsx`
+    }
+  };
   return (
     <nav className="bg-gray-800 text-white p-4 flex justify-between items-center shadow-md">
       <div className="flex items-center">
@@ -189,7 +192,7 @@ const Navbar = ({ handleMenuClick }) => {
       onMouseLeave={() => setActiveDropdown("")}
     >
       {/* Notification Bell */}
-      <button className="p-3 rounded-full hover:bg-gray-700">
+      <button className="p-3 rounded-full hover:bg-gray-700 "  onClick={handleNavigate}>
         <FaBell size={24} />
         {notifications.length > 0 && (
           <span className="absolute top-0 right-0 bg-red-600 text-xs text-white rounded-full w-5 h-5 flex items-center justify-center">
