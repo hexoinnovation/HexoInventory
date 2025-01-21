@@ -31,6 +31,7 @@ import Invoice from "./pages/Invoice";
 import Purchase from "./pages/Purchase";
 import Sales from "./pages/Sales";
 import Orders from "./pages/orders";
+import Orders2 from "./pages/orders2";
 import Stock from "./pages/Stock";
 import View from "./pages/viewAllInvoice";
 import Manageproducts from "./pages/manageproducts";
@@ -165,6 +166,11 @@ const App = () => {
                 path="/orders"
                 element={isAuthenticated ? <Orders /> : <Navigate to="/" />}
               />
+               <Route
+                path="/orders2"
+                element={isAuthenticated ? <Orders2 /> : <Navigate to="/" />}
+              />
+
               <Route
                 path="/employee"
                 element={

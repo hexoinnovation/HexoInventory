@@ -163,6 +163,12 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Orders</span>
               </Link>
             </li>
+            <li className={activeLink === "orders2" ? "active" : ""}>
+              <Link to="/orders2" onClick={() => handleLinkClick("orders2")}>
+                <i className="bx bxs-cart"></i>
+                <span className="text">Orders 2.o</span>
+              </Link>
+            </li>
           </ul>
         )}
 
