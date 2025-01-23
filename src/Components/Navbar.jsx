@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect,useRef, } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaBell, FaUserCircle, FaCog } from "react-icons/fa";
 import { AiOutlineWhatsApp, AiOutlineFullscreen, AiOutlineFullscreenExit } from "react-icons/ai";
@@ -23,15 +23,10 @@ const Navbar = ({ handleMenuClick }) => {
   // const [activeLink, setActiveLink] = useState(""); // Active link state
   const [activeLink, setActiveLink] = useState("Dashboard");
   const navigate = useNavigate();
-
- 
-
   const mails = [
     { id: 1, subject: "Welcome to the platform!", time: "5 mins ago" },
     { id: 2, subject: "System downtime notice", time: "1 hour ago" },
   ];
-
-  // Update date and time every second
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentDateTime(new Date().toLocaleString());
@@ -108,7 +103,7 @@ const Navbar = ({ handleMenuClick }) => {
   
       userEmails.forEach((email) => {
         const buynowRef = collection(db, `users/${email}/buynow order`);
-        const cartRef = collection(db, `users/${email}/Cart order`);
+        const cartRef = collection(db, `users/${email}/cart order`);
   
         // Listener for `buynow` orders
         const unsubscribeBuynow = onSnapshot(query(buynowRef), (snapshot) => {
@@ -156,13 +151,35 @@ const Navbar = ({ handleMenuClick }) => {
       console.error("Error playing notification sound:", err);
     });
   };
- // const navigate = useNavigate();
-
   const handleNavigate = () => {
     if (notifications.length > 0) {
-      navigate("/orders"); // Update '/orders' to the correct route for `Order.jsx`
+      navigate("/orders2"); // Update '/orders' to the correct route for `Order.jsx`
     }
   };
+
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setActiveDropdown(""); 
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleBellClick = () => {
+    setActiveDropdown((prev) => (prev === "notifications" ? "" : "notifications"));
+  };
+  const [highlightedOrderId, setHighlightedOrderId] = useState(null);
+  const handleNotificationClick = (notificationId) => {
+    setHighlightedOrderId(notificationId); // Set the highlighted order id based on the notification clicked
+    console.log("Notification clicked, highlightedOrderId:", notificationId);
+  };
+  
   return (
     <nav className="bg-gray-800 text-white p-4 flex justify-between items-center shadow-md">
       <div className="flex items-center">
@@ -174,80 +191,81 @@ const Navbar = ({ handleMenuClick }) => {
       </div>
 
       <div className="flex space-x-6 items-center">
-        {/* Full-Screen Control */}
-        <button
-          onClick={toggleFullScreen}
-          className="p-3 rounded-full hover:bg-gray-700"
-        >
-          {isFullScreen ? (
-            <AiOutlineFullscreenExit size={24} />
-          ) : (
-            <AiOutlineFullscreen size={24} />
-          )}
-        </button>
-
-        <div
-      className="relative"
-      onMouseEnter={() => setActiveDropdown("notifications")}
-      onMouseLeave={() => setActiveDropdown("")}
-    >
-      {/* Notification Bell */}
-      <button className="p-3 rounded-full hover:bg-gray-700 "  onClick={handleNavigate}>
-        <FaBell size={24} />
-        {notifications.length > 0 && (
-          <span className="absolute top-0 right-0 bg-red-600 text-xs text-white rounded-full w-5 h-5 flex items-center justify-center">
-            {notifications.length}
-          </span>
+      {/* Full-Screen Control */}
+      <button
+        onClick={toggleFullScreen}
+        className="p-3 rounded-full hover:bg-gray-700"
+      >
+        {isFullScreen ? (
+          <AiOutlineFullscreenExit size={24} />
+        ) : (
+          <AiOutlineFullscreen size={24} />
         )}
       </button>
 
-      {/* Notification Dropdown */}
-      {activeDropdown === "notifications" && (
-        <div className="absolute right-0 mt-2 w-80 bg-white text-black rounded-lg shadow-lg z-50">
-          <div className="p-4">
-            <h3 className="font-semibold text-lg">Order Notifications</h3>
+      <div className="relative">
+        {/* Notification Bell */}
+        <button
+          className="p-3 rounded-full hover:bg-gray-700"
+          onClick={handleBellClick}
+        >
+          <FaBell size={24} />
+          {notifications.length > 0 && (
+            <span className="absolute top-0 right-0 bg-red-600 text-xs text-white rounded-full w-5 h-5 flex items-center justify-center">
+              {notifications.length}
+            </span>
+          )}
+        </button>
+        {activeDropdown === "notifications" && (
+          <div
+            ref={dropdownRef}
+            className="absolute right-0 mt-2 w-80 bg-white text-black rounded-lg shadow-lg z-50"
+          >
+            <div className="p-4">
+              <h3 className="font-semibold text-lg">Order Notifications</h3>
+            </div>
+            <div className="h-60 overflow-y-auto " onClick={handleNavigate}>
+              {notifications.map((notification) => (
+              <div
+              key={notification.id}
+              className="p-4 border-b hover:bg-gray-200 cursor-pointer"
+              onClick={() => handleNotificationClick(notification.id)} // Update highlightedOrderId when a notification is clicked
+            >
+                  {/* Order Type */}
+                  {notification.type && (
+                    <p className="text-sm font-semibold">{notification.type} Order</p>
+                  )}
+
+                  {notification.productName ? (
+                    <p className="text-sm">Product Name: {notification.productName}</p>
+                  ) : notification.name ? (
+                    <p className="text-sm">Name: {notification.name}</p>
+                  ) : null}
+
+                  {/* User Information */}
+                  {notification.userEmail && (
+                    <p className="text-sm">User: {notification.userEmail}</p>
+                  )}
+
+                  {/* Order Date */}
+                  {notification.orderDate && (
+                    <p className="text-sm text-gray-900">
+                      Order Date: {notification.orderDate}
+                    </p>
+                  )}
+
+                  {/* Created At */}
+                  {notification.createdAt && (
+                    <span className="text-sm text-gray-900">
+                      Order Date: {new Date(notification.createdAt).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="h-60 overflow-y-auto">
-  {notifications.map((notification) => (
-    <div
-      key={notification.id}
-      className="p-4 border-b hover:bg-gray-200 cursor-pointer"
-    >
-      {/* Order Type */}
-      {notification.type && (
-        <p className="text-sm font-semibold">{notification.type} Order</p>
-      )}
-
-{notification.productName ? (
-        <p className="text-sm">Product Name: {notification.productName}</p>
-      ) : notification.name ? (
-        <p className="text-sm">Name: {notification.name}</p>
-      ) : null}
-
-      {/* User Information */}
-      {notification.userEmail && (
-        <p className="text-sm ">User: {notification.userEmail}</p>
-      )}
-
-      {/* Order Date */}
-      {notification.orderDate && (
-        <p className="text-sm text-gray-900">
-          Order Date: {notification.orderDate}
-        </p>
-      )}
-
-      {/* Created At */}
-      {notification.createdAt && (
-        <span className="text-sm text-gray-900">
-          Order Date: {new Date(notification.createdAt).toLocaleString()}
-        </span>
-      )}
-    </div>
-  ))}
-</div>
-        </div>
-      )}
-        </div>
+        )}
+      </div>
 
          {/* whatapp*/}
 

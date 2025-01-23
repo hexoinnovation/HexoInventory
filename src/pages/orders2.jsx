@@ -9,7 +9,7 @@ import {
   deleteDoc,
   addDoc,
 } from "firebase/firestore";
-function Orders2() {
+function Orders2(order ) {
   const [orders, setOrders] = useState([
     {
       id: 1,
@@ -74,41 +74,34 @@ function Orders2() {
   const [filteredPaidStatus, setFilteredPaidStatus] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [status, setStatus] = useState(order.status);
+  const [statusFilter, setStatusFilter] = useState("");
 
-  const handleStatusChange = (orderId, newStatus) => {
-    setOrders(
-      orders.map((order) =>
-        order.id === orderId ? { ...order, status: newStatus } : order
-      )
-    );
-  };
-
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const handleStatusFilter = (status) => {
-    setFilteredStatus(status);
-  };
+  const [filteredOrderss, setFilteredOrders] = useState(orders);
+  const [filter, setFilter] = useState(""); 
 
   const handlePaidStatusFilter = (status) => {
-    setFilteredPaidStatus(status);
+    setFilter(status);
+    
+    if (status === "Paid") {
+      const paidOrders = orders.filter((order) => {
+        return order.status === "Delivered"; 
+      });
+      setFilteredOrders(paidOrders);
+    } else if (status === "Unpaid") {
+      const unpaidOrders = orders.filter((order) => {
+        return order.status !== "Delivered"; 
+      });
+      setFilteredOrders(unpaidOrders);
+    }
   };
-
+  
   const handleViewDetails = (order) => {
     setSelectedOrder(order);
   };
 
   const handleCloseModal = () => {
     setSelectedOrder(null);
-  };
-
-  const handleCheckboxChange = (orderId) => {
-    if (selectedOrders.includes(orderId)) {
-      setSelectedOrders(selectedOrders.filter((id) => id !== orderId));
-    } else {
-      setSelectedOrders([...selectedOrders, orderId]);
-    }
   };
 
   const handleBulkMarkPaid = () => {
@@ -120,30 +113,17 @@ function Orders2() {
     setSelectedOrders([]); // Clear selection after bulk action
   };
 
-  const filteredOrders = orders.filter((order) => {
-    const matchesStatus = filteredStatus
-      ? order.status === filteredStatus
-      : true;
-  
-    const matchesPaidStatus = filteredPaidStatus
-      ? (filteredPaidStatus === "Paid" && order.paid) ||
-        (filteredPaidStatus === "Unpaid" && !order.paid)
-      : true;
-  
-    const matchesSearch = order.customer?.toLowerCase().includes(searchQuery.toLowerCase());
-  
-    return matchesStatus && matchesPaidStatus && matchesSearch;
-  });
   
   const handleExportOrders = () => {
     const csvContent = [
       ["Order ID", "Customer", "Total", "Status", "Paid"],
       ...filteredOrders.map((order) => [
         order.id,
-        order.customer,
-        order.total,
+        order.fullName,
+        order.productName,
+        order.totalAmount,
         order.status,
-        order.paid ? "Yes" : "No",
+       
       ]),
     ]
       .map((row) => row.join(","))
@@ -156,11 +136,26 @@ function Orders2() {
     link.click();
   };
 
-  const handleClearSearch = () => {
-    setSearchQuery("");
+  const [highlightedOrderId, setHighlightedOrderId] = useState(null);
+  const handleNotificationClick = (id) => {
+    if (!id) {
+      console.error("Order ID is undefined!");
+      return;
+    }
+  
+    console.log("Order ID clicked:", id);
+    setHighlightedOrderId(id);  // Highlight order by setting the ID
+    console.log("Updated highlightedOrderId:", id);
+  
+    // Remove highlight after 2 seconds
+    setTimeout(() => {
+      console.log("Removing highlight");
+      setHighlightedOrderId(null);  // Reset after 2 seconds to remove highlight
+    }, 2000);
   };
 
   const [loading, setLoading] = useState(true);
+  
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -172,7 +167,7 @@ function Orders2() {
 
           // Fetch 'Cart order' subcollection
           const cartSnapshot = await getDocs(
-            collection(db, "users", userEmail, "Cart order")
+            collection(db, "users", userEmail, "cart order")
           );
           cartSnapshot.forEach((doc) =>
             ordersData.push({
@@ -215,6 +210,68 @@ function Orders2() {
   if (orders.length === 0) {
     return <p className="text-center text-gray-600">No orders found.</p>;
   }
+  const handleCheckboxChange = (orderId) => {
+    setSelectedOrders((prevSelectedOrders) => {
+      if (prevSelectedOrders.includes(orderId)) {
+        return prevSelectedOrders.filter((id) => id !== orderId);
+      } else {
+        return [...prevSelectedOrders, orderId];
+      }
+    });
+  };
+
+  const handleBulkMarkDelivered = async () => {
+    try {
+      for (const orderId of selectedOrders) {
+        await handleStatusChange(orderId, "Delivered"); // Mark each selected order as Delivered
+      }
+      setSelectedOrders([]); // Clear selection after bulk action
+    } catch (error) {
+      console.error("Error marking orders as delivered:", error);
+    }
+  };
+
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      const order = filteredOrders.find((order) => order.id === orderId);
+      if (!order || !order.userEmail || !order.orderType) {
+        console.error('Missing userEmail or orderType in order:', order);
+        return;
+      }
+
+      const orderRef = doc(db, "users", order.userEmail, `${order.orderType.toLowerCase()} order`, orderId);
+      await updateDoc(orderRef, { status: newStatus });
+
+      setOrders((prevOrders) =>
+        prevOrders.map((o) =>
+          o.id === orderId ? { ...o, status: newStatus } : o
+        )
+      );
+    } catch (error) {
+      console.error("Error updating order status:", error);
+    }
+  };
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+  };
+
+  const handleStatusFilter = (status) => {
+    setStatusFilter(status);
+  };
+  const filteredOrders = orders.filter((order) => {
+    const matchesSearch =
+      (order.fullName && order.fullName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (order.userEmail && order.userEmail.toLowerCase().includes(searchQuery.toLowerCase()));
+  
+    const matchesStatus = statusFilter === "" || order.status === statusFilter;
+  
+    return matchesSearch && matchesStatus;
+  });
+  
   return (
     <div className="space-y-6">
       <h1 className="text-4xl font-bold text-indigo-600">Orders</h1>
@@ -242,7 +299,7 @@ function Orders2() {
             All
           </button>
           <button
-            onClick={() => handleStatusFilter("Pending")}
+            onClick={() => handleStatusFilter("Shipped")}
             className="p-2 bg-yellow-400 text-yellow-700 rounded-lg hover:bg-yellow-500"
           >
             Pending
@@ -268,79 +325,76 @@ function Orders2() {
             Export Orders
           </button>
           <button
-            onClick={() => handlePaidStatusFilter("Paid")}
-            className="p-2 bg-green-400 text-green-700 rounded-lg hover:bg-green-500"
-          >
-            Show Paid
-          </button>
-          <button
-            onClick={() => handlePaidStatusFilter("Unpaid")}
-            className="p-2 bg-red-400 text-red-700 rounded-lg hover:bg-red-500"
-          >
-            Show Unpaid
-          </button>
+  onClick={() => handlePaidStatusFilter("Paid")}
+  className="p-2 bg-green-400 text-green-700 rounded-lg hover:bg-green-500"
+>
+  Show Paid
+</button>
+<button
+  onClick={() => handlePaidStatusFilter("Unpaid")}
+  className="p-2 bg-red-400 text-red-700 rounded-lg hover:bg-red-500"
+>
+  Show Unpaid
+</button>
+
         </div>
       </div>
 
-      <div className="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {orders.map((order) => (
-        <div
-          key={order.id}
-          className="border rounded-lg p-6 shadow-lg hover:shadow-2xl transition duration-300"
-        >
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              className="form-checkbox h-5 w-5 text-indigo-600"
-            />
-            <h3 className="text-xl font-semibold text-indigo-600">
-              {order.fullName || order.userEmail}
-            </h3>
-            <h3 className="text-xl font-semibold text-indigo-600">
-              {order.fullName}
-            </h3>
-          </div>
-          <p className="text-gray-600">
-            <strong>Order ID:</strong> {order.id}
-          </p>
-          <p className="text-gray-600">
-            <strong>Product Details:</strong> {order.productName || order.name ||"N/A"}
-          </p>
-          <p className="text-gray-600">
-  <strong>Order Date:</strong> {order.orderDate || order.createdAt || "N/A"}
-</p>
+      <div className="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+        {filteredOrders.map((order) => (
+           <div
+           key={order.id}
+           className={`border rounded-lg p-6 shadow-lg hover:shadow-2xl transition duration-300 ${
+             String(highlightedOrderId) === String(order.id) ? "bg-yellow-100 border-yellow-400" : ""
+           }`} 
+         >
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                className="form-checkbox h-5 w-5 text-indigo-600"onChange={() => handleCheckboxChange(order.id)}
+              />
+              <h3 className="text-xl font-semibold text-indigo-600">
+                {order.fullName || order.userEmail}
+              </h3>
+            </div>
+            <p className="text-gray-600">
+              <strong>Order ID:</strong> {order.id}
+            </p>
+            <p className="text-gray-600">
+              <strong>Product Details:</strong> {order.productName || order.name || "N/A"}
+            </p>
+            <p className="text-gray-600">
+              <strong>Order Date:</strong> {order.orderDate || order.createdAt || "N/A"}
+            </p>
+            <p className="text-l mt-2">
+              <strong>Status : </strong>
+              <span
+                className={`text-${
+                  order.status === "Shipped"
+                    ? "blue"
+                    : order.status === "Delivered"
+                    ? "green"
+                    : "gray"
+                }-700 font-bold`}
+              >
+                {order.status}
+              </span>
+            </p>
 
-          {/* <p className="text-sm mt-2">
-            <strong>Status:</strong>{" "}
-            <span
-              className={`text-${
-                order.status === "Shipped"
-                  ? "green"
-                  : order.status === "Pending"
-                  ? "yellow"
-                  : "blue"
-              }-600`}
-            >
-              {order.status || "Unknown"}
-            </span>
-            </p> */}
-            <div className="mt-4 space-x-2">
-              {/* Action Buttons */}
-            
-                <button
-                  onClick={() => handleStatusChange(order.id, "Shipped")}
-                  className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
-                  Mark as Shipped
-                </button>
-             
-             
-                <button
-                  onClick={() => handleStatusChange(order.id, "Delivered")}
-                  className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                >
-                  Mark as Delivered
-                </button>
+      <div className="mt-4 space-x-2">
+        <button
+          onClick={() => handleStatusChange(order.id, "Shipped")}
+          className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+        >
+          Mark as Shipped
+        </button>
+
+        <button
+          onClick={() => handleStatusChange(order.id, "Delivered")}
+          className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+        >
+          Mark as Delivered
+        </button>
           
               <button
                 onClick={() => handleViewDetails(order)}
@@ -355,93 +409,153 @@ function Orders2() {
 
       {/* Bulk Actions for Paid Orders */}
       <div className="mt-4">
-        <button
-          onClick={handleBulkMarkPaid}
+      <button
+          onClick={handleBulkMarkDelivered}
           className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
         >
-          Mark Selected Orders as Paid
+          Mark Selected Orders as Delivered
         </button>
       </div>
 
-      {/* Modal for Invoice View */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-4xl w-full space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-3xl font-bold text-indigo-600">
-                Invoice #{selectedOrder.id}
-              </h2>
-              <button
-                onClick={handleCloseModal}
-                className="p-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                Close
-              </button>
-            </div>
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+    <div className="bg-white shadow-xl p-7 rounded-lg max-w-3xl w-full space-y-1 ">
+      {/* Modal Header */}
+      <div className="flex justify-between items-center border-b pb-2">
+        <h2 className="text-2xl font-semibold text-indigo-700">
+          Invoice #{selectedOrder.id}
+        </h2>
+        <button
+          onClick={handleCloseModal}
+          className="p-2 bg-red-500 text-white rounded-lg hover:bg-gray-300 transition"
+        >
+          Close
+        </button>
+      </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <p>
-                  <strong>Customer:</strong> {selectedOrder.customer}
-                </p>
-                <p>
-                  <strong>Status:</strong> {selectedOrder.status}
-                </p>
-              </div>
-              <div className="flex justify-between">
-                <p>
-                  <strong>Total:</strong> ${selectedOrder.total}
-                </p>
-                <p>
-                  <strong>Paid:</strong> {selectedOrder.paid ? "Yes" : "No"}
-                </p>
-              </div>
-            </div>
+      {/* Customer Details */}
+      <div className="space-y-2">
+        <h3 className="text-lg font-semibold text-gray-800">Customer Details</h3>
+        <table className="w-full border text-sm">
+          <thead>
+            <tr className="bg-gray-100 text-left">
+              <th className="py-2 px-3 border">Field</th>
+              <th className="py-2 px-3 border">Billing Details</th>
+              <th className="py-2 px-3 border">Shipping Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              "fullName",
+              "email",
+              "phoneNumber",
+              "address1",
+             // "address2",
+             // "country",
+              "zipCode",
+            ].map((field, index) => (
+              <tr key={index} className={index % 2 === 0 ? "bg-gray-50" : ""}>
+                <td className="py-2 px-3 border capitalize text-gray-700">{field}</td>
+                <td className="py-2 px-3 border text-gray-600">
+                  {selectedOrder.billingAddress[field] || "-"}
+                </td>
+                <td className="py-2 px-3 border text-gray-600">
+                  {selectedOrder.shippingAddress[field] || "-"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-            {/* Order Items Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full table-auto border-collapse">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="py-2 px-4 border">Item</th>
-                    <th className="py-2 px-4 border">Quantity</th>
-                    <th className="py-2 px-4 border">Price</th>
-                    <th className="py-2 px-4 border">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedOrder.items.map((item, index) => (
-                    <tr key={index}>
-                      <td className="py-2 px-4 border">{item.name}</td>
-                      <td className="py-2 px-4 border">{item.quantity}</td>
-                      <td className="py-2 px-4 border">${item.price}</td>
-                      <td className="py-2 px-4 border">
-                        ${item.price * item.quantity}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {/* Order Summary */}
+      <div className="space-y-2">
+        <h3 className="text-lg font-semibold text-gray-800">Order Summary</h3>
+        <table className="w-full border text-sm">
+          <thead>
+            <tr className="bg-gray-100 text-left">
+              <th className="py-2 px-3 border">Product Name</th>
+              <th className="py-2 px-3 border">Quantity</th>
+              <th className="py-2 px-3 border">Price</th>
+              {/* <th className="py-2 px-3 border">Subtotal</th> */}
+            </tr>
+          </thead>
+          <tbody>
+      {/* Loop through cartItems */}
+      {selectedOrder.cartItems?.map((item, index) => (
+        <tr key={index}>
+          <td className="py-2 px-4 border">{item.name}</td>
+          <td className="py-2 px-4 border">{item.quantity}</td>
+          <td className="py-2 px-4 border">${item.price}</td>
+          <td className="py-2 px-4 border">
+            ${item.quantity * parseFloat(item.price)}
+          </td>
+        </tr>
+      ))}
 
-            {/* Additional controls */}
-            <div className="flex space-x-4">
-              <button
-                onClick={() => alert("Order marked as paid")}
-                className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-              >
-                Mark as Paid
-              </button>
-              <button
-                onClick={() => alert("Order has been cancelled")}
-                className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-              >
-                Cancel Order
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Conditionally render additional row for selectedOrder fields */}
+      {selectedOrder.productName && (
+        <tr>
+          <td className="py-2 px-4 border">{selectedOrder.productName}</td>
+          <td className="py-2 px-4 border">{selectedOrder.quantity}</td>
+          <td className="py-2 px-4 border">${selectedOrder.price}</td>
+          <td className="py-2 px-4 border">
+            ${selectedOrder.quantity * parseFloat(selectedOrder.price)}
+          </td>
+        </tr>
       )}
+    </tbody>
+        </table>
+      </div>
+
+      {/* Payment Details */}
+      <div className="space-y-2">
+        <h3 className="text-lg font-semibold text-gray-800">Payment Details</h3>
+        <table className="w-full border text-sm">
+          <tbody>
+            <tr>
+              <td className="py-2 px-3 border">Subtotal</td>
+              <td className="py-2 px-3 border">₹{selectedOrder.subtotal}</td>
+            </tr>
+            <tr className="bg-gray-50">
+              <td className="py-2 px-3 border">GST</td>
+              <td className="py-2 px-3 border">₹{selectedOrder.gst}</td>
+            </tr>
+            <tr>
+              <td className="py-2 px-3 border">Discount</td>
+              <td className="py-2 px-3 border">₹{selectedOrder.discount}</td>
+            </tr>
+            <tr className="bg-gray-50">
+              <td className="py-2 px-3 border">Shipping Charge</td>
+              <td className="py-2 px-3 border">₹{selectedOrder.shippingCharge}</td>
+            </tr>
+            <tr className="font-bold">
+              <td className="py-2 px-3 border">Total Amount</td>
+              <td className="py-2 px-3 border">₹{selectedOrder.totalAmount}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Actions */}
+      <div className="flex justify-end space-x-4">
+        {/* <button
+          onClick={() => alert("Order marked as paid")}
+          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+        >
+          Mark as Paid
+        </button> */}
+        {/* <button
+          onClick={() => alert("Order has been cancelled")}
+          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+        >
+          Cancel Order
+        </button> */}
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
