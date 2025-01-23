@@ -11,7 +11,8 @@ import {
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import Swal from "sweetalert2";
-import { EyeIcon } from '@heroicons/react/outline'; // Import the icon
+
+import { EyeIcon,BriefcaseIcon } from '@heroicons/react/outline'; // Import the icon
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import '@fortawesome/fontawesome-free/css/all.min.css';
@@ -19,8 +20,8 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 const db = getFirestore();
 const auth = getAuth();
 
-const SalaryApp = (  updateSalaryStatus) => {
-  
+const SalaryApp = ({ updateSalaryStatus }) => {  // Destructure props properly
+  const [viewEmployee, setViewEmployee] = useState(null);
   const [salaries, setSalaries] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [status, setStatus] = useState("");
@@ -43,13 +44,23 @@ const SalaryApp = (  updateSalaryStatus) => {
   const [employeeFilter, setEmployeeFilter] = useState("");
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
+ 
+  const [bonus, setBonus] = useState("");  
+  const [deductions, setDeductions] = useState("");  
+  const [netSalary, setNetSalary] = useState(0);  
 
-  // New state variables for Role and Attendance Counts
-  const [role, setRole] = useState("");
+  const basicSalary = viewEmployee?.salary || 0;  
+
+  useEffect(() => {
+    const numericBonus = bonus === "" ? 0 : Number(bonus);  
+    const numericDeductions = deductions === "" ? 0 : Number(deductions);  
+    const calculatedNetSalary = Number(basicSalary) + numericBonus - numericDeductions;
+    setNetSalary(calculatedNetSalary);  
+  }, [bonus, deductions, basicSalary]); 
+  
   const [presentCount, setPresentCount] = useState(0);
   const [absentCount, setAbsentCount] = useState(0);
 
-  // Info Box States
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [totalPresent, setTotalPresent] = useState(0);
   const [totalAbsent, setTotalAbsent] = useState(0);
@@ -83,21 +94,7 @@ const SalaryApp = (  updateSalaryStatus) => {
         setEmployees(fetchedEmployees);
         setTotalEmployees(fetchedEmployees.length);
   
-        // Fetch salary data
-        const salaryCollectionRef = collection(
-          db,
-          "admins",
-          currentUser.email,
-          "salary"
-        );
-        const salarySnapshot = await getDocs(salaryCollectionRef);
-        const fetchedSalaries = salarySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setSalaries(fetchedSalaries);
-  
-        // Fetch attendance data
+ 
         const attendanceCollectionRef = collection(
           db,
           "admins",
@@ -110,9 +107,7 @@ const SalaryApp = (  updateSalaryStatus) => {
           ...doc.data(),
         }));
         setAttendances(fetchedAttendances);
-  
-        // Calculate attendance data
-        calculateAttendanceData(fetchedSalaries, fetchedAttendances);
+        calculateAttendanceCounts ( fetchedAttendances);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -121,295 +116,87 @@ const SalaryApp = (  updateSalaryStatus) => {
     fetchUserAndEmployees();
   }, []);
   
-  // Calculate total attendance stats
-  const calculateAttendanceData = (salaries, attendances) => {
-    const present = attendances.filter((att) => att.status === "Present").length;
-    const absent = attendances.filter((att) => att.status === "Absent").length;
-    const onLeave = attendances.filter((att) => att.status === "On Leave").length;
 
-    setTotalPresent(present);
-    setTotalAbsent(absent);
-    setTotalOnLeave(onLeave);
-
-    const attendancePercentage = totalEmployees
-      ? ((present / totalEmployees) * 100).toFixed(2)
-      : 0;
-    setOverallAttendancePercentage(attendancePercentage);
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewSalary((prev) => {
-      const updatedSalary = { ...prev, [name]: value };
-      if (name === "basicSalary" || name === "bonuses" || name === "deductions") {
-        // Calculate net salary automatically
-        updatedSalary.netSalary = (
-          parseFloat(updatedSalary.basicSalary || 0) +
-          parseFloat(updatedSalary.bonuses || 0) - 
-          parseFloat(updatedSalary.deductions || 0)
-        ).toFixed(2);
-      }
-      return updatedSalary;
-    });
-  };
-
-  const handleEmployeeChange = (e) => {
-    const selectedEmployeeId = e.target.value;
-    setNewSalary((prev) => ({ ...prev, employeeId: selectedEmployeeId }));
-    // Fetch role and attendance counts when an employee is selected
-    const employee = employees.find((emp) => emp.id === selectedEmployeeId);
-    if (employee) {
-      setRole(employee.role);
-      calculateAttendanceCounts(selectedEmployeeId);
-    }
-  };
-
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-  
-    // Validation: Ensure required fields are provided
-    if (!newSalary.employeeId || !newSalary.date || !newSalary.basicSalary) {
-      Swal.fire({
-        title: "Error!",
-        text: "Please fill in all required fields (Employee, Date, Basic Salary).",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
-      return;
-    }
-  
-    if (!user) {
-      Swal.fire({
-        title: "Error!",
-        text: "Please log in to add or update salary details.",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
-      return;
-    }
-  
-    try {
-      const salaryData = {
-        ...newSalary,
-        employeeId: newSalary.employeeId,
-      };
-  
-      // Reference to the salary collection for the logged-in admin
-      const salaryCollectionRef = collection(
-        db,
-        "admins",
-        user.email,
-        "salary"
-      );
-  
-      if (newSalary.id) {
-        // Update existing salary record
-        const salaryDocRef = doc(salaryCollectionRef, newSalary.id);
-        setDoc(employeeDocRef, {
-          ...attendanceCounts,
-          status: status,
-          selectedDate: selectedDate,
-          salary: viewEmployee.salary, // Add the salary or any other employee-specific details here
-          totalWorkingDays: attendanceCounts.totalWorkingDays,
-        });
-        // Update the state
-        setSalaries((prev) =>
-          prev.map((sal) =>
-            sal.id === newSalary.id ? { ...sal, ...salaryData } : sal
-          )
-        );
-  
-        Swal.fire({
-          title: "Updated!",
-          text: "Salary updated successfully!",
-          icon: "success",
-          showConfirmButton: false,
-          timer: 2000,
-        });
-      } else {
-        // Add new salary record
-        const newDocRef = await addDoc(salaryCollectionRef, salaryData);
-  
-        // Update the state
-        setSalaries((prev) => [
-          ...prev,
-          { id: newDocRef.id, ...salaryData },
-        ]);
-  
-        Swal.fire({
-          title: "Added!",
-          text: "Salary added successfully!",
-          icon: "success",
-          showConfirmButton: false,
-          timer: 2000,
-        });
-      }
-  
-      // Reset the form and close modal
-      setIsModalOpen(false);
-      setNewSalary({
-        employeeId: "",
-        date: "", // Clear the date
-        basicSalary: "",
-        bonuses: "",
-        deductions: "",
-        netSalary: "",
-        status: "Paid",
-      });
-      setIsEditMode(false);
-    } catch (error) {
-      console.error("Error adding/updating salary:", error);
-      Swal.fire({
-        title: "Error!",
-        text: "Failed to add/update salary. Please try again.",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
-    }
-  };
   const [salaryDate, setSalaryDate] = useState("");
   const handleStatusToggle = () => {
-    setStatus((prevStatus) => !prevStatus); // Toggle between true (Paid) and false (Pending)
+    setStatus((prevStatus) => !prevStatus); 
   };
-    const handleDateChange = async (event) => {
-      const selectedDate = event.target.value;
-      setSelectedDate(selectedDate);
-    
-      if (!selectedDate || !viewEmployee) {
-        console.log("Selected date or employee not available.");
-        return;
-      }
-    
-      console.log("Selected Date: ", selectedDate);
-      console.log("Viewing Employee: ", viewEmployee);
-    
-      // Extract year and month from the selected date (for monthly attendance)
-      const [year, month] = selectedDate.split("-");
-      console.log("Year: ", year, "Month: ", month);
-    
-      try {
-        if (isMonthly) {
-          // Calculate start and end dates of the month
-          const start = new Date(year, month - 1, 1); // First day of the month
-          const end = new Date(year, month, 0); // Last day of the month
-    
-          console.log(`Fetching attendance for the month from ${start.toISOString()} to ${end.toISOString()}`);
-    
-          let presentCount = 0;
-          let absentCount = 0;
-          const attendanceDetails = [];
-    
-          // Loop through each day in the month
-          for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
-            const formattedDate = date.toISOString().split("T")[0]; // Format as YYYY-MM-DD
-    
-            try {
-              const docRef = doc(db, "admins", user.email, "attendance", formattedDate);
-              const docSnap = await getDoc(docRef);
-    
-              if (docSnap.exists()) {
-                const attendanceData = docSnap.data();
-                console.log(`Fetched Attendance for ${formattedDate}:`, attendanceData);
-    
-                // Check if the employee's record exists
-                const employeeData = Object.values(attendanceData).find(
-                  (record) => record.name === viewEmployee.name
-                );
-    
-                if (employeeData) {
-                  attendanceDetails.push({ date: formattedDate, ...employeeData });
-                  if (employeeData.status === "Present") presentCount++;
-                  if (employeeData.status === "Absent") absentCount++;
-                }
-              }
-            } catch (error) {
-              console.error(`Error fetching attendance for ${formattedDate}:`, error);
-            }
-          }
-    
-          const totalWorkingDays = presentCount + absentCount;
-          console.log(
-            `Present Count: ${presentCount}, Absent Count: ${absentCount}, Total Working Days: ${totalWorkingDays}`
-          );
-    
-          // Update attendance counts and salary calculation
-          setAttendanceCounts({
-            presentCount,
-            absentCount,
-            totalWorkingDays,
-            salary: totalWorkingDays > 0 ? (presentCount * viewEmployee.salary) / totalWorkingDays : 0,
-            attendanceDetails, // Include attendance details for UI or debugging
-          });
-        } else {
-          console.log("Fetching attendance for the specific date:", selectedDate);
-    
-          const attendanceRef = doc(db, "admins", user.email, "attendance", selectedDate);
-          const attendanceSnapshot = await getDoc(attendanceRef);
-    
-          if (attendanceSnapshot.exists()) {
-            const attendanceData = attendanceSnapshot.data();
-            console.log("Attendance Data for Selected Date: ", attendanceData);
-    
-            const employeeAttendance = Object.values(attendanceData).find(
+  const handleDateChange = async (event) => {
+    const selectedDate = event.target.value;
+    setSelectedDate(selectedDate);
+  
+    if (!selectedDate || !viewEmployee) {
+      console.log("Selected date or employee not available.");
+      return;
+    }
+  
+    console.log("Selected Date: ", selectedDate);
+    console.log("Viewing Employee: ", viewEmployee);
+  
+    // Extract year and month from the selected date
+    const [year, month] = selectedDate.split("-");
+    console.log("Year: ", year, "Month: ", month);
+  
+    try {
+      const start = new Date(year, month - 1, 1);
+      const end = new Date(year, month, 0);
+  
+      console.log(`Fetching attendance for the month from ${start.toISOString()} to ${end.toISOString()}`);
+  
+      let presentCount = 0;
+      let absentCount = 0;
+      const attendanceDetails = [];
+  
+      // Generate an array of promises for each day in the month
+      const promises = [];
+      for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+        const formattedDate = date.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+        const docRef = doc(db, "admins", user.email, "attendance", formattedDate);
+        const promise = getDoc(docRef).then((docSnap) => {
+          if (docSnap.exists()) {
+            const attendanceData = docSnap.data();
+            console.log(`Fetched Attendance for ${formattedDate}:`, attendanceData);
+  
+            const employeeData = Object.values(attendanceData).find(
               (record) => record.name === viewEmployee.name
             );
-    
-            if (employeeAttendance) {
-              const presentCount = employeeAttendance.status === "Present" ? 1 : 0;
-              const absentCount = employeeAttendance.status === "Absent" ? 1 : 0;
-    
-              console.log(`Present Count: ${presentCount}, Absent Count: ${absentCount}`);
-    
-              setAttendanceCounts({
-                presentCount,
-                absentCount,
-                totalWorkingDays: 1, // Only 1 day for a specific selected date
-                salary: absentCount === 0 ? viewEmployee.salary : 0,
-                attendanceDetails: [{ date: selectedDate, ...employeeAttendance }], // Debugging info
-              });
-            } else {
-              console.log(`No attendance data found for ${viewEmployee.name} on ${selectedDate}.`);
-              Swal.fire({
-                icon: "info",
-                title: "No Data",
-                text: `No attendance data found for ${viewEmployee.name} on ${selectedDate}.`,
-              });
-              setAttendanceCounts({
-                presentCount: 0,
-                absentCount: 0,
-                totalWorkingDays: 0,
-                salary: 0,
-              });
+  
+            if (employeeData) {
+              attendanceDetails.push({ date: formattedDate, ...employeeData });
+              if (employeeData.status === "Present") presentCount++;
+              if (employeeData.status === "Absent") absentCount++;
             }
-          } else {
-            console.log(`No attendance records found for ${selectedDate}.`);
-            Swal.fire({
-              icon: "error",
-              title: "No Attendance",
-              text: `No attendance records found for ${selectedDate}.`,
-            });
-            setAttendanceCounts({
-              presentCount: 0,
-              absentCount: 0,
-              totalWorkingDays: 0,
-              salary: 0,
-            });
           }
-        }
-      } catch (error) {
-        console.error("Error fetching attendance: ", error);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Failed to fetch attendance data. Please try again.",
+        }).catch((error) => {
+          console.error(`Error fetching attendance for ${formattedDate}:`, error);
         });
+  
+        promises.push(promise);
       }
-    };
-    
-    const handleCheckboxChange = () => {
-      console.log("Toggling monthly view. Current state:", isMonthly);
-      setIsMonthly(!isMonthly); // Toggle the monthly view
-    };
+  
+      // Wait for all promises to complete
+      await Promise.all(promises);
+  
+      const totalWorkingDays = presentCount + absentCount;
+      console.log(`Present Count: ${presentCount}, Absent Count: ${absentCount}, Total Working Days: ${totalWorkingDays}`);
+  
+      setAttendanceCounts({
+        presentCount,
+        absentCount,
+        totalWorkingDays,
+        salary: totalWorkingDays > 0 ? (presentCount * viewEmployee.salary) / totalWorkingDays : 0,
+        attendanceDetails,
+      });
+    } catch (error) {
+      console.error("Error fetching attendance: ", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to fetch attendance data. Please try again.",
+      });
+    }
+  };
+  
     const [activeTab, setActiveTab] = useState("salary"); // Default tab
 
   const handleTabChange = (tab) => {
@@ -417,26 +204,16 @@ const SalaryApp = (  updateSalaryStatus) => {
   };
   
 
-let downloadCount = 0; // This will track the download count for receipt number
+let downloadCount = 0; 
+
 
 const generateSalaryReceipt = (employee) => {
   const doc = new jsPDF();
-
-  // Get current date and time for receipt and download date
   const currentDate = new Date();
-  const formattedDate = currentDate.toLocaleString(); // Format as per locale (e.g., "01/16/2025, 3:15:00 PM")
+  const formattedDate = currentDate.toLocaleString(); 
 
-  // Increment the download count for the receipt number
   downloadCount++;
 
-  // Header with Address, Contact, and Email
-  doc.setFontSize(12);
-  // doc.setFont("helvetica", "normal");
-  // doc.text("Address: 1234 Street, City, Country", 10, 15);
-  // doc.text("Contact No: 123-456-7890", 10, 20);
-  // doc.text("Email: info@company.com", 10, 25);
-
-  // Receipt Title
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.text("Salary Receipt", 105, 40, null, null, "center");
@@ -444,8 +221,8 @@ const generateSalaryReceipt = (employee) => {
   // Receipt Date and Receipt Number
   doc.setFontSize(12);
   doc.setFont("helvetica", "normal");
-  doc.text(`Receipt Date: ${formattedDate}`, 10, 50); // Current date and time
-  doc.text(`Receipt Number: ${downloadCount}`, 10, 60); // Use the download count as the receipt number
+  doc.text(`Receipt Date: ${formattedDate}`, 10, 50);
+ // doc.text(`Receipt Number: ${downloadCount}`, 10, 60); // Automatically increment the receipt number
   doc.text(`Employee ID: ${employee.id}`, 10, 70);
 
   // Employee Details
@@ -459,32 +236,43 @@ const generateSalaryReceipt = (employee) => {
   doc.text("Attendance Summary", 10, 110);
   doc.line(10, 112, 200, 112); // Underline
 
+  // Table Header
   const tableStartY = 120;
-  doc.text("Present Days", 15, tableStartY);
-  doc.text("Absent Days", 75, tableStartY);
-  doc.text("Total Working Days", 135, tableStartY);
-  doc.text("Day Salary", 175, tableStartY);
+  const colWidth = [50, 40, 40, 60, 50, 50]; // Column widths (including Bonus and Deductions)
+  doc.text("Salary Date", 10, tableStartY);
+  doc.text("Present Days", 60, tableStartY);
+  doc.text("Absent Days", 110, tableStartY);
+  doc.text("Day Salary", 160, tableStartY);
+  doc.text("Bonus", 210, tableStartY);
+  doc.text("Deductions", 260, tableStartY);
+
+  // Horizontal line after header
+  doc.line(10, tableStartY + 2, 300, tableStartY + 2); // Extend line to cover extra columns
 
   // Table Data
   doc.setFont("helvetica", "normal");
   const tableDataY = tableStartY + 10;
-  doc.text(`${employee.presentCount}`, 15, tableDataY);
-  doc.text(`${employee.absentCount}`, 75, tableDataY);
-  doc.text(`${employee.totalWorkingDays}`, 135, tableDataY);
-  doc.text(`${employee.salary}`, 175, tableDataY);
 
-  // Amount Received Section (Displaying 1 for Yes, 0 for No)
+  // Add data to table
+  doc.text(`${employee.date}`, 10, tableDataY);
+  doc.text(`${employee.presentCount}`, 60, tableDataY);
+  doc.text(`${employee.absentCount}`, 110, tableDataY);
+  doc.text(`${employee.Netsalary}`, 160, tableDataY);
+  doc.text(`${employee.Bonus}`, 210, tableDataY);
+  doc.text(`${employee.Deduction}`, 260, tableDataY);
+
+  // Horizontal line after table row
+  doc.line(10, tableDataY + 2, 300, tableDataY + 2);
+
+  // Adjust positioning for additional rows (if more rows, use a loop for Y positioning)
+
+  // Amount Received Section
   const amountDetailsY = tableDataY + 20;
   doc.setFont("helvetica", "bold");
   doc.text("Amount Received:", 10, amountDetailsY);
 
   doc.setFont("helvetica", "normal");
-  const amountReceivedX = 50;
-  const amountReceivedY = amountDetailsY - 5;
-  doc.rect(amountReceivedX, amountReceivedY, 5, 5); // Create a checkbox-like box
-  doc.text(employee.amountReceived ? "1" : "0", amountReceivedX + 7, amountReceivedY + 4); // Display 1 for Yes, 0 for No
-
-  doc.text(`Salary Date: ${employee.salaryDate || "Not Paid"}`, 10, amountDetailsY + 10);
+ 
 
   // Authorized Signature Section
   const signatureY = amountDetailsY + 30;
@@ -502,82 +290,14 @@ const generateSalaryReceipt = (employee) => {
 
   // Save PDF with current date as the download date
   doc.save(`${employee.name}_Salary_Receipt_${downloadCount}.pdf`);
-};  
+};
+
   const handleDateChangee = (e) => {
     setSalaryDate(e.target.value);
   };
-  const handleEdit = (salaryId) => {
-    const salary = salaries.find((sal) => sal.id === salaryId);
-    setNewSalary(salary);
-    setIsEditMode(true); // Set to edit mode
-    setIsModalOpen(true); // Open modal for editing
-    // Fetch employee role and calculate attendance counts when editing
-    const employee = employees.find((emp) => emp.id === salary.employeeId);
-    if (employee) {
-      setRole(employee.role);
-      calculateAttendanceCounts(employee.id);
-    }
-  };
   
-  const handleDelete = async (salaryId) => {
-    if (!user) {
-      Swal.fire({
-        icon: "error",
-        title: "Oops...",
-        text: "Please log in to delete salary records.",
-      });
-      return;
-    }
   
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: "You won't be able to revert this!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, delete it!",
-      cancelButtonText: "Cancel",
-    });
-  
-    if (result.isConfirmed) {
-      try {
-        // Correct Firestore path for salary document
-        const salaryDocRef = doc(
-          db,
-          "admins",
-          user.email,
-          "salary",
-          salaryId
-        );
-  
-        // Delete the document from Firestore
-        await deleteDoc(salaryDocRef);
-  
-        // Update the local state
-        setSalaries((prev) => prev.filter((sal) => sal.id !== salaryId));
-  
-        // Show success notification
-        Swal.fire({
-          title: "Deleted!",
-          text: "The salary record has been deleted.",
-          icon: "success",
-          showConfirmButton: false,
-          timer: 2000,
-        });
-      } catch (error) {
-        console.error("Error deleting salary:", error);
-  
-        // Show error notification
-        Swal.fire({
-          icon: "error",
-          title: "Failed!",
-          text: "Failed to delete salary. Please try again.",
-        });
-      }
-    }
-  };
-
+ 
   const handleSaveToFirestore = async () => {
     try {
       if (!user || !user.email) {
@@ -592,23 +312,14 @@ const generateSalaryReceipt = (employee) => {
         role: viewEmployee.role,
         presentCount: attendanceCounts.presentCount || 0,
         absentCount: attendanceCounts.absentCount || 0,
-        totalWorkingDays: attendanceCounts.totalWorkingDays || 0,
-        salary:
-          viewEmployee.salaryInterval === "monthly"
-            ? (attendanceCounts.presentCount * viewEmployee.salary) /
-              attendanceCounts.totalWorkingDays
-            : attendanceCounts.presentCount * viewEmployee.salary,
         status: status,
-        date: selectedDate, // The selected date (e.g., salary calculation date)
-        salaryDate: salaryDate, // The specific salary date
-        isMonthly: isMonthly,
+        date: selectedDate, 
+        Netsalary:netSalary,
+        Bonus:bonus,
+        Deduction:deductions,
       };
-  
-      // Create a unique Firestore document path by combining employee ID and salary date
       const docPath = `${viewEmployee.id}_${salaryDate}`;
       const docRef = doc(db, "admins", user.email, "Salaryemp", docPath);
-  
-      // Save the data
       await setDoc(docRef, employeeData);
   
       alert("Employee salary details saved successfully!");
@@ -636,8 +347,6 @@ const generateSalaryReceipt = (employee) => {
         user.email,
         "Salaryemp"
       );
-
-      // Fetch all documents in the collection
       const querySnapshot = await getDocs(salaryCollectionRef);
       const fetchedData = querySnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -654,7 +363,7 @@ const generateSalaryReceipt = (employee) => {
   };
 
   const [selectedSalaryDate, setSelectedSalaryDate] = useState(new Date());
-  const [viewEmployee, setViewEmployee] = useState(null);
+
   const [attendanceCounts, setAttendanceCounts] = useState({
     absentCount: 0,
     presentCount: 0,
@@ -674,9 +383,6 @@ const generateSalaryReceipt = (employee) => {
     setPresentCount(presentCount);
     setAbsentCount(absentCount);
   };
-  
-  
-  // Combine Employee and Salary Data
   const employeeSalaryData = salaries.map((salary) => {
     const employee = employees.find((emp) => emp.id === salary.employeeId);
     const employeeAttendance = attendances.filter(
@@ -689,17 +395,21 @@ const generateSalaryReceipt = (employee) => {
     return {
       ...salary,
       employeeName: employee ? employee.name : "Unknown",
-      employeeRole: employee ? employee.role : "N/A", // Assuming role is stored in employee data
+      employeeRole: employee ? employee.role : "N/A", 
       presentCount,
       absentCount,
     };
   });
  
   const handleCloseModal = () => {
-    setViewEmployee(null); // Close the modal
-    setAttendanceCounts({ presentCount: 0, absentCount: 0, totalWorkingDays: 0 }); // Reset attendance counts
-    setSelectedDate(""); // Reset selected date
+    setViewEmployee(null); 
+    setAttendanceCounts({ presentCount: 0, absentCount: 0, totalWorkingDays: 0 }); 
+    setSelectedDate(""); 
+    setBonus(""); 
+    setDeductions(""); 
+    setNetSalary(0); 
   };
+  
   const [paidCount, setPaidCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -737,112 +447,41 @@ const generateSalaryReceipt = (employee) => {
   return (
     <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Info Box Section */}
-      <div className="flex space-x-6 mb-6">
-        <div className="bg-gradient-to-r from-blue-700 to-blue-700 p-6 rounded-lg shadow-lg text-center text-white w-80">
-          <h3 className="text-xl font-semibold">Total Employees</h3>
-          <p className="text-4xl font-bold">{totalEmployees}</p>
-        </div>
+      <div className="flex justify-between gap-6 mb-6">
+  {/* Total Employees Card */}
+  <div className="bg-gradient-to-r from-blue-700 to-blue-700 p-6 rounded-lg shadow-lg text-center text-white flex-1">
+    <h3 className="text-xl font-semibold">Total Employees</h3>
+    <p className="text-4xl font-bold">{totalEmployees}</p>
+  </div>
 
-        <div className="bg-gradient-to-r from-purple-900 to-purple-900 p-6 rounded-lg shadow-lg text-center text-white w-80">
-        <h3 className="text-xl font-semibold">Paid Salary</h3>
-        <p className="text-4xl font-bold">{paidCount}</p>
-      </div>
+  {/* Paid Salary Card */}
+  <div className="bg-gradient-to-r from-purple-900 to-purple-900 p-6 rounded-lg shadow-lg text-center text-white flex-1">
+    <h3 className="text-xl font-semibold">Paid Salary</h3>
+    <p className="text-4xl font-bold">{paidCount}</p>
+  </div>
 
-      {/* Pending Salary Card */}
-      <div className="bg-gradient-to-r from-orange-900 to-orange-900 p-6 rounded-lg shadow-lg text-center text-white w-80">
-        <h3 className="text-xl font-semibold">Pending Salary</h3>
-        <p className="text-4xl font-bold">{pendingCount}</p>
-      </div>
+  {/* Pending Salary Card */}
+  <div className="bg-gradient-to-r from-orange-900 to-orange-900 p-6 rounded-lg shadow-lg text-center text-white flex-1">
+    <h3 className="text-xl font-semibold">Pending Salary</h3>
+    <p className="text-4xl font-bold">{pendingCount}</p>
+  </div>
+</div>
 
-        <div className="bg-gradient-to-r from-green-900 to-green-900 p-6 rounded-lg shadow-lg text-center text-white w-80">
-          <h3 className="text-xl font-semibold">Overall Attendance (%)</h3>
-          <p className="text-4xl font-bold">{overallAttendancePercentage}%</p>
-        </div>
-      </div>
-
-      {/* Filter Section
-      <div className="bg-blue-900 p-4 rounded-md shadow-md mb-6">
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">Filters</h3>
-        <div className="grid grid-cols-4 gap-6">
-          <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-100 mb-2">
-              Filter by Employee
-            </label>
-            <input
-              type="text"
-              value={employeeFilter}
-              onChange={(e) => setEmployeeFilter(e.target.value)}
-              placeholder="Search Employee..."
-              className="w-full py-3 pl-4 pr-4 border-2 border-blue-300 rounded-lg shadow-lg text-gray-700"
-            />
-          </div>
-
-          <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-100 mb-2">
-              Filter by Status
-            </label>
-            <select
-              className="w-full py-3 pl-4 pr-4 border-2 border-blue-300 rounded-lg shadow-lg text-gray-700"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="">All Status</option>
-              <option value="Paid">Paid</option>
-              <option value="Pending">Pending</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-100 mb-2">
-              Filter by Date
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={dateFilterStart}
-                onChange={(e) => setDateFilterStart(e.target.value)}
-                className="w-full py-3 pl-4 pr-4 border-2 border-blue-300 rounded-lg shadow-lg text-gray-700"
-              />
-              <input
-                type="date"
-                value={dateFilterEnd}
-                onChange={(e) => setDateFilterEnd(e.target.value)}
-                className="w-full py-3 pl-4 pr-4 border-2 border-blue-300 rounded-lg shadow-lg text-gray-700"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col justify-center items-center">
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 w-half sm:w-auto"
-            >
-              Reset Filters
-            </button>
-          </div>
-        </div>
-      </div>
-
-      // {/* Add New Salary Button */}
-      {/* // <div className="mb-6">
-      //   <button */}
-      {/* //     onClick={() => setIsModalOpen(true)}
-      //     className="bg-gradient-to-r from-blue-900 to-blue-900 text-white px-6 py-3 rounded-lg shadow-md hover:from-blue-900 to-blue-900"
-      //   >
-      //     Add New Salary
-      //   </button>
-      // </div> */} 
 
       <div className="overflow-x-auto shadow-xl rounded-xl border border-gray-200 mt-6 p-4">
-      <h2 className="text-xxl font-semibold mb-4">Payroll Management System</h2>
+    
+  <div className="flex items-center mb-4">
+    <BriefcaseIcon className="h-6 w-6 text-indigo-600 mr-2" />
+    <h2 className="text-2xl font-semibold">Payroll Management System</h2>
+  </div>
+
       <div>
-      <div className="flex mb-4">
+      <div className="flex  mt-10 mb-6">
         <button
           className={`px-6 py-2 font-semibold text-lg rounded-lg ${
             activeTab === "salary"
               ? "bg-blue-600 text-white"
-              : "bg-gray-200 hover:text-blue-600"
+              : "bg-gray-200 hover:text-blue-600 "
           }`}
           onClick={() => handleTabChange("salary")}
         >
@@ -865,13 +504,15 @@ const generateSalaryReceipt = (employee) => {
       </div>
       {activeTab === "report" && (
         <div>
-          {/* <button
-            className="px-6 py-2 font-semibold text-lg hover:text-blue-600 bg-gray-200 rounded-lg"
-            onClick={fetchSalaryReport}
-          >
-            Fetch Salary Report
-          </button> */}
-      {loading && <p className="mt-4">Loading salary report...</p>}
+   {loading && (
+  <div className="flex flex-col items-center justify-center space-y-4">
+    <div className="relative w-16 h-16">
+      <div className="absolute w-16 h-16 border-4 border-gray-300 border-t-4 border-t-blue-500 rounded-full animate-spin"></div>
+      <div className="absolute w-16 h-16 border-4 border-gray-300 border-b-4 border-b-blue-500 rounded-full animate-spin-reverse"></div>
+    </div>
+    <p className="text-lg text-gray-700">Loading salary report...</p>
+  </div>
+)}
 
       {!loading && salaryData.length > 0 && (
             <table className="min-w-full bg-white border-collapse border border-gray-200 mt-4">
@@ -882,13 +523,13 @@ const generateSalaryReceipt = (employee) => {
                   <th className="px-4 py-2 border border-gray-300">Role</th>
                   <th className="px-4 py-2 border border-gray-300">Present Count</th>
                   <th className="px-4 py-2 border border-gray-300">Absent Count</th>
-                  <th className="px-4 py-2 border border-gray-300">
-                    Total Working Days
-                  </th>
-                  <th className="px-4 py-2 border border-gray-300">Salary</th>
-                  <th className="px-4 py-2 border border-gray-300">Clickable Date</th>
-                  <th className="px-4 py-2 border border-gray-300">Status</th>
                   <th className="px-4 py-2 border border-gray-300">Salary Date</th>
+                  <th className="px-4 py-2 border border-gray-300">
+                   Net Salary
+                  </th>
+             
+                  <th className="px-4 py-2 border border-gray-300">Status</th>
+          
                   <th className="px-4 py-2 border border-gray-300">Salary Recepit</th>
                 </tr>
               </thead>
@@ -911,20 +552,16 @@ const generateSalaryReceipt = (employee) => {
                       {employee.absentCount}
                     </td>
                     <td className="px-4 py-2 border border-gray-300">
-                      {employee.totalWorkingDays}
-                    </td>
-                    <td className="px-4 py-2 border border-gray-300">
-                      {employee.salary}
-                    </td>
-                    <td className="px-4 py-2 border border-gray-300">
                       {employee.date}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-300">
+                      {employee.Netsalary}
+                    
                     </td>
                     <td className="px-4 py-2 border border-gray-300">
                       {employee.status ? "Paid" : "Pending"}
                     </td>
-                    <td className="px-4 py-2 border border-gray-300">
-                      {employee.salaryDate}
-                    </td>
+                   
                     <td className="px-4 py-2 border border-gray-300">
   <button
     onClick={() => generateSalaryReceipt(employee)}
@@ -952,9 +589,9 @@ const generateSalaryReceipt = (employee) => {
         <thead className="bg-gradient-to-r from-blue-900 to-blue-600 text-white">
           <tr>
             <th className="px-6 py-3 text-left">Employee Name</th>
+            <th className="px-6 py-3 text-left">Contact</th>
             <th className="px-4 py-3 text-left">Role</th>
-            <th className="px-4 py-3 text-left">Salary Date</th>
-            <th className="px-4 py-3 text-left">Net Salary</th>
+            <th className="px-4 py-3 text-left">Basic salary</th>
          
             <th className="px-3 py-3 text-left">Actions</th>
           </tr>
@@ -970,18 +607,9 @@ const generateSalaryReceipt = (employee) => {
             employees.map((employee) => (
               <tr key={employee.id} className="border-b hover:bg-gray-100">
                 <td className="px-6 py-2">{employee.name}</td>
+                <td className="px-4 py-2">{employee.contact}</td>
                 <td className="px-4 py-2">{employee.role}</td>
-                <td className="px-4 py-2">
-                <input
-                  type="date"
-                  className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={salaryDate}
-                  onChange={handleDateChangee}
-                />
-                </td>
-                <td className="px-4 py-2">
-                ₹{employee.salary} ({employee.salaryInterval})
-</td>
+                <td className="px-4 py-2">₹{employee.salary}</td>
 
 
 <td className="px-3 py-2">
@@ -989,7 +617,7 @@ const generateSalaryReceipt = (employee) => {
     onClick={() => setViewEmployee(employee)}
     className="text-blue-500 hover:text-blue-700 p-3 rounded-full transition duration-200 transform hover:scale-105 focus:outline-none"
   >
-    <EyeIcon className="w-6 h-6" /> {/* The icon size */}
+    <EyeIcon className="w-6 h-6" /> 
   </button>
 </td>
               </tr>
@@ -1001,89 +629,115 @@ const generateSalaryReceipt = (employee) => {
 
       {viewEmployee && (
   <div className="fixed inset-0 bg-gray-900 bg-opacity-70 flex justify-center items-center">
-    <div className="bg-gradient-to-r from-white-600 to-gray-400 rounded-lg p-8 shadow-2xl max-w-lg w-full text-white transition-all duration-300 transform hover:scale-105">
+    <div className="bg-gradient-to-r from-white-600 to-gray-400 rounded-lg p-8 mt-10 shadow-2xl max-w-3xl w-full text-white transition-all duration-300 transform hover:scale-105">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-3xl font-extrabold text-black">{viewEmployee.name}'s Details</h3>
+      <h3 className="text-2xl font-extrabold text-black">{viewEmployee.name}'s Details</h3>
         <button
           onClick={handleCloseModal}
-          className="text-2xl font-bold text-black hover:text-red-500 transition-colors duration-300"
+          className="text-2xl font-bold text-black hover:text-red-500 transition-colors duration-300 m"
         >
           &times;
         </button>
       </div>
-
-      {/* Date Selection */}
       <div className="mb-6">
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={handleDateChange}
-          className="w-full py-2 px-4 rounded-lg bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
-        />
+      <input
+    type="date"
+    value={selectedDate}
+    onChange={handleDateChange}
+    className="w-1/2 py-2 px-4 rounded-lg bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+  />
       </div>
-
-      {/* Monthly Attendance Checkbox */}
-      <div className="flex items-center mb-6">
-        <input
-          type="checkbox"
-          checked={isMonthly}
-          onChange={handleCheckboxChange}
-          className="mr-2 accent-indigo-500"
-        />
-        <label className="text-lg font-medium text-black">Show Monthly Attendance</label>
-      </div>
-
-      {/* Employee Details */}
       <div className="space-y-4 mb-6 text-black">
-        <p><strong>Contact:</strong> {viewEmployee.contact}</p>
-        <p><strong>Role:</strong> {viewEmployee.role}</p>
+    
+      <div className="grid grid-cols-2 gap-6">
+  <div className="flex flex-col gap-4">
+    <p><strong>Name:</strong> {viewEmployee.name}</p>
+    <p><strong>Contact:</strong> {viewEmployee.contact}</p>
+  </div>
+  <div className="flex flex-col ml-10 gap-4">
+    <p><strong>DOB:</strong> {viewEmployee.dob}</p>
+    <p><strong>Role:</strong> {viewEmployee.role}</p>
+  </div>
+  </div>
+  <div className="grid grid-cols-2 gap-6">
+<div className="flex flex-col  gap-4">
         <p><strong>Present Count:</strong> {attendanceCounts.presentCount || 0}</p>
+        </div>
+        <div className="flex flex-col ml-10 gap-4">
         <p><strong>Absent Count:</strong> {attendanceCounts.absentCount || 0}</p>
       </div>
+      </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+      <div className="flex flex-col gap-2 text-black">
+        <label htmlFor="basicSalary" className="font-bold">Basic Salary:</label>
+        <p id="basicSalary" className="border p-2 rounded bg-gray-100 text-gray-700">
+          ₹ {basicSalary}
+        </p>
+      </div>
 
-      {/* Total Working Days Input */}
-<div className="mb-6 text-black">
-  <p><strong>Total Working Days</strong></p>
-  <input
-    type="number"
-    placeholder="Enter Total Working Days"
-    value={attendanceCounts.totalWorkingDays}
-    readOnly  // Makes the input field non-editable
-    className="w-full py-2 px-4 rounded-lg bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
-  />
-</div>
+      <div className="flex flex-col ml-10 gap-2 text-black">
+        <label htmlFor="bonus" className="font-bold">Bonus:</label>
+        <input
+          type="number"
+          id="bonus"
+          value={bonus}
+          onChange={(e) => setBonus(e.target.value)} 
+          className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          placeholder="Enter Bonus"
+        />
+      </div>
 
-     {/* Salary Calculation */}
-<div className="mb-6 text-black">
-  <p>
-    <strong>Salary:</strong> $
-    {attendanceCounts.totalWorkingDays > 0
-      ? ((parseFloat(viewEmployee.salary || 0) / attendanceCounts.totalWorkingDays) * (attendanceCounts.totalWorkingDays - (attendanceCounts.absentCount || 0))).toFixed(2)
-      : parseFloat(viewEmployee.salary || 0).toFixed(2)}
-    ({viewEmployee.salaryInterval || 'Monthly'})
+      <div className="flex flex-col gap-2 text-black">
+        <label htmlFor="deductions" className="font-bold">Deductions:</label>
+        <input
+          type="number"
+          id="deductions"
+          value={deductions}
+          onChange={(e) => setDeductions(e.target.value)} 
+          className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          placeholder="Enter Deductions"
+        />
+      </div>
+
+      <div className="flex flex-col ml-10 gap-2 text-black">
+        <label htmlFor="netSalary" className="font-bold">Net Salary:</label>
+        <p id="netSalary" className="border p-2 rounded bg-gray-200">
+          ₹ {netSalary}
+        </p>
+      </div>
+    </div>
+
+     
+     <div className="mt-6 text-black">
+  <p className="mb-2">
+    <strong>Status: </strong>
+    <span
+      className={status ? 'text-green-800 font-bold' : 'text-red-500 font-bold'}
+    >
+      {status ? 'Paid' : 'Pending'}
+    </span>
   </p>
-</div>
 
-
-      {/* Status Toggle (Paid/Unpaid) */}
-      <div className="flex justify-between items-center mb-6 text-black">
-    <p>
-      <strong>Status:</strong> {status ? 'Paid' : 'Pending'}
-    </p>
+  <div className="flex justify-between items-center">
     <button
       onClick={handleStatusToggle}
-      className={`py-2 px-4 rounded-lg text-white ${status ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} transition-colors duration-300`}
+      className={`py-2 px-4 rounded-lg text-white ${
+        status ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'
+      } transition-colors duration-300`}
     >
       {status ? 'Mark as Pending' : 'Mark as Paid'}
     </button>
+
+    <button
+      onClick={handleSaveToFirestore}
+      className="py-2 px-6 w-1/4 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors duration-300"
+    >
+      Save
+    </button>
   </div>
-      {/* Save Button */}
-      <button
-        onClick={handleSaveToFirestore}
-        className="w-full py-3 bg-indigo-600 text-black rounded-lg hover:bg-indigo-700 transition-colors duration-300"
-      >
-        Save
-      </button>
+</div>
+
     </div>
   </div>
 )}

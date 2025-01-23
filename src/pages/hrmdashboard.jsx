@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
-import { collection, onSnapshot, getDoc, doc, getDocs } from "firebase/firestore";
+import { collection, onSnapshot, getDoc, doc, getDocs, query, where } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { db, auth } from "../config/firebase"; // Import Firebase instance and auth
+import { getAuth } from 'firebase/auth'; 
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
@@ -144,6 +145,38 @@ const fetchEmployees = async () => {
   setFilteredEmployees(employeeList); // Assuming setFilteredEmployees is your state setter for employee data
 };
 
+
+
+const [paidCount, setPaidCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+  const user = getAuth().currentUser;
+  const userEmail = user ? user.email : null;  // Safely get the user email
+  // Fetch salary data for the logged-in user and calculate the counts
+  useEffect(() => {
+    if (!userEmail) return;  // If no user is logged in, don't fetch the data
+    const fetchSalaryData = async () => {
+      try {
+        // Reference to the "Salaryemp" sub-collection for the current user
+        const salaryCollectionRef = collection(db, "admins", userEmail, "Salaryemp");
+
+        // Query to get documents where status is true (Paid)
+        const paidQuery = query(salaryCollectionRef, where("status", "==", true));
+        const paidSnapshot = await getDocs(paidQuery);
+        setPaidCount(paidSnapshot.size); // Set the paid count based on the number of documents
+
+        // Query to get documents where status is false (Pending)
+        const pendingQuery = query(salaryCollectionRef, where("status", "==", false));
+        const pendingSnapshot = await getDocs(pendingQuery);
+        setPendingCount(pendingSnapshot.size); // Set the pending count based on the number of documents
+      } catch (error) {
+        console.error("Error fetching salary data:", error);
+      }
+    };
+
+    fetchSalaryData();
+  }, [userEmail]);  // Re-run when userEmail changes
+
+
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Header Title */}
@@ -181,8 +214,8 @@ const fetchEmployees = async () => {
         {/* Present Employees Info Box */}
         <li>
           <InfoBox
-            title="Present Employees"
-            value={presentEmployees}
+            title="Paid Salary"
+            value={paidCount}
             description="Employees Present Today"
             color="from-green-600 via-green-700 to-green-800"
           />
@@ -191,8 +224,8 @@ const fetchEmployees = async () => {
         {/* Absent Employees Info Box */}
         <li>
           <InfoBox
-            title="Absent Employees"
-            value={absentEmployees}
+            title="Pending Salary"
+            value={pendingCount}
             description="Employees Absent Today"
             color="from-red-600 via-red-700 to-red-800"
           />

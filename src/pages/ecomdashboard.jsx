@@ -35,32 +35,25 @@ const Dashboard = (userEmail) => {
 
   // Example Pie chart data for sales performance
   const salesData = {
-    labels: ["Electronics", "Fashion", "Home", "Toys", "Beauty"],
+    labels: ["Total Orders", "Categories in Stock", "Products in Stock"],
     datasets: [
       {
-        label: "Sales ($)",
+        label: "Sales",
         data: [5000, 3000, 4000, 2500, 2000],
         backgroundColor: [
           "rgba(54, 162, 235, 0.7)",
           "rgba(255, 99, 132, 0.7)",
           "rgba(255, 159, 64, 0.7)",
-          "rgba(75, 192, 192, 0.7)",
-          "rgba(153, 102, 255, 0.7)",
         ],
         borderColor: [
           "rgba(54, 162, 235, 1)",
           "rgba(255, 99, 132, 1)",
           "rgba(255, 159, 64, 1)",
-          "rgba(75, 192, 192, 1)",
-          "rgba(153, 102, 255, 1)",
         ],
         borderWidth: 1,
       },
     ],
   };
-
-  // Example recent orders data (can be fetched from a database)
-  const [orders, setOrders] = useState([]);
 
   // Example function to simulate fetching orders from a database
   useEffect(() => {
@@ -135,7 +128,7 @@ const [categoriesInStock, setCategoriesInStock] = useState(0); // State for the 
   fetchCategoriesCount(); // Call the function to fetch the categories count
 }, []);
 
-const [totalOrders, setTotalOrders] = useState(0); // Total orders state
+
 const [currentOrders, setCurrentOrders] = useState([]); // Current orders state
 const [buyNowOrders, setBuyNowOrders] = useState([]); // Buy now orders state
 
@@ -185,6 +178,67 @@ useEffect(() => {
   // const [userEmail, setUserEmail] = useState(""); // Assuming userEmail is available, otherwise fetch from auth
 
 
+  const [orders, setOrders] = useState([]);
+  const [totalOrders, setTotalOrders] = useState(0); // State for total orders
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const usersCollection = await getDocs(collection(db, "users"));
+        const ordersData = [];
+        let totalOrderCount = 0; // Variable to store the total count of orders
+
+        for (const user of usersCollection.docs) {
+          const userEmail = user.id;
+
+          // Fetch 'Cart order' subcollection
+          const cartSnapshot = await getDocs(
+            collection(db, "users", userEmail, "cart order")
+          );
+          cartSnapshot.forEach((doc) => {
+            ordersData.push({
+              id: doc.id,
+              userEmail,
+              orderType: "Cart",
+              ...doc.data(),
+            });
+            totalOrderCount++; // Increment the total count for each Cart order
+          });
+
+          // Fetch 'BuyNow order' subcollection
+          const buyNowSnapshot = await getDocs(
+            collection(db, "users", userEmail, "buynow order")
+          );
+          buyNowSnapshot.forEach((doc) => {
+            ordersData.push({
+              id: doc.id,
+              userEmail,
+              orderType: "BuyNow",
+              ...doc.data(),
+            });
+            totalOrderCount++; // Increment the total count for each BuyNow order
+          });
+        }
+
+        // Set the orders state and the total orders count
+        setOrders(ordersData.slice(-5)); // Get the last 5 orders
+        setTotalOrders(totalOrderCount); // Set the total count of orders
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Header Title */}
@@ -221,28 +275,14 @@ useEffect(() => {
       {/* Info Boxes for E-commerce Stats */}
       <ul className="box-info grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
          {/* Orders Info Box */}
-         <li>
+        <li>
           <InfoBox
             title="Total Orders"
-            value={totalOrders}
+            value={totalOrders} // Pass the totalOrders state to display the count
             description="Total Orders Processed"
             color="from-orange-600 via-orange-700 to-orange-800"
           />
         </li>
-
- {/* Additional debugging or display */}
- <section className="mt-8">
-        <h3 className="text-xl font-semibold">Debugging Info:</h3>
-        <p>
-          <strong>Total Orders:</strong> {totalOrders}
-        </p>
-        <p>
-          <strong>Buy Now Orders:</strong> {buyNowOrders.length}
-        </p>
-        <p>
-          <strong>Current Orders:</strong> {currentOrders.length}
-        </p>
-      </section>
 
 
          {/* Total Categories Info Box */}
@@ -267,40 +307,32 @@ useEffect(() => {
         
       </ul>
 
-      {/* Layout with Two Columns: Pie Chart and Orders Table */}
+      {/* Pie Chart and Orders Table */}
       <div className="grid grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
-        {/* Left Column: Recent Orders Table */}
+        {/* Recent Orders Table */}
         <div className="recent-orders-table bg-gradient-to-r from-blue-600 to-blue-700 p-8 rounded-2xl shadow-lg">
           <h3 className="text-xl font-semibold text-gray-100 mb-6">
             Recent Orders
           </h3>
-          <table className="min-w-full border-collapse border border-gray-300">
-        <thead className="bg-blue-900">
-          <tr>
-            <th className="px-6 py-4 text-left text-white">Order ID</th>
-            <th className="px-6 py-4 text-left text-white">Order Date</th>
-            <th className="px-6 py-4 text-left text-white">Final Total</th>
-            <th className="px-6 py-4 text-left text-white">Payment Method</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Array.isArray(buyNowOrders) && buyNowOrders.length > 0 ? (
-            buyNowOrders.map((order) => (
-              <tr key={order.id} className="border-t border-gray-300">
-                <td className="px-6 py-4">{order.id}</td>
-                <td className="px-6 py-4">{order.orderdate}</td>
-                <td className="px-6 py-4">{order.totalamount }</td>
-                <td className="px-6 py-4">{order.paymentmethod }</td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="4" className="text-center py-4">
-                No orders found.
-              </td>
-            </tr>
-          )}
-        </tbody>
+          <table className="min-w-full table-auto text-gray-100">
+          <thead className="bg-blue-900">
+  <tr>
+    <th className="px-6 py-4 text-left text-white">No</th>
+    <th className="px-6 py-4 text-left text-white">Order ID</th>
+    <th className="px-6 py-4 text-left text-white">User ID</th>
+    <th className="px-6 py-4 text-left text-white">Status</th>
+  </tr>
+</thead>
+<tbody>
+  {orders.map((order, index) => (
+    <tr key={order.id} >
+      <td className="px-6 py-4 text-left ">{index + 1}</td> {/* This will display 1, 2, 3, etc. */}
+      <td className="px-6 py-4 text-left">{order.id}</td>
+      <td className="px-6 py-4 text-left">{order.userEmail}</td>
+      <td className="px-6 py-4 text-left">{order.status || "Pending"}</td> {/* Adjust based on your data */}
+    </tr>
+  ))}
+</tbody>
       </table>
         </div>
 
@@ -316,9 +348,9 @@ useEffect(() => {
       </div>
 
       {/* Additional Controls for E-commerce Management */}
-      <div className="dashboard-controls grid grid-cols-4 md:grid-cols-2 lg:grid-cols-2 gap-12 mb-16">
+      {/* <div className="dashboard-controls grid grid-cols-4 md:grid-cols-2 lg:grid-cols-2 gap-12 mb-16"> */}
         {/* Inventory Management */}
-        <div className="control-card p-6 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 rounded-xl shadow-lg hover:shadow-xl transition">
+        {/* <div className="control-card p-6 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 rounded-xl shadow-lg hover:shadow-xl transition">
           <h3 className="text-xl font-semibold text-white">
             Inventory Management
           </h3>
@@ -331,10 +363,10 @@ useEffect(() => {
           >
             Manage Inventory
           </Link>
-        </div>
+        </div> */}
 
         {/* Order Management */}
-        <div className="control-card p-6 bg-gradient-to-r from-orange-600 via-orange-700 to-orange-800 rounded-xl shadow-lg hover:shadow-xl transition">
+        {/* <div className="control-card p-6 bg-gradient-to-r from-orange-600 via-orange-700 to-orange-800 rounded-xl shadow-lg hover:shadow-xl transition">
           <h3 className="text-xl font-semibold text-white">Order Management</h3>
           <p className="text-gray-100">
             Track and manage customer orders and returns.
@@ -345,10 +377,10 @@ useEffect(() => {
           >
             Manage Orders
           </Link>
-        </div>
+        </div> */}
 
         {/* Customer Management */}
-        <div className="control-card p-6 bg-gradient-to-r from-green-600 via-green-700 to-green-800 rounded-xl shadow-lg hover:shadow-xl transition">
+        {/* <div className="control-card p-6 bg-gradient-to-r from-green-600 via-green-700 to-green-800 rounded-xl shadow-lg hover:shadow-xl transition">
           <h3 className="text-xl font-semibold text-white">
             Customer Management
           </h3>
@@ -361,10 +393,10 @@ useEffect(() => {
           >
             Manage Customers
           </Link>
-        </div>
+        </div> */}
 
         {/* Discount and Coupon Management */}
-        <div className="control-card p-6 bg-gradient-to-r from-yellow-600 via-yellow-700 to-yellow-800 rounded-xl shadow-lg hover:shadow-xl transition">
+        {/* <div className="control-card p-6 bg-gradient-to-r from-yellow-600 via-yellow-700 to-yellow-800 rounded-xl shadow-lg hover:shadow-xl transition">
           <h3 className="text-xl font-semibold text-white">
             Discounts & Coupons
           </h3>
@@ -378,7 +410,7 @@ useEffect(() => {
             Manage Discounts
           </Link>
         </div>
-      </div>
+      </div> */}
 
       {/* WhatsApp Chat Button */}
       <div className="fixed bottom-6 right-6">

@@ -8,6 +8,7 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  where ,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import Swal from "sweetalert2";
@@ -106,7 +107,7 @@ const App = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false); // Track form submission state
 
-const handleFormSubmit = async (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
 
     if (!user) {
@@ -131,20 +132,30 @@ const handleFormSubmit = async (e) => {
         }
 
         const userDocRef = collection(db, "admins", user.email, "Empdetails");
-        const employeeData = {
-            ...newEmployee,
-            photo: photoURL,
-        };
 
-        if (newEmployee.id) {
-            // Update existing employee
-            const employeeDocRef = doc(userDocRef, newEmployee.id);
+        // Check if an employee with the same contact number already exists
+        const querySnapshot = await getDocs(
+            query(userDocRef, where("contact", "==", newEmployee.contact))
+        );
+
+        if (!querySnapshot.empty) {
+            // If an employee with the same contact exists, update the employee details
+            const existingEmployee = querySnapshot.docs[0]; // Get the first match
+            const employeeDocRef = doc(userDocRef, existingEmployee.id);
+
+            const employeeData = {
+                ...newEmployee,
+                photo: photoURL,
+            };
+
             await updateDoc(employeeDocRef, employeeData);
+
             setEmployees((prev) =>
                 prev.map((emp) =>
-                    emp.id === newEmployee.id ? { ...emp, ...employeeData } : emp
+                    emp.id === existingEmployee.id ? { ...emp, ...employeeData } : emp
                 )
             );
+
             Swal.fire({
                 title: "Updated!",
                 text: "Employee updated successfully!",
@@ -153,12 +164,18 @@ const handleFormSubmit = async (e) => {
                 timer: 2000,
             });
         } else {
-            // Add new employee
+            // If no employee with the same contact, add a new employee
+            const employeeData = {
+                ...newEmployee,
+                photo: photoURL,
+            };
+
             const newDocRef = await addDoc(userDocRef, employeeData);
             setEmployees((prev) => [
                 ...prev,
                 { id: newDocRef.id, ...employeeData },
             ]);
+
             Swal.fire({
                 title: "Added!",
                 text: "Employee added successfully!",
@@ -168,6 +185,7 @@ const handleFormSubmit = async (e) => {
             });
         }
 
+        // Reset form and modal
         setIsModalOpen(false);
         setNewEmployee({
             name: "",
