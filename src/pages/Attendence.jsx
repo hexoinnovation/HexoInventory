@@ -40,6 +40,7 @@ const AttendanceApp = (currentUser) => {
   const [latestDate, setLatestDate] = useState(new Date().toISOString().substr(0, 10)); // Default to today
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [latestAttendance, setLatestAttendance] = useState(null);
+  const [totalEmployeess, setTotalEmployees] = useState(0);
   //const [formattedEmployees, setformatted] = useState(null);
   //const formattedDate = new Date(employee.date).toISOString().split('T')[0];  // Formats to 'yyyy-mm-dd'
 
@@ -58,8 +59,13 @@ const AttendanceApp = (currentUser) => {
               id: doc.id,
               ...doc.data(),
             }));
-          }
-  
+          
+          setEmployees(fetchedEmployees);
+
+         
+          setTotalEmployees(fetchedEmployees.length);
+         
+        }
           const attendanceQuery = collection(db, "admins", currentUser.email, "attendance");
           const attendanceSnapshot = await getDocs(attendanceQuery);
           let latestAttendance = [];
@@ -120,27 +126,25 @@ const AttendanceApp = (currentUser) => {
     return parsedDate instanceof Date && !isNaN(parsedDate.getTime());
   };
   
-  const handleDateChange = (e, employeeId) => {
-    const newDate = e.target.value;
-    setEmployees((prevEmployees) =>
-      prevEmployees.map((emp) =>
-        emp.id === employeeId ? { ...emp, date: newDate } : emp
+  const handleDateChange = (e, id) => {
+    setAttendanceRecords((prevRecords) =>
+      prevRecords.map((record) =>
+        record.id === id ? { ...record, date: e.target.value } : record
+      )
+    );
+  };
+  const handleTimeChange = (id, field, value) => {
+    setAttendanceRecords((prevRecords) =>
+      prevRecords.map((record) =>
+        record.id === id ? { ...record, [field]: value } : record
       )
     );
   };
   
-  const handleTimeChange = (employeeId, timeType, newTime) => {
-    setEmployees((prevEmployees) =>
-      prevEmployees.map((employee) =>
-        employee.id === employeeId ? { ...employee, [timeType]: newTime } : employee
-      )
-    );
-  };
-  
-  const handleStatusChange = (employeeId, newStatus) => {
-    setEmployees((prevEmployees) =>
-      prevEmployees.map((employee) =>
-        employee.id === employeeId ? { ...employee, status: newStatus } : employee
+  const handleStatusChange = (id, value) => {
+    setAttendanceRecords((prevRecords) =>
+      prevRecords.map((record) =>
+        record.id === id ? { ...record, status: value } : record
       )
     );
   };
@@ -153,21 +157,7 @@ const AttendanceApp = (currentUser) => {
     );
   };
   
-  const handleTimeChangee = (employeeId, timeType, newTime) => {
-    setAttendanceRecords((prevRecords) =>
-      prevRecords.map((employee) =>
-        employee.id === employeeId ? { ...employee, [timeType]: newTime } : employee
-      )
-    );
-  };
-  
-  const handleStatusChangee = (employeeId, newStatus) => {
-    setAttendanceRecords((prevRecords) =>
-      prevRecords.map((employee) =>
-        employee.id === employeeId ? { ...employee, status: newStatus } : employee
-      )
-    );
-  };
+ 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewAttendance((prev) => ({ ...prev, [name]: value }));
@@ -343,17 +333,31 @@ const AttendanceApp = (currentUser) => {
   });
 
   const totalEmployees = employees.length;
-  const totalPresent = employees.filter((employee) => employee.status === "Present").length;
-  const totalAbsent = employees.filter((employee) => employee.status === "Absent").length;
-  const totalOnLeave = employees.filter((employee) => employee.status === "On Leave").length;
+  const totalPresent = attendanceRecords.filter(
+    (record) => record.status === "Present"
+  ).length;
+  
+  const totalAbsent = attendanceRecords.filter(
+    (record) => record.status === "Absent"
+  ).length;
+ 
   const overallAttendancePercentage = totalEmployees > 0 
     ? ((totalPresent / totalEmployees) * 100).toFixed(2) 
     : 0;
+    const filteredEmployees = employees.filter((employee) => {
+      const matchesName =
+        employeeFilter === "" ||
+        employee.name.toLowerCase().includes(employeeFilter.toLowerCase());
+      const matchesStatus =
+        statusFilter === "" || employee.status === statusFilter;
+    
+      return matchesName && matchesStatus;
+    });
   return (
     <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Info Box Section */}
       <div className="flex space-x-6 mb-6">
-        {/* Total Employees Info Box */}
+
         <div className="bg-gradient-to-r from-green-400 to-blue-500 p-6 rounded-lg shadow-lg text-center text-white w-80 transform transition duration-500 ease-in-out hover:scale-105">
           <h3 className="text-xl font-semibold">Total Employees</h3>
           <p className="text-4xl font-bold">{totalEmployees}</p>
@@ -372,10 +376,10 @@ const AttendanceApp = (currentUser) => {
         </div>
 
         {/* Total On Leave Info Box */}
-        <div className="bg-gradient-to-r from-pink-400 to-red-500 p-6 rounded-lg shadow-lg text-center text-white w-80 transform transition duration-500 ease-in-out hover:scale-105">
+        {/* <div className="bg-gradient-to-r from-pink-400 to-red-500 p-6 rounded-lg shadow-lg text-center text-white w-80 transform transition duration-500 ease-in-out hover:scale-105">
           <h3 className="text-xl font-semibold">Total On Leave</h3>
           <p className="text-4xl font-bold">{totalOnLeave}</p>
-        </div>
+        </div> */}
 
         {/* Overall Attendance Percentage Info Box */}
         <div className="bg-gradient-to-r from-teal-400 to-green-500 p-6 rounded-lg shadow-lg text-center text-white w-80 transform transition duration-500 ease-in-out hover:scale-105">
@@ -414,12 +418,12 @@ const AttendanceApp = (currentUser) => {
         <option value="">All Status</option>
         <option value="Present">Present</option>
         <option value="Absent">Absent</option>
-        <option value="On Leave">On Leave</option>
+        
       </select>
     </div>
 
     {/* Filter by Date Range */}
-    <div className="flex flex-col">
+    {/* <div className="flex flex-col">
       <label className="text-sm font-medium text-gray-100 mb-2">
         Filter by Date
       </label>
@@ -437,10 +441,10 @@ const AttendanceApp = (currentUser) => {
           className="w-full py-3 pl-4 pr-4 border-2 border-blue-300 rounded-lg shadow-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 ease-in-out"
         />
       </div>
-    </div>
+    </div> */}
 
     {/* Reset Button */}
-    <div className="flex flex-col justify-center items-center">
+    <div className="flex flex-col justify-center items-center mr-40">
       <button
         type="button"
         onClick={() => {
@@ -468,129 +472,107 @@ const AttendanceApp = (currentUser) => {
         </button> */}
       </div>
 
-      {/* Employee and Attendance Table Section */}
       <div className="container mx-auto p-6 bg-blue-100 rounded-lg shadow-lg">
-      <h1 className="text-2xl font-bold mb-6 text-black">Attendance Manager</h1>
-      <div className="overflow-x-auto bg-white rounded-lg shadow-lg">
-        <table className="min-w-full table-auto border-collapse">
-          <thead className="bg-blue-900 text-white text-sm font-bold">
-            <tr>
-              <th className="px-6 py-4 border border-blue-300 text-left">Employee Name</th>
-              <th className="px-6 py-4 border border-blue-300 text-left">Employee Contact</th>
-              <th className="px-6 py-4 border border-blue-300 text-left">Employee Email</th>
-              <th className="px-6 py-4 border border-blue-300 text-left">Date</th>
-              <th className="px-6 py-4 border border-blue-300 text-left">Time In</th>
-              <th className="px-6 py-4 border border-blue-300 text-left">Time Out</th>
-              <th className="px-6 py-4 border border-blue-300 text-left">Status</th>
-            </tr>
-          </thead>
-          <tbody className="text-black text-sm">
-            {attendanceRecords.length === 0 ? (
-              // Show employee details input fields if no attendance records
-              employees.map((employee) => (
-                <tr key={employee.id}>
-                  <td className="px-6 py-4 border border-blue-300">{employee.name || "N/A"}</td>
-                  <td className="px-6 py-4 border border-blue-300">{employee.contact || "N/A"}</td>
-                  <td className="px-6 py-4 border border-blue-300">{employee.email || "N/A"}</td>
-                  <td className="px-6 py-4 border border-blue-300">
-                
-  <input
-    type="date"
-    value={employee.date || ""}
-    onChange={(e) => handleDateChange(e, employee.id)}
-    className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-  />
-</td>
+  <h1 className="text-2xl font-bold mb-6 text-black">Attendance Manager</h1>
+  <div className="overflow-x-auto bg-white rounded-lg shadow-lg">
+    <table className="min-w-full table-auto border-collapse">
+      <thead className="bg-blue-900 text-white text-sm font-bold">
+        <tr>
+          <th className="px-6 py-4 border border-blue-300 text-left">Employee Name</th>
+          <th className="px-6 py-4 border border-blue-300 text-left">Employee Contact</th>
+          <th className="px-6 py-4 border border-blue-300 text-left">Employee Email</th>
+          <th className="px-6 py-4 border border-blue-300 text-left">Date</th>
+          <th className="px-6 py-4 border border-blue-300 text-left">Time In</th>
+          <th className="px-6 py-4 border border-blue-300 text-left">Time Out</th>
+          <th className="px-6 py-4 border border-blue-300 text-left">Status</th>
+        </tr>
+      </thead>
+      <tbody className="text-black text-sm">
+        {/* Filtered Records */}
+        {attendanceRecords
+          .filter((record) => {
+            // Filter by Employee Name
+            if (
+              employeeFilter &&
+              !record.name.toLowerCase().includes(employeeFilter.toLowerCase())
+            ) {
+              return false;
+            }
 
-                  <td className="px-6 py-4 border border-blue-300">
-  <input
-    type="time"
-    value={employee.timeIn || ""}
-    onChange={(e) =>
-      handleTimeChange(employee.id, "timeIn", e.target.value)
-    }
-    className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-  />
-</td>
-<td className="px-6 py-4 border border-blue-300">
-  <input
-    type="time"
-    value={employee.timeOut || ""}
-    onChange={(e) =>
-      handleTimeChange(employee.id, "timeOut", e.target.value)
-    }
-    className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-  />
-</td>
-<td className="px-6 py-4 border border-blue-300">
-          <select
-            value={employee.status || "Present"}
-            onChange={(e) => handleStatusChange(employee.id, e.target.value)}
-            className="border border-blue-300 rounded px-4 py-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          >
-            <option value="Present">Present</option>
-            <option value="Absent">Absent</option>
-            <option value="On Leave">On Leave</option>
-          </select>
-        </td>
-                </tr>
-              ))
-            ) : (
-              // Show existing attendance records if they exist
-              attendanceRecords.map((employee) => (
-                <tr key={employee.id} className="hover:bg-blue-200 transition duration-200">
-                  <td className="px-6 py-4 border border-blue-300">{employee.name || "N/A"}</td>
-                  <td className="px-6 py-4 border border-blue-300">{employee.contact || "N/A"}</td>
-                  <td className="px-6 py-4 border border-blue-300">{employee.email || "N/A"}</td>
-                
-                  <td className="px-6 py-4 border border-blue-300">
-  <input
-    type="date"
-    value={employee.date || ''}
-    onChange={(e) => handleDateChangee(e, employee.id)}
-    className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-  />
-</td>
-<td className="px-6 py-4 border border-blue-300">
-  <input
-    type="time"
-    value={employee.timeIn || ''}
-    onChange={(e) => handleTimeChangee(employee.id, 'timeIn', e.target.value)}
-    className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-  />
-</td>
-<td className="px-6 py-4 border border-blue-300">
-  <input
-    type="time"
-    value={employee.timeOut || ''}
-    onChange={(e) => handleTimeChangee(employee.id, 'timeOut', e.target.value)}
-    className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-  />
-</td>
-<td className="px-6 py-4 border border-blue-300">
-  <select
-    value={employee.status || 'Present'}
-    onChange={(e) => handleStatusChangee(employee.id, e.target.value)}
-    className="border border-blue-300 rounded px-4 py-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            // Filter by Status
+            if (statusFilter && record.status !== statusFilter) {
+              return false;
+            }
+
+            // Filter by Date Range
+            if (
+              (dateFilterStart && new Date(record.date) < new Date(dateFilterStart)) ||
+              (dateFilterEnd && new Date(record.date) > new Date(dateFilterEnd))
+            ) {
+              return false;
+            }
+
+            return true;
+          })
+          .map((employee) => (
+            <tr key={employee.id} className="hover:bg-blue-200 transition duration-200">
+              <td className="px-6 py-4 border border-blue-300">{employee.name || "N/A"}</td>
+              <td className="px-6 py-4 border border-blue-300">{employee.contact || "N/A"}</td>
+              <td className="px-6 py-4 border border-blue-300">{employee.email || "N/A"}</td>
+              <td className="px-6 py-4 border border-blue-300">
+              <input
+                  type="date"
+                  value={employee.date || ''}
+                  onChange={(e) => handleDateChange(e, employee.id)}
+                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </td>
+              <td className="px-6 py-4 border border-blue-300">
+              <input
+                  type="time"
+                  value={employee.timeIn || ''}
+                  onChange={(e) =>
+                    handleTimeChange(employee.id, 'timeIn', e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </td>
+              <td className="px-6 py-4 border border-blue-300">
+              <input
+                  type="time"
+                  value={employee.timeOut || ''}
+                  onChange={(e) =>
+                    handleTimeChange(employee.id, 'timeOut', e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </td>
+              <td className="px-6 py-4 border border-blue-300">
+              <select
+                  value={employee.status || 'Present'}
+                  onChange={(e) =>
+                    handleStatusChange(employee.id, e.target.value)
+                  }
+                  className="border border-blue-300 rounded px-4 py-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  <option value="Present">Present</option>
+                  <option value="Absent">Absent</option>
+                  
+                </select>
+              </td>
+            </tr>
+          ))}
+      </tbody>
+    </table>
+  </div>
+  <button
+    onClick={handleSaveAttendance}
+    className="mt-6 bg-blue-600 text-white px-8 py-3 rounded-lg shadow-md hover:shadow-lg hover:bg-blue-700 transition duration-300 text-lg font-bold"
   >
-    <option value="Present">Present</option>
-    <option value="Absent">Absent</option>
-    <option value="On Leave">On Leave</option>
-  </select>
-</td> 
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      <button
-        onClick={handleSaveAttendance}
-        className="mt-6 bg-blue-600 text-white px-8 py-3 rounded-lg shadow-md hover:shadow-lg hover:bg-blue-700 transition duration-300 text-lg font-bold"
-      >
-        Save Attendance
-      </button>
-    </div>
+    Save Attendance
+  </button>
+</div>
+
 
       {/* View Attendance Modal */}
       {viewAttendance && (
