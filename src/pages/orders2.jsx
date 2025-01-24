@@ -361,9 +361,9 @@ function Orders2(order ) {
         <p className="text-gray-600">
           <strong>Order ID:</strong> {order.id}
         </p>
-        <p className="text-gray-600">
+        {/* <p className="text-gray-600">
           <strong>Product Details:</strong> {order.productName || "N/A"}
-        </p>
+        </p> */}
         <p className="text-gray-600">
   <strong>Order Date:</strong> {order.orderDate ? order.orderDate : (order.createdAt ? new Date(order.createdAt).toLocaleString() : "N/A")}
 </p>
