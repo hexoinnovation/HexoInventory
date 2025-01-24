@@ -43,6 +43,14 @@ const SalaryApp = (  updateSalaryStatus) => {
   const [employeeFilter, setEmployeeFilter] = useState("");
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
+  const [basicSalary, setBasicSalary] = useState("");
+  const [bonus, setBonus] = useState("");
+  const [deductions, setDeductions] = useState("");
+  const [netSalary, setNetSalary] = useState('');
+  useEffect(() => {
+    const calculatedNetSalary = basicSalary + bonus - deductions;
+    setNetSalary(calculatedNetSalary);
+  }, [basicSalary, bonus, deductions]);
 
   // New state variables for Role and Attendance Counts
   const [role, setRole] = useState("");
@@ -271,140 +279,84 @@ const SalaryApp = (  updateSalaryStatus) => {
   const handleStatusToggle = () => {
     setStatus((prevStatus) => !prevStatus); // Toggle between true (Paid) and false (Pending)
   };
-    const handleDateChange = async (event) => {
-      const selectedDate = event.target.value;
-      setSelectedDate(selectedDate);
-    
-      if (!selectedDate || !viewEmployee) {
-        console.log("Selected date or employee not available.");
-        return;
-      }
-    
-      console.log("Selected Date: ", selectedDate);
-      console.log("Viewing Employee: ", viewEmployee);
-    
-      // Extract year and month from the selected date (for monthly attendance)
-      const [year, month] = selectedDate.split("-");
-      console.log("Year: ", year, "Month: ", month);
-    
-      try {
-        if (isMonthly) {
-          // Calculate start and end dates of the month
-          const start = new Date(year, month - 1, 1); // First day of the month
-          const end = new Date(year, month, 0); // Last day of the month
-    
-          console.log(`Fetching attendance for the month from ${start.toISOString()} to ${end.toISOString()}`);
-    
-          let presentCount = 0;
-          let absentCount = 0;
-          const attendanceDetails = [];
-    
-          // Loop through each day in the month
-          for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
-            const formattedDate = date.toISOString().split("T")[0]; // Format as YYYY-MM-DD
-    
-            try {
-              const docRef = doc(db, "admins", user.email, "attendance", formattedDate);
-              const docSnap = await getDoc(docRef);
-    
-              if (docSnap.exists()) {
-                const attendanceData = docSnap.data();
-                console.log(`Fetched Attendance for ${formattedDate}:`, attendanceData);
-    
-                // Check if the employee's record exists
-                const employeeData = Object.values(attendanceData).find(
-                  (record) => record.name === viewEmployee.name
-                );
-    
-                if (employeeData) {
-                  attendanceDetails.push({ date: formattedDate, ...employeeData });
-                  if (employeeData.status === "Present") presentCount++;
-                  if (employeeData.status === "Absent") absentCount++;
-                }
-              }
-            } catch (error) {
-              console.error(`Error fetching attendance for ${formattedDate}:`, error);
-            }
-          }
-    
-          const totalWorkingDays = presentCount + absentCount;
-          console.log(
-            `Present Count: ${presentCount}, Absent Count: ${absentCount}, Total Working Days: ${totalWorkingDays}`
-          );
-    
-          // Update attendance counts and salary calculation
-          setAttendanceCounts({
-            presentCount,
-            absentCount,
-            totalWorkingDays,
-            salary: totalWorkingDays > 0 ? (presentCount * viewEmployee.salary) / totalWorkingDays : 0,
-            attendanceDetails, // Include attendance details for UI or debugging
-          });
-        } else {
-          console.log("Fetching attendance for the specific date:", selectedDate);
-    
-          const attendanceRef = doc(db, "admins", user.email, "attendance", selectedDate);
-          const attendanceSnapshot = await getDoc(attendanceRef);
-    
-          if (attendanceSnapshot.exists()) {
-            const attendanceData = attendanceSnapshot.data();
-            console.log("Attendance Data for Selected Date: ", attendanceData);
-    
-            const employeeAttendance = Object.values(attendanceData).find(
+  const handleDateChange = async (event) => {
+    const selectedDate = event.target.value;
+    setSelectedDate(selectedDate);
+  
+    if (!selectedDate || !viewEmployee) {
+      console.log("Selected date or employee not available.");
+      return;
+    }
+  
+    console.log("Selected Date: ", selectedDate);
+    console.log("Viewing Employee: ", viewEmployee);
+  
+    // Extract year and month from the selected date
+    const [year, month] = selectedDate.split("-");
+    console.log("Year: ", year, "Month: ", month);
+  
+    try {
+      // Calculate start and end dates of the month
+      const start = new Date(year, month - 1, 1); // First day of the month
+      const end = new Date(year, month, 0); // Last day of the month
+  
+      console.log(`Fetching attendance for the month from ${start.toISOString()} to ${end.toISOString()}`);
+  
+      let presentCount = 0;
+      let absentCount = 0;
+      const attendanceDetails = [];
+  
+      // Loop through each day in the month
+      for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+        const formattedDate = date.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+  
+        try {
+          const docRef = doc(db, "admins", user.email, "attendance", formattedDate);
+          const docSnap = await getDoc(docRef);
+  
+          if (docSnap.exists()) {
+            const attendanceData = docSnap.data();
+            console.log(`Fetched Attendance for ${formattedDate}:`, attendanceData);
+  
+            // Check if the employee's record exists
+            const employeeData = Object.values(attendanceData).find(
               (record) => record.name === viewEmployee.name
             );
-    
-            if (employeeAttendance) {
-              const presentCount = employeeAttendance.status === "Present" ? 1 : 0;
-              const absentCount = employeeAttendance.status === "Absent" ? 1 : 0;
-    
-              console.log(`Present Count: ${presentCount}, Absent Count: ${absentCount}`);
-    
-              setAttendanceCounts({
-                presentCount,
-                absentCount,
-                totalWorkingDays: 1, // Only 1 day for a specific selected date
-                salary: absentCount === 0 ? viewEmployee.salary : 0,
-                attendanceDetails: [{ date: selectedDate, ...employeeAttendance }], // Debugging info
-              });
-            } else {
-              console.log(`No attendance data found for ${viewEmployee.name} on ${selectedDate}.`);
-              Swal.fire({
-                icon: "info",
-                title: "No Data",
-                text: `No attendance data found for ${viewEmployee.name} on ${selectedDate}.`,
-              });
-              setAttendanceCounts({
-                presentCount: 0,
-                absentCount: 0,
-                totalWorkingDays: 0,
-                salary: 0,
-              });
+  
+            if (employeeData) {
+              attendanceDetails.push({ date: formattedDate, ...employeeData });
+              if (employeeData.status === "Present") presentCount++;
+              if (employeeData.status === "Absent") absentCount++;
             }
-          } else {
-            console.log(`No attendance records found for ${selectedDate}.`);
-            Swal.fire({
-              icon: "error",
-              title: "No Attendance",
-              text: `No attendance records found for ${selectedDate}.`,
-            });
-            setAttendanceCounts({
-              presentCount: 0,
-              absentCount: 0,
-              totalWorkingDays: 0,
-              salary: 0,
-            });
           }
+        } catch (error) {
+          console.error(`Error fetching attendance for ${formattedDate}:`, error);
         }
-      } catch (error) {
-        console.error("Error fetching attendance: ", error);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Failed to fetch attendance data. Please try again.",
-        });
       }
-    };
+  
+      const totalWorkingDays = presentCount + absentCount;
+      console.log(
+        `Present Count: ${presentCount}, Absent Count: ${absentCount}, Total Working Days: ${totalWorkingDays}`
+      );
+  
+      // Update attendance counts and salary calculation
+      setAttendanceCounts({
+        presentCount,
+        absentCount,
+        totalWorkingDays,
+        salary: totalWorkingDays > 0 ? (presentCount * viewEmployee.salary) / totalWorkingDays : 0,
+        attendanceDetails, // Include attendance details for UI or debugging
+      });
+    } catch (error) {
+      console.error("Error fetching attendance: ", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to fetch attendance data. Please try again.",
+      });
+    }
+  };
+  
     
     const handleCheckboxChange = () => {
       console.log("Toggling monthly view. Current state:", isMonthly);
@@ -602,6 +554,7 @@ const generateSalaryReceipt = (employee) => {
         date: selectedDate, // The selected date (e.g., salary calculation date)
         salaryDate: salaryDate, // The specific salary date
         isMonthly: isMonthly,
+        Netsalary:netSalary,
       };
   
       // Create a unique Firestore document path by combining employee ID and salary date
@@ -882,13 +835,13 @@ const generateSalaryReceipt = (employee) => {
                   <th className="px-4 py-2 border border-gray-300">Role</th>
                   <th className="px-4 py-2 border border-gray-300">Present Count</th>
                   <th className="px-4 py-2 border border-gray-300">Absent Count</th>
-                  <th className="px-4 py-2 border border-gray-300">
-                    Total Working Days
-                  </th>
-                  <th className="px-4 py-2 border border-gray-300">Salary</th>
-                  <th className="px-4 py-2 border border-gray-300">Clickable Date</th>
-                  <th className="px-4 py-2 border border-gray-300">Status</th>
                   <th className="px-4 py-2 border border-gray-300">Salary Date</th>
+                  <th className="px-4 py-2 border border-gray-300">
+                   Net Salary
+                  </th>
+             
+                  <th className="px-4 py-2 border border-gray-300">Status</th>
+          
                   <th className="px-4 py-2 border border-gray-300">Salary Recepit</th>
                 </tr>
               </thead>
@@ -911,20 +864,16 @@ const generateSalaryReceipt = (employee) => {
                       {employee.absentCount}
                     </td>
                     <td className="px-4 py-2 border border-gray-300">
-                      {employee.totalWorkingDays}
+                      {employee.salaryDate}
                     </td>
                     <td className="px-4 py-2 border border-gray-300">
-                      {employee.salary}
-                    </td>
-                    <td className="px-4 py-2 border border-gray-300">
-                      {employee.date}
+                      {employee.Netsalary}
+                    
                     </td>
                     <td className="px-4 py-2 border border-gray-300">
                       {employee.status ? "Paid" : "Pending"}
                     </td>
-                    <td className="px-4 py-2 border border-gray-300">
-                      {employee.salaryDate}
-                    </td>
+                   
                     <td className="px-4 py-2 border border-gray-300">
   <button
     onClick={() => generateSalaryReceipt(employee)}
@@ -952,8 +901,9 @@ const generateSalaryReceipt = (employee) => {
         <thead className="bg-gradient-to-r from-blue-900 to-blue-600 text-white">
           <tr>
             <th className="px-6 py-3 text-left">Employee Name</th>
+            <th className="px-6 py-3 text-left">Contact</th>
             <th className="px-4 py-3 text-left">Role</th>
-            <th className="px-4 py-3 text-left">Salary Date</th>
+            {/* <th className="px-4 py-3 text-left">Salary Date</th> */}
             <th className="px-4 py-3 text-left">Net Salary</th>
          
             <th className="px-3 py-3 text-left">Actions</th>
@@ -970,15 +920,17 @@ const generateSalaryReceipt = (employee) => {
             employees.map((employee) => (
               <tr key={employee.id} className="border-b hover:bg-gray-100">
                 <td className="px-6 py-2">{employee.name}</td>
+                <td className="px-4 py-2">{employee.contact}</td>
                 <td className="px-4 py-2">{employee.role}</td>
-                <td className="px-4 py-2">
+               
+                {/* <td className="px-4 py-2">
                 <input
                   type="date"
                   className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={salaryDate}
                   onChange={handleDateChangee}
                 />
-                </td>
+                </td> */}
                 <td className="px-4 py-2">
                 ₹{employee.salary} ({employee.salaryInterval})
 </td>
@@ -1001,7 +953,7 @@ const generateSalaryReceipt = (employee) => {
 
       {viewEmployee && (
   <div className="fixed inset-0 bg-gray-900 bg-opacity-70 flex justify-center items-center">
-    <div className="bg-gradient-to-r from-white-600 to-gray-400 rounded-lg p-8 shadow-2xl max-w-lg w-full text-white transition-all duration-300 transform hover:scale-105">
+    <div className="bg-gradient-to-r from-white-600 to-gray-400 rounded-lg p-8 mt-10 shadow-2xl max-w-3xl w-full text-white transition-all duration-300 transform hover:scale-105">
       <div className="flex justify-between items-center mb-6">
       <h3 className="text-2xl font-extrabold text-black">{viewEmployee.name}'s Details</h3>
         <button
@@ -1014,14 +966,14 @@ const generateSalaryReceipt = (employee) => {
 
       {/* Date Selection */}
       <div className="mb-6">
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={handleDateChange}
-          className="w-full py-2 px-4 rounded-lg bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
-        />
+      <input
+    type="date"
+    value={selectedDate}
+    onChange={handleDateChange}
+    className="w-1/2 py-2 px-4 rounded-lg bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+  />
       </div>
-      <div className="flex items-center mb-6">
+      {/* <div className="flex items-center mb-6">
         <input
           type="checkbox"
           checked={isMonthly}
@@ -1029,7 +981,7 @@ const generateSalaryReceipt = (employee) => {
           className="mr-2 accent-indigo-500"
         />
         <label className="text-lg font-medium text-black">Show Monthly Attendance</label>
-      </div>
+      </div> */}
 
       {/* Employee Details */}
       <div className="space-y-4 mb-6 text-black">
@@ -1053,21 +1005,56 @@ const generateSalaryReceipt = (employee) => {
       </div>
       </div>
       </div>
-      <div className="grid grid-cols-2 gap-2 ">
-<div className="flex flex-col  gap-2 text-black">
-        <p><strong>Basic Salary:</strong> </p>
-        </div>
-        <div className="flex flex-col  ml-10 gap-2 text-black">
-        <p><strong>Bonus:</strong> </p>
-        </div>
-        <div className="flex flex-col  gap-2 text-black">
-        <p><strong>Deductions:</strong> </p>
-        </div>
-        <div className="flex flex-col ml-10 gap-2 text-black">
-        <p><strong>Net Salary</strong> </p>
+      <div className="grid grid-cols-2 gap-2">
+      <div className="flex flex-col gap-2 text-black">
+        <label htmlFor="basicSalary" className="font-bold">Basic Salary:</label>
+        <input
+          type="number"
+          id="basicSalary"
+          value={basicSalary}
+          onChange={(e) => setBasicSalary(Number(e.target.value))}
+          className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 "
+          placeholder="Enter Basic Salary"
+        />
       </div>
+
+      <div className="flex flex-col ml-10 gap-2 text-black">
+        <label htmlFor="bonus" className="font-bold">Bonus:</label>
+        <input
+          type="number"
+          id="bonus"
+          value={bonus}
+          onChange={(e) => setBonus(Number(e.target.value))}
+          className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 "
+          placeholder="Enter Bonus"
+        />
       </div>
-      
+
+      <div className="flex flex-col gap-2 text-black">
+        <label htmlFor="deductions" className="font-bold">Deductions:</label>
+        <input
+          type="number"
+          id="deductions"
+          value={deductions}
+          onChange={(e) => setDeductions(Number(e.target.value))}
+        className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 "
+          placeholder="Enter Deductions"
+        />
+      </div>
+
+      <div className="flex flex-col ml-10 gap-2 text-black">
+        <label htmlFor="netSalary" className="font-bold">Net Salary:</label>
+        <input
+          type="number"
+          id="netSalary"
+          value={netSalary}
+          readOnly
+          className="border p-2 rounded bg-gray-200 "
+          placeholder="Net Salary"
+        />
+      </div>
+    </div>
+
       {/* Total Working Days Input
 <div className="mb-6 text-black">
   <p><strong>Total Working Days</strong></p>
@@ -1088,23 +1075,37 @@ const generateSalaryReceipt = (employee) => {
     ({viewEmployee.salaryInterval || 'Monthly'})
   </p>
 </div> */}
-      <div className="flex justify-between items-center mb-6 text-black">
-    <p>
-      <strong>Status:</strong> {status ? 'Paid' : 'Pending'}
-    </p>
+     <div className="mt-6 text-black">
+  {/* Status Section */}
+  <p className="mb-2">
+    <strong>Status: </strong>
+    <span
+      className={status ? 'text-green-800 font-bold' : 'text-red-500 font-bold'}
+    >
+      {status ? 'Paid' : 'Pending'}
+    </span>
+  </p>
+
+  {/* Buttons Section */}
+  <div className="flex justify-between items-center">
     <button
       onClick={handleStatusToggle}
-      className={`py-2 px-4 rounded-lg text-white ${status ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} transition-colors duration-300`}
+      className={`py-2 px-4 rounded-lg text-white ${
+        status ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'
+      } transition-colors duration-300`}
     >
       {status ? 'Mark as Pending' : 'Mark as Paid'}
     </button>
+
+    <button
+      onClick={handleSaveToFirestore}
+      className="py-2 px-6 w-1/4 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors duration-300"
+    >
+      Save
+    </button>
   </div>
-      <button
-        onClick={handleSaveToFirestore}
-        className="w-full py-3 bg-indigo-600 text-black rounded-lg hover:bg-indigo-700 transition-colors duration-300"
-      >
-        Save
-      </button>
+</div>
+
     </div>
   </div>
 )}
