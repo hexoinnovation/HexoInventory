@@ -1003,10 +1003,10 @@ const generateSalaryReceipt = (employee) => {
   <div className="fixed inset-0 bg-gray-900 bg-opacity-70 flex justify-center items-center">
     <div className="bg-gradient-to-r from-white-600 to-gray-400 rounded-lg p-8 shadow-2xl max-w-lg w-full text-white transition-all duration-300 transform hover:scale-105">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-3xl font-extrabold text-black">{viewEmployee.name}'s Details</h3>
+      <h3 className="text-2xl font-extrabold text-black">{viewEmployee.name}'s Details</h3>
         <button
           onClick={handleCloseModal}
-          className="text-2xl font-bold text-black hover:text-red-500 transition-colors duration-300"
+          className="text-2xl font-bold text-black hover:text-red-500 transition-colors duration-300 m"
         >
           &times;
         </button>
@@ -1021,8 +1021,6 @@ const generateSalaryReceipt = (employee) => {
           className="w-full py-2 px-4 rounded-lg bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
         />
       </div>
-
-      {/* Monthly Attendance Checkbox */}
       <div className="flex items-center mb-6">
         <input
           type="checkbox"
@@ -1035,13 +1033,42 @@ const generateSalaryReceipt = (employee) => {
 
       {/* Employee Details */}
       <div className="space-y-4 mb-6 text-black">
-        <p><strong>Contact:</strong> {viewEmployee.contact}</p>
-        <p><strong>Role:</strong> {viewEmployee.role}</p>
+    
+      <div className="grid grid-cols-2 gap-6">
+  <div className="flex flex-col gap-4">
+    <p><strong>Name:</strong> {viewEmployee.name}</p>
+    <p><strong>Contact:</strong> {viewEmployee.contact}</p>
+  </div>
+  <div className="flex flex-col ml-10 gap-4">
+    <p><strong>DOB:</strong> {viewEmployee.dob}</p>
+    <p><strong>Role:</strong> {viewEmployee.role}</p>
+  </div>
+  </div>
+  <div className="grid grid-cols-2 gap-6">
+<div className="flex flex-col  gap-4">
         <p><strong>Present Count:</strong> {attendanceCounts.presentCount || 0}</p>
+        </div>
+        <div className="flex flex-col ml-10 gap-4">
         <p><strong>Absent Count:</strong> {attendanceCounts.absentCount || 0}</p>
       </div>
-
-      {/* Total Working Days Input */}
+      </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 ">
+<div className="flex flex-col  gap-2 text-black">
+        <p><strong>Basic Salary:</strong> </p>
+        </div>
+        <div className="flex flex-col  ml-10 gap-2 text-black">
+        <p><strong>Bonus:</strong> </p>
+        </div>
+        <div className="flex flex-col  gap-2 text-black">
+        <p><strong>Deductions:</strong> </p>
+        </div>
+        <div className="flex flex-col ml-10 gap-2 text-black">
+        <p><strong>Net Salary</strong> </p>
+      </div>
+      </div>
+      
+      {/* Total Working Days Input
 <div className="mb-6 text-black">
   <p><strong>Total Working Days</strong></p>
   <input
@@ -1051,10 +1078,8 @@ const generateSalaryReceipt = (employee) => {
     readOnly  // Makes the input field non-editable
     className="w-full py-2 px-4 rounded-lg bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
   />
-</div>
-
-     {/* Salary Calculation */}
-<div className="mb-6 text-black">
+</div> */}
+{/* <div className="mb-6 text-black">
   <p>
     <strong>Salary:</strong> $
     {attendanceCounts.totalWorkingDays > 0
@@ -1062,10 +1087,7 @@ const generateSalaryReceipt = (employee) => {
       : parseFloat(viewEmployee.salary || 0).toFixed(2)}
     ({viewEmployee.salaryInterval || 'Monthly'})
   </p>
-</div>
-
-
-      {/* Status Toggle (Paid/Unpaid) */}
+</div> */}
       <div className="flex justify-between items-center mb-6 text-black">
     <p>
       <strong>Status:</strong> {status ? 'Paid' : 'Pending'}
@@ -1077,7 +1099,6 @@ const generateSalaryReceipt = (employee) => {
       {status ? 'Mark as Pending' : 'Mark as Paid'}
     </button>
   </div>
-      {/* Save Button */}
       <button
         onClick={handleSaveToFirestore}
         className="w-full py-3 bg-indigo-600 text-black rounded-lg hover:bg-indigo-700 transition-colors duration-300"

@@ -82,19 +82,25 @@ function Orders2(order ) {
 
   const handlePaidStatusFilter = (status) => {
     setFilter(status);
-    
+
     if (status === "Paid") {
-      const paidOrders = orders.filter((order) => {
-        return order.status === "Delivered"; 
-      });
+      const paidOrders = orders.filter((order) => order.status === "Delivered");
+      console.log("Paid Orders:", paidOrders);
       setFilteredOrders(paidOrders);
     } else if (status === "Unpaid") {
-      const unpaidOrders = orders.filter((order) => {
-        return order.status !== "Delivered"; 
-      });
+      const unpaidOrders = orders.filter((order) => order.status !== "Delivered");
+      console.log("Unpaid Orders:", unpaidOrders);
       setFilteredOrders(unpaidOrders);
+    } else {
+      setFilteredOrders(orders);
     }
   };
+
+  useEffect(() => {
+    // Set all orders as default on mount
+    setFilteredOrders(orders);
+  }, [orders]);
+  
   
   const handleViewDetails = (order) => {
     setSelectedOrder(order);
@@ -110,10 +116,8 @@ function Orders2(order ) {
         selectedOrders.includes(order.id) ? { ...order, paid: true } : order
       )
     );
-    setSelectedOrders([]); // Clear selection after bulk action
+    setSelectedOrders([]); 
   };
-
-  
   const handleExportOrders = () => {
     const csvContent = [
       ["Order ID", "Customer", "Total", "Status", "Paid"],
@@ -135,26 +139,16 @@ function Orders2(order ) {
     link.download = "orders.csv";
     link.click();
   };
+  const [highlightedOrderId, setHighlightedOrderId] = useState(null); 
 
-  const [highlightedOrderId, setHighlightedOrderId] = useState(null);
-  const handleNotificationClick = (id) => {
-    if (!id) {
-      console.error("Order ID is undefined!");
-      return;
-    }
-  
-    console.log("Order ID clicked:", id);
-    setHighlightedOrderId(id);  // Highlight order by setting the ID
-    console.log("Updated highlightedOrderId:", id);
-  
-    // Remove highlight after 2 seconds
-    setTimeout(() => {
-      console.log("Removing highlight");
-      setHighlightedOrderId(null);  // Reset after 2 seconds to remove highlight
-    }, 2000);
+  const handleNotificationClick = (orderId) => {
+    console.log("Notification clicked, highlightedOrderId:", orderId);
+    setHighlightedOrderId(orderId);  
   };
-
   const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    console.log("Updated highlightedOrderId:", highlightedOrderId);
+  }, [highlightedOrderId]); 
   
   useEffect(() => {
     const fetchOrders = async () => {
@@ -177,8 +171,6 @@ function Orders2(order ) {
               ...doc.data(),
             })
           );
-
-          // Fetch 'buynow order' subcollection
           const buyNowSnapshot = await getDocs(
             collection(db, "users", userEmail, "buynow order")
           );
@@ -261,11 +253,13 @@ function Orders2(order ) {
 
   const handleStatusFilter = (status) => {
     setStatusFilter(status);
+   
   };
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
       (order.fullName && order.fullName.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (order.userEmail && order.userEmail.toLowerCase().includes(searchQuery.toLowerCase()));
+      
   
     const matchesStatus = statusFilter === "" || order.status === statusFilter;
   
@@ -325,13 +319,13 @@ function Orders2(order ) {
             Export Orders
           </button>
           <button
-  onClick={() => handlePaidStatusFilter("Paid")}
+  onClick={() => handleStatusFilter("Delivered")}
   className="p-2 bg-green-400 text-green-700 rounded-lg hover:bg-green-500"
 >
   Show Paid
 </button>
 <button
-  onClick={() => handlePaidStatusFilter("Unpaid")}
+  onClick={() => handleStatusFilter("Shipped")}
   className="p-2 bg-red-400 text-red-700 rounded-lg hover:bg-red-500"
 >
   Show Unpaid
@@ -339,75 +333,81 @@ function Orders2(order ) {
 
         </div>
       </div>
-
       <div className="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-        {filteredOrders.map((order) => (
-           <div
-           key={order.id}
-           className={`border rounded-lg p-6 shadow-lg hover:shadow-2xl transition duration-300 ${
-             String(highlightedOrderId) === String(order.id) ? "bg-yellow-100 border-yellow-400" : ""
-           }`} 
-         >
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                className="form-checkbox h-5 w-5 text-indigo-600"onChange={() => handleCheckboxChange(order.id)}
-              />
-              <h3 className="text-xl font-semibold text-indigo-600">
-                {order.fullName || order.userEmail}
-              </h3>
-            </div>
-            <p className="text-gray-600">
-              <strong>Order ID:</strong> {order.id}
-            </p>
-            <p className="text-gray-600">
-              <strong>Product Details:</strong> {order.productName || order.name || "N/A"}
-            </p>
-            <p className="text-gray-600">
-              <strong>Order Date:</strong> {order.orderDate || order.createdAt || "N/A"}
-            </p>
-            <p className="text-l mt-2">
-              <strong>Status : </strong>
-              <span
-                className={`text-${
-                  order.status === "Shipped"
-                    ? "blue"
-                    : order.status === "Delivered"
-                    ? "green"
-                    : "gray"
-                }-700 font-bold`}
-              >
-                {order.status}
-              </span>
-            </p>
+      {filteredOrders.map((order) => {
+        const isHighlighted = String(highlightedOrderId) === String(order.id);
+        console.log("Grid Render - Order ID:", order.id, "Highlighted Order ID:", highlightedOrderId);
 
-      <div className="mt-4 space-x-2">
-        <button
-          onClick={() => handleStatusChange(order.id, "Shipped")}
-          className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-        >
-          Mark as Shipped
-        </button>
+        return (
+          <div
+            key={order.id}
+            className={`border rounded-lg p-6 shadow-lg hover:shadow-2xl transition duration-300 ${
+              isHighlighted
+                ? "bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white"
+                : "bg-white"
+            }`}
+          >
+      
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            className="form-checkbox h-5 w-5 text-indigo-600"
+            onChange={() => console.log(`Checkbox toggled for ${order.id}`)}
+          />
+          <h3 className="text-xl font-semibold text-indigo-600">
+            {order.fullName || order.userEmail}
+          </h3>
+        </div>
+        <p className="text-gray-600">
+          <strong>Order ID:</strong> {order.id}
+        </p>
+        <p className="text-gray-600">
+          <strong>Product Details:</strong> {order.productName || "N/A"}
+        </p>
+        <p className="text-gray-600">
+  <strong>Order Date:</strong> {order.orderDate ? order.orderDate : (order.createdAt ? new Date(order.createdAt).toLocaleString() : "N/A")}
+</p>
 
-        <button
-          onClick={() => handleStatusChange(order.id, "Delivered")}
-          className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-        >
-          Mark as Delivered
-        </button>
-          
-              <button
-                onClick={() => handleViewDetails(order)}
-                className="p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-              >
-                View Details
-              </button>
-            </div>
-          </div>
-        ))}
+        <p className="text-l mt-2">
+          <strong>Status:</strong>
+          <span
+            className={`text-${
+              order.status === "Shipped"
+                ? "blue"
+                : order.status === "Delivered"
+                ? "green"
+                : "gray"
+            }-700 font-bold`}
+          >
+            {order.status}
+          </span>
+        </p>
+        <div className="mt-4 space-x-2">
+          <button
+            onClick={() => handleStatusChange(order.id, "Shipped")}
+            className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            Mark as Shipped
+          </button>
+          <button
+            onClick={() => handleStatusChange(order.id, "Delivered")}
+            className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+          >
+            Mark as Delivered
+          </button>
+          <button
+            onClick={() => handleViewDetails(order)}
+            className="p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+          >
+            View Details
+          </button>
+        </div>
       </div>
+    );
+  })}
+</div>
 
-      {/* Bulk Actions for Paid Orders */}
+
       <div className="mt-4">
       <button
           onClick={handleBulkMarkDelivered}
