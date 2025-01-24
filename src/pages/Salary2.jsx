@@ -931,9 +931,7 @@ const generateSalaryReceipt = (employee) => {
                   onChange={handleDateChangee}
                 />
                 </td> */}
-                <td className="px-4 py-2">
-                ₹{employee.salary} ({employee.salaryInterval})
-</td>
+                <td className="px-4 py-2">₹{employee.salary}</td>
 
 
 <td className="px-3 py-2">
