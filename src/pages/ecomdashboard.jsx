@@ -325,13 +325,11 @@ useEffect(() => {
 </thead>
 <tbody>
   {orders.map((order, index) => (
-    <tr key={order.id} className="border-t">
-      <td className="px-6 py-4">{index + 1}</td> {/* This will display 1, 2, 3, etc. */}
-      <td className="px-6 py-4">{order.id}</td>
-      <td className="px-6 py-4">
-      <td className="px-6 py-4">{order.userEmail}</td>
-      </td> {/* Adjust if orderDate exists in the order data */}
-      <td className="px-6 py-4">{order.status || "Pending"}</td> {/* Adjust based on your data */}
+    <tr key={order.id} >
+      <td className="px-6 py-4 text-left ">{index + 1}</td> {/* This will display 1, 2, 3, etc. */}
+      <td className="px-6 py-4 text-left">{order.id}</td>
+      <td className="px-6 py-4 text-left">{order.userEmail}</td>
+      <td className="px-6 py-4 text-left">{order.status || "Pending"}</td> {/* Adjust based on your data */}
     </tr>
   ))}
 </tbody>
