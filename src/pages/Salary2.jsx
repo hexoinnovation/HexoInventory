@@ -904,7 +904,7 @@ const generateSalaryReceipt = (employee) => {
             <th className="px-6 py-3 text-left">Contact</th>
             <th className="px-4 py-3 text-left">Role</th>
             {/* <th className="px-4 py-3 text-left">Salary Date</th> */}
-            <th className="px-4 py-3 text-left">Net Salary</th>
+            <th className="px-4 py-3 text-left">Basic salary</th>
          
             <th className="px-3 py-3 text-left">Actions</th>
           </tr>
@@ -931,9 +931,7 @@ const generateSalaryReceipt = (employee) => {
                   onChange={handleDateChangee}
                 />
                 </td> */}
-                <td className="px-4 py-2">
-                ₹{employee.salary} ({employee.salaryInterval})
-</td>
+                <td className="px-4 py-2">₹{employee.salary}</td>
 
 
 <td className="px-3 py-2">
