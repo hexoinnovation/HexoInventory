@@ -312,15 +312,8 @@ const generateSalaryReceipt = (employee) => {
         role: viewEmployee.role,
         presentCount: attendanceCounts.presentCount || 0,
         absentCount: attendanceCounts.absentCount || 0,
-        totalWorkingDays: attendanceCounts.totalWorkingDays || 0,
-        salary:
-          viewEmployee.salaryInterval === "monthly"
-            ? (attendanceCounts.presentCount * viewEmployee.salary) /
-              attendanceCounts.totalWorkingDays
-            : attendanceCounts.presentCount * viewEmployee.salary,
         status: status,
         date: selectedDate, 
-        salaryDate: salaryDate, 
         Netsalary:netSalary,
         Bonus:bonus,
         Deduction:deductions,
