@@ -126,7 +126,7 @@ const Navbar = ({ handleMenuClick }) => {
   const playNotificationSound = () => {
     try {
       // Path to the notification sound in the public folder
-      const notificationSound = new Audio("/notification.mp3");
+      const notificationSound = new Audio("/notification.mp3.wav");
       notificationSound.play().catch((err) => {
         console.error("Error playing notification sound:", err);
       });
