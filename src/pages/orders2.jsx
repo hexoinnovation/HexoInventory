@@ -477,7 +477,7 @@ function Orders2(order ) {
               <th className="py-2 px-3 border">Product Name</th>
               <th className="py-2 px-3 border">Quantity</th>
               <th className="py-2 px-3 border">Price</th>
-              {/* <th className="py-2 px-3 border">Subtotal</th> */}
+              <th className="py-2 px-3 border">Subtotal</th>
             </tr>
           </thead>
           <tbody>
@@ -486,9 +486,9 @@ function Orders2(order ) {
         <tr key={index}>
           <td className="py-2 px-4 border">{item.name}</td>
           <td className="py-2 px-4 border">{item.quantity}</td>
-          <td className="py-2 px-4 border">${item.price}</td>
+          <td className="py-2 px-4 border">{item.price}</td>
           <td className="py-2 px-4 border">
-            ${item.quantity * parseFloat(item.price)}
+            {item.quantity * parseFloat(item.price)}
           </td>
         </tr>
       ))}
@@ -498,9 +498,9 @@ function Orders2(order ) {
         <tr>
           <td className="py-2 px-4 border">{selectedOrder.productName}</td>
           <td className="py-2 px-4 border">{selectedOrder.quantity}</td>
-          <td className="py-2 px-4 border">${selectedOrder.price}</td>
+          <td className="py-2 px-4 border">{selectedOrder.price}</td>
           <td className="py-2 px-4 border">
-            ${selectedOrder.quantity * parseFloat(selectedOrder.price)}
+            {selectedOrder.quantity * parseFloat(selectedOrder.price)}
           </td>
         </tr>
       )}
@@ -515,23 +515,23 @@ function Orders2(order ) {
           <tbody>
             <tr>
               <td className="py-2 px-3 border">Subtotal</td>
-              <td className="py-2 px-3 border">₹{selectedOrder.subtotal}</td>
+              <td className="py-2 px-3 border">₹ {selectedOrder.subtotal}</td>
             </tr>
             <tr className="bg-gray-50">
               <td className="py-2 px-3 border">GST</td>
-              <td className="py-2 px-3 border">₹{selectedOrder.gst}</td>
+              <td className="py-2 px-3 border">₹ {selectedOrder.gst}</td>
             </tr>
             <tr>
               <td className="py-2 px-3 border">Discount</td>
-              <td className="py-2 px-3 border">₹{selectedOrder.discount}</td>
+              <td className="py-2 px-3 border">₹ {selectedOrder.discount}</td>
             </tr>
             <tr className="bg-gray-50">
               <td className="py-2 px-3 border">Shipping Charge</td>
-              <td className="py-2 px-3 border">₹{selectedOrder.shippingCharge}</td>
+              <td className="py-2 px-3 border">₹ {selectedOrder.shippingCharge}</td>
             </tr>
             <tr className="font-bold">
               <td className="py-2 px-3 border">Total Amount</td>
-              <td className="py-2 px-3 border">₹{selectedOrder.totalAmount}</td>
+              <td className="py-2 px-3 border">₹ {selectedOrder.totalAmount}</td>
             </tr>
           </tbody>
         </table>
