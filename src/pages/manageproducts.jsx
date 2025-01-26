@@ -53,11 +53,10 @@ const ManageProducts = (currentUser) => {
   }
 
   const productsCollection = collection(
-    db,
-   
+    db, "admins","nithya1@gmail.com",
     "products"
   );
-
+  // collection(db, "admins", currentUser.email, "Empdetails")
   const categoriesCollection = collection(
     db,
    
@@ -104,7 +103,8 @@ const handleCategorySelect = (category) => {
   const handleAddProduct = async () => {
     try {
       // Reference to the collection where products are stored
-      const productsCollectionRef = collection(db, "products"); // Replace "products" with your Firestore collection name
+      const productsCollectionRef = collection(db, "admins","nithya1@gmail.com",
+        "products"); // Replace "products" with your Firestore collection name
   
       // Save the product data with an auto-generated document ID
       const docRef = await addDoc(productsCollectionRef, {
