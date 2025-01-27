@@ -147,7 +147,7 @@ function Orders2(order ) {
   };
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    console.log("Updated highlightedOrderId:", highlightedOrderId);
+   
   }, [highlightedOrderId]); 
   
   useEffect(() => {
@@ -336,7 +336,7 @@ function Orders2(order ) {
       <div className="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
       {filteredOrders.map((order) => {
         const isHighlighted = String(highlightedOrderId) === String(order.id);
-        console.log("Grid Render - Order ID:", order.id, "Highlighted Order ID:", highlightedOrderId);
+       
 
         return (
           <div
