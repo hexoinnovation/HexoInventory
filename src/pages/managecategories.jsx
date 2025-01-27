@@ -10,9 +10,8 @@ import {
 } from "firebase/firestore";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
-// import { useAuth } from "../Authcontext";
-
-const ManageCategories = (currentUser) => {
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+const ManageCategories = ({ currentUser }) => {
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState({
     name: "",
@@ -21,20 +20,33 @@ const ManageCategories = (currentUser) => {
   });
   const [editCategoryId, setEditCategoryId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
-  // const { currentUser } = useAuth();
+  const [userEmail, setUserEmail] = useState(null);
+  const auth = getAuth();
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserEmail(user.email);
+      } else {
+        setUserEmail(null);
+        console.error("User is not logged in");
+      }
+      setLoading(false); // Stop loading once the user state is set
+    });
 
-  if (!currentUser) {
-    return <p>Loading...</p>;
-  }
+    return () => unsubscribe();
+  }, [auth]);
 
-  const categoriesCollection = collection(
-    db,
-   
-    "categories"
-  );
- 
+  // Check if userEmail exists before accessing Firestore collection
+  const categoriesCollection = userEmail
+    ? collection(db, "admins", userEmail, "categories")
+    : null;
+
   useEffect(() => {
     const fetchCategories = async () => {
+      if (!userEmail) {
+        console.log("Waiting for currentUser to be set...");
+        return;
+      }
       try {
         const data = await getDocs(categoriesCollection);
         setCategories(data.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
@@ -43,22 +55,17 @@ const ManageCategories = (currentUser) => {
       }
     };
 
-    fetchCategories();
-  }, [currentUser]);
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setNewCategory({ ...newCategory, image: event.target.result });
-        setPreviewImage(event.target.result);
-      };
-      reader.readAsDataURL(file);
+    if (userEmail) {
+      fetchCategories();
     }
-  };
+  }, [userEmail, categoriesCollection]);
 
   const handleAddCategory = async () => {
+    if (!userEmail) {
+      console.error("User email is not available.");
+      return;
+    }
+
     try {
       const newDoc = await addDoc(categoriesCollection, newCategory);
       setCategories([...categories, { ...newCategory, id: newDoc.id }]);
@@ -69,20 +76,17 @@ const ManageCategories = (currentUser) => {
   };
 
   const handleUpdateCategory = async () => {
+    if (!userEmail || !editCategoryId) {
+      console.error("User email or category id not available.");
+      return;
+    }
+
     try {
-      const categoryDoc = doc(
-        db,
-        "users",
-        currentUser.email,
-        "categories",
-        editCategoryId
-      );
+      const categoryDoc = doc(db, "admins", userEmail, "categories", editCategoryId);
       await updateDoc(categoryDoc, newCategory);
       setCategories((prevCategories) =>
         prevCategories.map((category) =>
-          category.id === editCategoryId
-            ? { ...category, ...newCategory }
-            : category
+          category.id === editCategoryId ? { ...category, ...newCategory } : category
         )
       );
       resetForm();
@@ -92,14 +96,31 @@ const ManageCategories = (currentUser) => {
   };
 
   const handleDeleteCategory = async (id) => {
+    if (!userEmail) {
+      console.error("User email is not available.");
+      return;
+    }
+
     try {
-      const categoryDoc = doc(db, "users", currentUser.email, "categories", id);
+      const categoryDoc = doc(db, "admins", userEmail, "categories", id);
       await deleteDoc(categoryDoc);
       setCategories((prevCategories) =>
         prevCategories.filter((category) => category.id !== id)
       );
     } catch (error) {
       console.error("Error deleting category: ", error);
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setNewCategory({ ...newCategory, image: event.target.result });
+        setPreviewImage(event.target.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -141,9 +162,9 @@ const ManageCategories = (currentUser) => {
         </div>
       </div>
 
-      {/* Two-Column Layout */}
+      {/* Category Form and List */}
       <div className="grid grid-cols-[30%,70%] lg:grid-cols-[30%,70%] gap-8">
-      {/* Category Form */}
+        {/* Category Form */}
         <div className="bg-white p-6 rounded-lg shadow-lg">
           <h2 className="text-2xl font-semibold text-blue-500 mb-4">
             {editCategoryId ? "Edit Category" : "Add Category"}
@@ -183,9 +204,7 @@ const ManageCategories = (currentUser) => {
           <div className="mt-4 flex justify-between">
             <button
               className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-6 py-2 rounded-lg hover:from-blue-600 hover:to-blue-800 transition-all duration-200"
-              onClick={
-                editCategoryId ? handleUpdateCategory : handleAddCategory
-              }
+              onClick={editCategoryId ? handleUpdateCategory : handleAddCategory}
             >
               {editCategoryId ? "Update Category" : "Add Category"}
             </button>
@@ -213,46 +232,40 @@ const ManageCategories = (currentUser) => {
               </tr>
             </thead>
             <tbody>
-              {categories.length === 0 ? (
-                <tr>
-                  <td colSpan="4" className="text-center p-4 text-gray-500">
-                    No categories available.
+              {categories.map((category) => (
+                <tr key={category.id}>
+                  <td className="border p-3">
+                    <img
+                      src={category.image}
+                      alt={category.name}
+                      className="w-16 h-16 object-cover"
+                    />
+                  </td>
+                  <td className="border p-3">{category.name}</td>
+                  <td className="border p-3">{category.description}</td>
+                  <td className="border p-3 flex space-x-2">
+                    <button
+                      onClick={() => {
+                        setEditCategoryId(category.id);
+                        setNewCategory({
+                          name: category.name,
+                          description: category.description,
+                          image: category.image,
+                        });
+                      }}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <FontAwesomeIcon icon={faEdit} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(category.id)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                    </button>
                   </td>
                 </tr>
-              ) : (
-                categories.map((category) => (
-                  <tr
-                    key={category.id}
-                    className="hover:bg-gray-50 transition duration-200"
-                  >
-                    <td className="border p-3">
-                      <img
-                        src={category.image}
-                        alt={category.name}
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                    </td>
-                    <td className="border p-3">{category.name}</td>
-                    <td className="border p-3">{category.description}</td>
-                    <td className="border p-3 flex justify-around">
-                      <FontAwesomeIcon
-                        icon={faEdit}
-                        className="text-yellow-500 cursor-pointer hover:scale-110 transition-transform duration-200"
-                        onClick={() => {
-                          setEditCategoryId(category.id);
-                          setNewCategory(category);
-                          setPreviewImage(category.image);
-                        }}
-                      />
-                      <FontAwesomeIcon
-                        icon={faTrash}
-                        className="text-red-500 cursor-pointer hover:scale-110 transition-transform duration-200"
-                        onClick={() => handleDeleteCategory(category.id)}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>

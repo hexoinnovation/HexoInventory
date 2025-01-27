@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { db } from "../config/firebase";
+import { db ,auth} from "../config/firebase";
 import {
   collection,
   setDoc,
@@ -12,13 +12,17 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 //import { useAuth } from "../Authcontext";
+import { onAuthStateChanged,getAuth } from "firebase/auth";
 
-const ManageProducts = (currentUser) => {
+
+const ManageProducts = (user) => {
   const [products, setProducts] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState([]);
    const [category, setCategory] = useState([]);
    const [productoffers, setProductoffers] = useState('');
+
   // const [newProduct, setNewProduct] = useState({
   //   name: "",
   //   price: "",
@@ -46,43 +50,78 @@ const ManageProducts = (currentUser) => {
   });
   const [editProductId, setEditProductId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+  const [userEmail, setUserEmail] = useState(null);
   //const { currentUser } = useAuth();
-
-  if (!currentUser) {
-    return <p>Loading...</p>;
-  }
-
-  const productsCollection = collection(
-    db, "admins","nithya1@gmail.com",
-    "products"
-  );
-  // collection(db, "admins", currentUser.email, "Empdetails")
-  const categoriesCollection = collection(
-    db,
-   
-    "categories"
-  );
-
+  const auth = getAuth();
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const productsData = await getDocs(productsCollection);
-        setProducts(
-          productsData.docs.map((doc) => ({ ...doc.data(), id: doc.id }))
-        );
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserEmail(user.email);
+      } else {
+        setUserEmail(null);
+        console.error("User is not logged in");
+      }
+      setLoading(false); 
+    });
 
+    return () => unsubscribe();
+  }, [auth]);
+  const categoriesCollection = userEmail
+    ? collection(db, "admins", userEmail, "categories")
+    : null;
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        setCurrentUser(user);
+        setLoading(false);
+      } else {
+        console.log("No user logged in");
+        setLoading(false);
+      }
+    };
+  
+    fetchCurrentUser();
+  }, []);
+  
+ 
+    useEffect(() => {
+      const fetchProducts = async () => {
+        try {
+          const auth = getAuth(); 
+          const currentUser = auth.currentUser; 
+          if (!currentUser || !currentUser.email) {
+            console.error("No user is signed in. Please sign in to view products.");
+            return;
+          }
+          const userEmail = currentUser.email; 
+          const productsCollectionRef = collection(
+            db,
+            "admins",
+            userEmail, 
+            "products"
+          );
+        const productsSnapshot = await getDocs(productsCollectionRef);
+        const productsData = productsSnapshot.docs.map((doc) => ({
+          ...doc.data(),
+          id: doc.id,
+        }));
+  
         const categoriesData = await getDocs(categoriesCollection);
         setCategories(
           categoriesData.docs.map((doc) => ({ ...doc.data(), id: doc.id }))
         );
+        setProducts(productsData);
+        console.log("Products fetched successfully:", productsData);
       } catch (error) {
-        console.error("Error fetching data: ", error);
+        console.error("Error fetching products:", error);
       }
     };
-
-    fetchData();
-  }, [currentUser]);
-
+  
+    fetchProducts();
+  }, [currentUser, loading]); 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -95,42 +134,52 @@ const ManageProducts = (currentUser) => {
     }
   };
   const [selectedCategory, setSelectedCategory] = useState(null);
-  // Function to handle dropdown option clicks
 const handleCategorySelect = (category) => {
-  setSelectedCategory(category); // Store the selected category
+  setSelectedCategory(category); 
   console.log("Selected category:", category);
 };
   const handleAddProduct = async () => {
     try {
-      // Reference to the collection where products are stored
-      const productsCollectionRef = collection(db, "admins","nithya1@gmail.com",
-        "products"); // Replace "products" with your Firestore collection name
+      const auth = getAuth(); 
+      const currentUser = auth.currentUser; 
   
-      // Save the product data with an auto-generated document ID
-      const docRef = await addDoc(productsCollectionRef, {
+      if (!currentUser || !currentUser.email) {
+        alert("No user is signed in. Please sign in to add a product.");
+        return;
+      }
+  
+      const userEmail = currentUser.email; 
+      const collectionRef = collection(
+        db,
+        "admins",
+        userEmail, 
+        "products"
+      );
+      const docRef = await addDoc(collectionRef, {
         ...newProduct, 
-        offers: productoffers,// Include all the product data from your form or state
-        createdAt: new Date().toISOString(), // Optionally add a timestamp for record-keeping
+        offers: productoffers,
+        createdAt: new Date().toISOString(), 
       });
   
-      console.log("Product added with ID: ", docRef.id); // Log the auto-generated document ID
-  
-      // Update the local state (if needed)
+      console.log("Product added with ID: ", docRef.id); 
       setProducts([...products, { ...newProduct, id: docRef.id }]);
   
-      // Reset the form
+
       resetForm();
     } catch (error) {
       console.error("Error adding product: ", error);
     }
+    
   };
   
   const handleUpdateProduct = async () => {
     try {
+      const userEmail = currentUser.email; 
       const productDoc = doc(
         db,
-      
-        "products",
+            "admins",
+            userEmail, 
+            "products",
         editProductId
       );
       await updateDoc(productDoc, newProduct);
@@ -147,7 +196,11 @@ const handleCategorySelect = (category) => {
 
   const handleDeleteProduct = async (id) => {
     try {
-      const productDoc = doc(db, "products", id);
+      const userEmail = currentUser.email; 
+      const productDoc = doc( db,
+        "admins",
+        userEmail, 
+        "products", id);
       await deleteDoc(productDoc);
       setProducts((prevProducts) =>
         prevProducts.filter((product) => product.id !== id)
