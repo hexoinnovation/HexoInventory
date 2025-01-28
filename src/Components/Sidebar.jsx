@@ -157,16 +157,16 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Manage Categories</span>
               </Link>
             </li>
-            <li className={activeLink === "orders" ? "active" : ""}>
+            {/* <li className={activeLink === "orders" ? "active" : ""}>
               <Link to="/orders" onClick={() => handleLinkClick("orders")}>
                 <i className="bx bxs-cart"></i>
                 <span className="text">Orders</span>
               </Link>
-            </li>
+            </li> */}
             <li className={activeLink === "orders2" ? "active" : ""}>
               <Link to="/orders2" onClick={() => handleLinkClick("orders2")}>
                 <i className="bx bxs-cart"></i>
-                <span className="text">Orders 2.o</span>
+                <span className="text">Orders </span>
               </Link>
             </li>
           </ul>
@@ -202,16 +202,16 @@ const Sidebar = ({ sidebarVisible, toggleSidebar }) => {
                 <span className="text">Attendance</span>
               </Link>
             </li>
-            <li className={activeLink === "salary" ? "active" : ""}>
+            {/* <li className={activeLink === "salary" ? "active" : ""}>
               <Link to="/salary" onClick={() => handleLinkClick("salary")}>
                 <i className="bx bxs-wallet"></i>
                 <span className="text">Salary</span>
               </Link>
-            </li>
+            </li> */}
             <li className={activeLink === "salary2" ? "active" : ""}>
               <Link to="/salary2" onClick={() => handleLinkClick("salary2")}>
                 <i className="bx bxs-wallet"></i>
-                <span className="text">Salary2.o</span>
+                <span className="text">Salary</span>
               </Link>
             </li>
           </ul>
