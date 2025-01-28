@@ -4,7 +4,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
 import { useState, useEffect } from "react";
 import { collection, getDocs, doc  } from "firebase/firestore"; // Firestore functions for querying
 import { db } from "../config/firebase";
-
+import {getAuth} from "firebase/auth";
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 // Info Box component for displaying stats
@@ -79,8 +79,19 @@ const Dashboard = (userEmail) => {
 
  useEffect(() => {
   const fetchProductsInStock = async () => {
-    // Reference to the collection where products are stored
-    const productsCollectionRef = collection(db, "products");
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      console.error("No user is currently logged in.");
+      return;
+    }
+
+    // Sanitize the email to use in Firestore path
+    const sanitizedEmail = currentUser.email.replace(/\s/g, "_");
+
+    // Reference to the 'products' collection under 'admins/{userEmail}'
+    const productsCollectionRef = collection(db, "admins", sanitizedEmail, "products");
 
     try {
       // Fetch all product documents from Firestore
@@ -105,15 +116,24 @@ const Dashboard = (userEmail) => {
   fetchProductsInStock(); // Call the function to fetch products count
 }, []);
 
-
 const [categoriesInStock, setCategoriesInStock] = useState(0); // State for the category count
 
- // Fetch categories count from Firestore
- useEffect(() => {
+useEffect(() => {
   const fetchCategoriesCount = async () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      console.error("No user is currently logged in.");
+      return;
+    }
+
+    // Sanitize the user's email to be used in the path
+    const sanitizedEmail = currentUser.email.replace(/\s/g, "_");
+
     try {
-      // Reference to the 'categories' collection in Firestore
-      const categoriesCollectionRef = collection(db, "categories");
+      // Reference to the categories subcollection under admins/{userEmail}
+      const categoriesCollectionRef = collection(db, "admins", sanitizedEmail, "categories");
 
       // Fetch all category documents from Firestore
       const querySnapshot = await getDocs(categoriesCollectionRef);
@@ -126,8 +146,7 @@ const [categoriesInStock, setCategoriesInStock] = useState(0); // State for the 
   };
 
   fetchCategoriesCount(); // Call the function to fetch the categories count
-}, []);
-
+}, []); // Empty dependency array ensures this runs only once when the component mounts
 
 const [currentOrders, setCurrentOrders] = useState([]); // Current orders state
 const [buyNowOrders, setBuyNowOrders] = useState([]); // Buy now orders state
