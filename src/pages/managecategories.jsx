@@ -21,6 +21,7 @@ const ManageCategories = ({ currentUser }) => {
   const [editCategoryId, setEditCategoryId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [userEmail, setUserEmail] = useState(null);
+  const [loading, setLoading] = useState(true);  // Set loading to true initially
   const auth = getAuth();
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {

@@ -20,7 +20,7 @@ import {
   } from "./config/firebase";
 import Shop from "./pages/Account";
 import Attendence from "./pages/Attendence";
-import Salary from "./pages/Salary";
+// import Salary from "./pages/Salary";
 import Salary2 from "./pages/Salary2";
 import Report from "./pages/Report";
 import BusinessDetails from "./pages/BusinessDetails";
@@ -30,7 +30,7 @@ import EmployeeDetails from "./pages/EmployeeDetails";
 import Invoice from "./pages/Invoice";
 import Purchase from "./pages/Purchase";
 import Sales from "./pages/Sales";
-import Orders from "./pages/orders";
+// import Orders from "./pages/orders";
 import Orders2 from "./pages/orders2";
 import Stock from "./pages/Stock";
 import View from "./pages/viewAllInvoice";
@@ -163,10 +163,10 @@ const App = () => {
                 path="/shop"
                 element={isAuthenticated ? <Shop /> : <Navigate to="/" />}
               />
-              <Route
+              {/* <Route
                 path="/orders"
                 element={isAuthenticated ? <Orders /> : <Navigate to="/" />}
-              />
+              /> */}
                <Route
                 path="/orders2"
                 element={isAuthenticated ? <Orders2 /> : <Navigate to="/" />}
@@ -216,10 +216,10 @@ const App = () => {
                 path="/attendence"
                 element={isAuthenticated ? <Attendence /> : <Navigate to="/" />}
               />
-                 <Route
+                 {/* <Route
                 path="/salary"
                 element={isAuthenticated ? <Salary /> : <Navigate to="/" />}
-              />
+              /> */}
                <Route
                 path="/salary2"
                 element={isAuthenticated ? <Salary2 /> : <Navigate to="/" />}
