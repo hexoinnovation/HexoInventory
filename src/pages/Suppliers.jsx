@@ -185,6 +185,7 @@ const Suppliers = () => {
         </div>
       )}
 
+
       {/* Popup for Viewing Contact Details */}
       {showPopup && selectedContact && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50 ">
