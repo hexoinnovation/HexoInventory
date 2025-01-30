@@ -137,9 +137,7 @@ const ReportTabs = () => {
         setData(newData);
       } catch (error) {
         console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false); // End loading
-      }
+      } 
     };
 
     fetchData();
@@ -319,12 +317,12 @@ const ReportTabs = () => {
           </div>
 
           {/* Loading state with spinner */}
-          {loading ? (
+          {/* {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="w-16 h-16 border-4 border-blue-900 border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : (
-            <>
+            <> */}
               {/* Download Buttons */}
               <div className="flex space-x-4 mb-6">
                 <button
@@ -373,8 +371,8 @@ const ReportTabs = () => {
                   Next
                 </button>
               </div>
-            </>
-          )}
+            
+          
         </div>
       </div>
     </div>
