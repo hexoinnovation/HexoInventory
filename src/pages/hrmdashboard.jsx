@@ -80,20 +80,26 @@ const HRMControl = () => {
     }
   }, [currentUser?.email]);
 
+
+
+
   // Pie chart data for attendance distribution
   const attendanceData = {
-    labels: ["Present", "Absent"],
+    labels: ["Total Employees"],
     datasets: [
       {
-        label: "Attendance",
-        data: [presentEmployees, absentEmployees],
+        label: "Total Employees",
+        data: [totalEmployees], // ✅ Now `paidCount` is initialized
         backgroundColor: [
-          "rgba(54, 162, 235, 0.7)",  // Present (blue)
-          "rgba(255, 99, 132, 0.7)",   // Absent (red)
+          "rgba(38, 228, 79, 0.7)",
+          "rgba(54, 162, 235, 0.7)",  
+          
+          "rgba(219, 30, 5, 0.7)",  
         ],
         borderColor: [
-          "rgba(54, 162, 235, 1)",
-          "rgba(255, 99, 132, 1)",
+          "rgba(38, 228, 79, 0.7)",
+          "rgba(54, 162, 235, 1)",  
+          "rgba(219, 30, 5, 1)",  
         ],
         borderWidth: 1,
       },
@@ -177,6 +183,34 @@ const [paidCount, setPaidCount] = useState(0);
   }, [userEmail]);  // Re-run when userEmail changes
 
 
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!currentUser?.email) return;
+
+    const fetchEmployees = async () => {
+      try {
+        const userDocRef = collection(db, "admins", currentUser.email, "Empdetails");
+        const querySnapshot = await getDocs(userDocRef);
+
+        const employeeList = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        setEmployees(employeeList);
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEmployees();
+  }, [currentUser?.email]);
+  // if (loading) return <p className="text-center text-gray-400">Loading...</p>;
+ 
+
+
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
       {/* Header Title */}
@@ -216,7 +250,7 @@ const [paidCount, setPaidCount] = useState(0);
           <InfoBox
             title="Paid Salary"
             value={paidCount}
-            description="Employees Present Today"
+            description="Employees Paid Salary"
             color="from-green-600 via-green-700 to-green-800"
           />
         </li>
@@ -226,7 +260,7 @@ const [paidCount, setPaidCount] = useState(0);
           <InfoBox
             title="Pending Salary"
             value={pendingCount}
-            description="Employees Absent Today"
+            description="Employees Pending Salary"
             color="from-red-600 via-red-700 to-red-800"
           />
         </li>
@@ -238,45 +272,39 @@ const [paidCount, setPaidCount] = useState(0);
         <div className="employee-table bg-gradient-to-r from-blue-600 to-blue-700 p-8 rounded-2xl shadow-lg">
           <h3 className="text-xl font-semibold text-gray-100 mb-6">Employee List</h3>
           <table className="min-w-full table-auto text-gray-100">
-            <thead className="bg-blue-900">
-              <tr>
-                <th className="px-6 py-4 text-left text-white">No</th>
-                <th className="px-6 py-4 text-left text-white">Name</th>
-                <th className="px-6 py-4 text-left text-white">DOB</th>
-                <th className="px-6 py-4 text-left text-white">Role</th>
-                <th className="px-6 py-4 text-left text-white">Salary</th>
-                
-              </tr>
-            </thead>
-            <tbody>
-  {filteredEmployees.length === 0 ? (
+      <thead className="bg-blue-900">
+        <tr>
+          <th className="px-6 py-4 text-left text-white">No</th>
+          {/* <th className="px-6 py-4 text-left text-white">DOB</th> */}
+          <th className="px-6 py-4 text-left text-white">Profiles</th>
+          <th className="px-6 py-4 text-left text-white">Name</th>
+          <th className="px-6 py-4 text-left text-white">Role</th>
+          <th className="px-6 py-4 text-left text-white">Salary</th>
+        </tr>
+      </thead>
+      <tbody>
+  {employees.length === 0 ? (
     <tr>
-      <td
-        colSpan="6"  // Adjusted to 6 since we have 6 columns
-        className="text-center py-4 text-red-500 font-semibold"
-      >
+      <td colSpan="6" className="text-center py-4 text-red-500 font-semibold">
         No Employee Found
       </td>
     </tr>
   ) : (
-    filteredEmployees.map((employee, index) => (
+    employees.slice(-5).map((employee, index) => (
       <tr key={employee.id}>
-        <td className="px-6 py-4">{index + 1}</td>
-        <td className="px-6 py-4">
+        <td className="px-6 py-4 text-left">{index + 1}</td>
+        <td className="px-6 py-4 text-left">
           <div className="flex items-center gap-5">
             <img
-              src={employee.photo}
+              src={employee.photo || "/default-profile.png"} // Fallback image
               alt="Employee"
               className="rounded-full w-15 h-14"
             />
-            <span>{employee.name}</span>
           </div>
         </td>
-        <td className="px-6 py-4">{employee.dob}</td>
-        <td className="px-6 py-4">{employee.contact}</td>
-        <td className="px-6 py-4">{employee.email}</td>
-        <td className="px-6 py-4">{employee.role}</td>
-        <td className="px-6 py-4">₹{employee.salary}</td>
+        <td className="px-6 py-4 text-left">{employee.name}</td>
+        <td className="px-6 py-4 text-left">{employee.role}</td>
+        <td className="px-6 py-4 ">₹{employee.salary}</td>
       </tr>
     ))
   )}
@@ -285,9 +313,11 @@ const [paidCount, setPaidCount] = useState(0);
         </div>
 
         {/* Right Column: Pie Chart */}
-        <div className="chart bg-gradient-to-r from-blue-600 to-blue-700 p-8 rounded-2xl shadow-lg">
-          <h3 className="text-xl font-semibold text-gray-100 mb-6">Attendance Distribution</h3>
+        <div className="chart-container bg-gradient-to-r from-white-900 via-white-700 to-white-800 p-8 rounded-2xl shadow-lg">
+          <h3 className="text-xl font-semibold text-gray-700 mb-6">Employees Distribution</h3>
+          <div className="w-full max-w-xs mx-auto">
           <Pie data={attendanceData} options={{ responsive: true }} />
+          </div>
         </div>
       </div>
     </main>

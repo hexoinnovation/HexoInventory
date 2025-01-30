@@ -39,16 +39,16 @@ const Dashboard = (userEmail) => {
     datasets: [
       {
         label: "Sales",
-        data: [5000, 3000, 4000, 2500, 2000],
+        data: [5000, 3000, 4000, ],
         backgroundColor: [
           "rgba(54, 162, 235, 0.7)",
           "rgba(255, 99, 132, 0.7)",
-          "rgba(255, 159, 64, 0.7)",
+          "rgba(38, 228, 79, 0.7)",
         ],
         borderColor: [
           "rgba(54, 162, 235, 1)",
           "rgba(255, 99, 132, 1)",
-          "rgba(255, 159, 64, 1)",
+          "rgba(38, 228, 79, 0.7)",
         ],
         borderWidth: 1,
       },
@@ -253,10 +253,7 @@ useEffect(() => {
     fetchOrders();
   }, []);
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
+  
 
   return (
     <main className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen w-full">
