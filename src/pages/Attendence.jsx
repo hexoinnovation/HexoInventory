@@ -51,6 +51,7 @@ const AttendanceApp = (currentUser) => {
         setUser(currentUser);
   
         if (currentUser) {
+          // Fetch Employees
           const employeeQuery = collection(db, "admins", currentUser.email, "Empdetails");
           const employeeSnapshot = await getDocs(employeeQuery);
           let fetchedEmployees = [];
@@ -59,14 +60,12 @@ const AttendanceApp = (currentUser) => {
               id: doc.id,
               ...doc.data(),
             }));
-          
-          setEmployees(fetchedEmployees);
-
-         
-          setTotalEmployees(fetchedEmployees.length);
-         
-        }
-          const attendanceQuery = collection(db, "admins", currentUser.email, "attendance");
+            setEmployees(fetchedEmployees);
+            setTotalEmployees(fetchedEmployees.length);
+          }
+  
+          // Fetch Attendance
+          const attendanceQuery = collection(db, "admins", currentUser.email, "Attendance");
           const attendanceSnapshot = await getDocs(attendanceQuery);
           let latestAttendance = [];
           if (!attendanceSnapshot.empty) {
@@ -75,12 +74,16 @@ const AttendanceApp = (currentUser) => {
               records: doc.data(),
             }));
   
+            console.log("Fetched Attendance Data:", allAttendance);
+  
+            // Sort attendance records by date (descending order)
             const sortedAttendance = allAttendance.sort((a, b) => {
               const dateA = new Date(a.id.replace(/-/g, "/"));
               const dateB = new Date(b.id.replace(/-/g, "/"));
-              return dateB - dateA; // Descending order
+              return dateB - dateA;
             });
   
+            // Extract latest attendance records
             latestAttendance = Object.keys(sortedAttendance[0].records || {}).map((key) => {
               const record = sortedAttendance[0].records[key];
               return {
@@ -94,6 +97,8 @@ const AttendanceApp = (currentUser) => {
                 status: record.status || "Unknown",
               };
             });
+  
+            console.log("Processed Latest Attendance:", latestAttendance);
           }
   
           // Combine fetched employees with attendance data
@@ -102,6 +107,7 @@ const AttendanceApp = (currentUser) => {
             return { ...employee, ...attendanceRecord };
           });
   
+          console.log("Final Attendance Data to be Set:", combinedData);
           setAttendanceRecords(combinedData);
         } else {
           console.log("User not authenticated.");
@@ -168,7 +174,7 @@ const AttendanceApp = (currentUser) => {
         return;
     }
 
-    const attendanceRef = collection(db, "admins", user.email, "attendance");
+    const attendanceRef = collection(db, "admins", user.email, "Attendance");
 
     try {
         const attendanceData = {};
@@ -549,7 +555,7 @@ const AttendanceApp = (currentUser) => {
               </td>
               <td className="px-6 py-4 border border-blue-300">
               <select
-                  value={employee.status || 'Present'}
+                  value={employee.status || 'Absent'}
                   onChange={(e) =>
                     handleStatusChange(employee.id, e.target.value)
                   }
